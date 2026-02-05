@@ -1308,20 +1308,24 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC Header row - merge across all columns and style
-                    const pcRow = worksheet.addRow([firstCell, '', '', '', '', '', '', '', '', '', '']);
-                    pcRow.getCell(1).font = { bold: true, size: 12 };
-                    pcRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-                    pcRow.getCell(1).fill = {
+                    // PC Header row - merge across all data columns (B to L)
+                    // Create row with empty first cell (column A) then PC header in column B
+                    const pcRow = worksheet.addRow(['', firstCell]);
+                    // Get the cell in column B (index 2, since ExcelJS is 1-indexed)
+                    const pcCell = pcRow.getCell(2);
+                    pcCell.font = { bold: true, size: 12 };
+                    pcCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    pcCell.fill = {
                         type: 'pattern',
                         pattern: 'solid',
                         fgColor: { argb: 'FFD3D3D3' } // Light gray
                     };
-                    // Merge cells across all 11 columns (B to L, which is indices 1-11)
-                    worksheet.mergeCells(currentRow, 1, currentRow, 11);
+                    // Merge cells across all 11 data columns (B to L)
+                    // Column B = index 2, Column L = index 12 (11 columns total: 2,3,4,5,6,7,8,9,10,11,12)
+                    worksheet.mergeCells(currentRow, 2, currentRow, 12);
                     
-                    // Add borders to merged cell
-                    pcRow.getCell(1).border = {
+                    // Add borders to the merged cell (only need to style the first cell)
+                    pcCell.border = {
                         top: { style: 'thin' },
                         left: { style: 'thin' },
                         bottom: { style: 'thin' },
