@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Inventory Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo-wrapper">
+                    <img src="images/omsc.png" alt="OMSC Logo" class="header-logo">
+                </div>
+                <div class="header-text">
+                    <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
+                    <h2>Multimedia and Speech Laboratory</h2>
+                    <h3>ICT Equipment, Devices & Accessories</h3>
+                    <p class="date-label">AS OF <span id="currentDate"></span></p>
+                </div>
+            </div>
+        </header>
+
+        <div class="controls">
+            <div class="file-upload-section">
+                <label for="excelFile" class="upload-btn">
+                    📁 Import Excel File
+                    <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+                </label>
+                <button id="addItemBtn" class="add-btn">➕ Add Item</button>
+                <button id="addPCBtn" class="add-pc-btn">🖥️ Add PC Section</button>
+                <button id="newSheetBtn" class="new-sheet-btn">📄 New Sheet</button>
+                <button id="exportBtn" class="export-btn" disabled>📥 Export to Excel</button>
+                <button id="clearBtn" class="clear-btn" disabled>🗑️ Clear Data</button>
+            </div>
+        </div>
+
+        <!-- Sheet Tabs -->
+        <div class="sheet-tabs-container">
+            <div id="sheetTabs" class="sheet-tabs">
+                <div class="sheet-tab active" data-sheet-id="sheet-1">
+                    <span class="sheet-name">Sheet 1</span>
+                    <span class="close-sheet" data-sheet-id="sheet-1">×</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>Article/It</th>
+                        <th>Description</th>
+                        <th>Old Property N Assigned</th>
+                        <th>Unit of meas</th>
+                        <th>Unit Value</th>
+                        <th>Quantity per Physical count</th>
+                        <th>Location/Whereabout</th>
+                        <th>Condition</th>
+                        <th>Remarks</th>
+                        <th>User</th>
+                        <th>Picture</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr class="empty-row">
+                        <td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div id="addItemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Inventory Item</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="addItemForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="article">Article/It:</label>
+                        <input type="text" id="article" name="article" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <input type="text" id="description" name="description" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="oldProperty">Old Property N Assigned:</label>
+                        <input type="text" id="oldProperty" name="oldProperty">
+                    </div>
+                    <div class="form-group">
+                        <label for="unitOfMeas">Unit of meas:</label>
+                        <input type="text" id="unitOfMeas" name="unitOfMeas" placeholder="e.g., pcs, unit">
+                    </div>
+                    <div class="form-group">
+                        <label for="unitValue">Unit Value:</label>
+                        <input type="text" id="unitValue" name="unitValue" placeholder="e.g., P5,000.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity per Physical count:</label>
+                        <input type="number" id="quantity" name="quantity" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location/Whereabout:</label>
+                        <input type="text" id="location" name="location" value="MULTIMEDIA AND SPEECH LAB">
+                    </div>
+                    <div class="form-group">
+                        <label for="condition">Condition:</label>
+                        <select id="condition" name="condition" required>
+                            <option value="">Select Condition</option>
+                            <option value="Serviceable">Serviceable</option>
+                            <option value="Unserviceable">Unserviceable</option>
+                            <option value="For Repair">For Repair</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                            <option value="Borrowed">Borrowed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="remarks">Remarks:</label>
+                        <input type="text" id="remarks" name="remarks" placeholder="e.g., For Rep. 2026">
+                    </div>
+                    <div class="form-group">
+                        <label for="user">User:</label>
+                        <input type="text" id="user" name="user" placeholder="e.g., MR TO ANGELINA C. PAQUIBOT">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="picture">Picture:</label>
+                        <input type="file" id="picture" name="picture" accept="image/*">
+                        <div id="picturePreview" class="picture-preview empty">
+                            <span>No image selected</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">Add Item</button>
+                    <button type="button" class="cancel-btn" id="cancelAddBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
