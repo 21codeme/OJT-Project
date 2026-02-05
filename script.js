@@ -896,8 +896,11 @@ async function syncToSupabase() {
         
         if (sheetError) {
             console.error('Error saving sheet to Supabase:', sheetError);
+            console.error('Sheet error details:', sheetError.message);
             return;
         }
+        
+        console.log(`📄 Sheet "${sheet.name}" saved to Supabase`);
         
         // Delete existing items for this sheet
         const { error: deleteError } = await supabase
