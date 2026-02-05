@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     location TEXT,
     condition TEXT,
     remarks TEXT,
-    user TEXT,
+    "user" TEXT,
     picture_url TEXT,
     is_pc_header BOOLEAN DEFAULT FALSE,
     is_highlighted BOOLEAN DEFAULT FALSE,
