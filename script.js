@@ -1,5 +1,5 @@
 // Set current date
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const now = new Date();
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                    'July', 'August', 'September', 'October', 'November', 'December'];
@@ -9,6 +9,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Enable add buttons even when no data
     document.getElementById('addItemBtn').disabled = false;
     document.getElementById('addPCBtn').disabled = false;
+    
+    // Check Supabase connection after a short delay to ensure config.js is loaded
+    setTimeout(async () => {
+        // Try to initialize Supabase if not already done
+        if (typeof initSupabase === 'function') {
+            initSupabase();
+        }
+        
+        // Wait a bit more for Supabase to initialize
+        setTimeout(async () => {
+            if (checkSupabaseConnection()) {
+                console.log('Supabase connected, loading data...');
+                await loadFromSupabase();
+            } else {
+                console.log('Supabase not configured, using local storage only');
+            }
+        }, 300);
+    }, 200);
 });
 
 // Sheet management
@@ -830,15 +848,277 @@ function saveCurrentSheetData() {
     setCurrentSheetData(sheetData, sheetData.length > 0);
     // Store highlight states in sheet metadata
     sheets[currentSheetId].highlightStates = highlightStates;
+    
+    // Sync to Supabase if connected
+    if (checkSupabaseConnection()) {
+        syncToSupabase();
+    }
 }
 
-function deleteSheet(sheetId) {
+// Supabase Sync Functions
+async function syncToSupabase() {
+    if (!checkSupabaseConnection()) return;
+    
+    try {
+        const sheet = getCurrentSheet();
+        
+        // Save/update sheet in Supabase
+        const { error: sheetError } = await supabase
+            .from('sheets')
+            .upsert({
+                id: currentSheetId,
+                name: sheet.name,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+        
+        if (sheetError) {
+            console.error('Error saving sheet to Supabase:', sheetError);
+            return;
+        }
+        
+        // Delete existing items for this sheet
+        const { error: deleteError } = await supabase
+            .from('inventory_items')
+            .delete()
+            .eq('sheet_id', currentSheetId);
+        
+        if (deleteError) {
+            console.error('Error deleting old items:', deleteError);
+            return;
+        }
+        
+        // Prepare items to insert
+        const itemsToInsert = [];
+        const tbody = document.getElementById('tableBody');
+        const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+        
+        rows.forEach((row, rowIndex) => {
+            if (row.classList.contains('pc-header-row')) {
+                // PC header row
+                const firstCell = row.querySelector('td');
+                if (firstCell) {
+                    const input = firstCell.querySelector('input');
+                    const pcName = input ? input.value : firstCell.textContent.trim();
+                    itemsToInsert.push({
+                        sheet_id: currentSheetId,
+                        sheet_name: sheet.name,
+                        row_index: rowIndex,
+                        article: pcName,
+                        is_pc_header: true,
+                        is_highlighted: false
+                    });
+                }
+            } else {
+                // Regular row
+                const cells = row.querySelectorAll('td.editable');
+                if (cells.length >= 10) {
+                    const pictureCell = row.querySelector('.picture-cell');
+                    let pictureUrl = null;
+                    if (pictureCell) {
+                        const img = pictureCell.querySelector('img');
+                        if (img && img.src) {
+                            pictureUrl = img.src; // Base64 or URL
+                        }
+                    }
+                    
+                    itemsToInsert.push({
+                        sheet_id: currentSheetId,
+                        sheet_name: sheet.name,
+                        row_index: rowIndex,
+                        article: cells[0]?.querySelector('input')?.value || '',
+                        description: cells[1]?.querySelector('input')?.value || '',
+                        old_property_n_assigned: cells[2]?.querySelector('input')?.value || '',
+                        unit_of_meas: cells[3]?.querySelector('input')?.value || '',
+                        unit_value: cells[4]?.querySelector('input')?.value || '',
+                        quantity: cells[5]?.querySelector('input')?.value || '',
+                        location: cells[6]?.querySelector('input')?.value || '',
+                        condition: cells[7]?.querySelector('input')?.value || '',
+                        remarks: cells[8]?.querySelector('input')?.value || '',
+                        user: cells[9]?.querySelector('input')?.value || '',
+                        picture_url: pictureUrl,
+                        is_pc_header: false,
+                        is_highlighted: row.classList.contains('highlighted-row')
+                    });
+                }
+            }
+        });
+        
+        // Insert all items
+        if (itemsToInsert.length > 0) {
+            const { error: insertError } = await supabase
+                .from('inventory_items')
+                .insert(itemsToInsert);
+            
+            if (insertError) {
+                console.error('Error inserting items to Supabase:', insertError);
+            } else {
+                console.log('Data synced to Supabase successfully');
+            }
+        }
+    } catch (error) {
+        console.error('Error syncing to Supabase:', error);
+    }
+}
+
+// Load data from Supabase
+async function loadFromSupabase() {
+    if (!checkSupabaseConnection()) return;
+    
+    try {
+        // Load all sheets
+        const { data: sheetsData, error: sheetsError } = await supabase
+            .from('sheets')
+            .select('*')
+            .order('created_at', { ascending: true });
+        
+        if (sheetsError) {
+            console.error('Error loading sheets from Supabase:', sheetsError);
+            return;
+        }
+        
+        if (!sheetsData || sheetsData.length === 0) {
+            console.log('No sheets found in Supabase');
+            return;
+        }
+        
+        // Clear existing sheets
+        sheets = {};
+        sheetCounter = 0;
+        
+        // Load each sheet and its items
+        for (const sheetData of sheetsData) {
+            const { data: itemsData, error: itemsError } = await supabase
+                .from('inventory_items')
+                .select('*')
+                .eq('sheet_id', sheetData.id)
+                .order('row_index', { ascending: true });
+            
+            if (itemsError) {
+                console.error('Error loading items for sheet:', itemsError);
+                continue;
+            }
+            
+            // Convert items back to row data format
+            const rowData = [];
+            const highlightStates = [];
+            
+            itemsData.forEach(item => {
+                if (item.is_pc_header) {
+                    rowData.push([item.article]);
+                    highlightStates.push(false);
+                } else {
+                    rowData.push([
+                        item.article || '',
+                        item.description || '',
+                        item.old_property_n_assigned || '',
+                        item.unit_of_meas || '',
+                        item.unit_value || '',
+                        item.quantity || '',
+                        item.location || '',
+                        item.condition || '',
+                        item.remarks || '',
+                        item.user || ''
+                    ]);
+                    highlightStates.push(item.is_highlighted || false);
+                }
+            });
+            
+            // Create sheet
+            sheets[sheetData.id] = {
+                id: sheetData.id,
+                name: sheetData.name,
+                data: rowData,
+                hasData: rowData.length > 0,
+                highlightStates: highlightStates
+            };
+            
+            // Update sheet counter
+            const sheetNum = parseInt(sheetData.id.replace('sheet-', ''));
+            if (sheetNum > sheetCounter) {
+                sheetCounter = sheetNum;
+            }
+        }
+        
+        // Switch to first sheet if available
+        const firstSheetId = Object.keys(sheets)[0];
+        if (firstSheetId) {
+            currentSheetId = firstSheetId;
+            switchToSheet(firstSheetId);
+        }
+        
+        // Update sheet tabs
+        updateSheetTabs();
+        
+        console.log('Data loaded from Supabase successfully');
+    } catch (error) {
+        console.error('Error loading from Supabase:', error);
+    }
+}
+
+// Update sheet tabs UI
+function updateSheetTabs() {
+    const sheetTabs = document.getElementById('sheetTabs');
+    sheetTabs.innerHTML = '';
+    
+    Object.values(sheets).forEach(sheet => {
+        const tab = document.createElement('div');
+        tab.className = 'sheet-tab' + (sheet.id === currentSheetId ? ' active' : '');
+        tab.setAttribute('data-sheet-id', sheet.id);
+        tab.innerHTML = `
+            <span class="sheet-name">${sheet.name}</span>
+            <span class="close-sheet" data-sheet-id="${sheet.id}">×</span>
+        `;
+        
+        tab.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('close-sheet')) {
+                switchToSheet(sheet.id);
+            }
+        });
+        
+        const closeBtn = tab.querySelector('.close-sheet');
+        closeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            deleteSheet(sheet.id);
+        });
+        
+        sheetTabs.appendChild(tab);
+    });
+}
+
+async function deleteSheet(sheetId) {
     if (Object.keys(sheets).length <= 1) {
         alert('Cannot delete the last sheet. At least one sheet must exist.');
         return;
     }
     
     if (confirm(`Are you sure you want to delete "${sheets[sheetId].name}"?`)) {
+        // Delete from Supabase if connected
+        if (checkSupabaseConnection()) {
+            try {
+                // Delete items first
+                const { error: itemsError } = await supabase
+                    .from('inventory_items')
+                    .delete()
+                    .eq('sheet_id', sheetId);
+                
+                if (itemsError) {
+                    console.error('Error deleting items from Supabase:', itemsError);
+                }
+                
+                // Delete sheet
+                const { error: sheetError } = await supabase
+                    .from('sheets')
+                    .delete()
+                    .eq('id', sheetId);
+                
+                if (sheetError) {
+                    console.error('Error deleting sheet from Supabase:', sheetError);
+                }
+            } catch (error) {
+                console.error('Error deleting from Supabase:', error);
+            }
+        }
+        
         delete sheets[sheetId];
         
         // Remove tab
