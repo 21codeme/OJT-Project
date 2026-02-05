@@ -3,8 +3,8 @@
 // You can find these in your Supabase project settings: Settings > API
 
 const SUPABASE_CONFIG = {
-    url: 'YOUR_SUPABASE_URL', // e.g., 'https://xxxxx.supabase.co'
-    anonKey: 'YOUR_SUPABASE_ANON_KEY' // Your Supabase anon/public key
+    url: 'https://bferfkrkejwccvfsigze.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmZXJma3JrZWp3Y2N2ZnNpZ3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1NTUsImV4cCI6MjA4NTg0OTU1NX0.4nc1SgH-lXD4GvZ6XSbfzyCp-Swf6Mon-O3dA_mEpXE'
 };
 
 // Initialize Supabase client
