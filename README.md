@@ -57,10 +57,15 @@ A web-based inventory management system for Occidental Mindoro State College - M
 
 ```
 lab inventory/
-├── index.html      # Main HTML file
-├── styles.css      # Styling and layout
-├── script.js       # JavaScript functionality
-└── README.md       # This file
+├── index.html              # Main HTML file
+├── styles.css              # Styling and layout
+├── script.js               # JavaScript functionality
+├── config.js               # Supabase configuration
+├── database/               # Database setup files
+│   ├── supabase-setup.sql  # SQL script for database setup
+│   └── SUPABASE_SETUP.md   # Database setup instructions
+├── images/                 # Logo and image files
+└── README.md               # This file
 ```
 
 ## Technical Details

@@ -25,7 +25,7 @@ const SUPABASE_CONFIG = {
 1. Go to your Supabase project dashboard
 2. Click on **SQL Editor** in the left sidebar
 3. Click **New Query**
-4. Copy and paste the contents of `supabase-setup.sql`
+4. Copy and paste the contents of `database/supabase-setup.sql` (or open the file from this folder)
 5. Click **Run** to execute the SQL
 
 This will create:
