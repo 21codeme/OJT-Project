@@ -65,8 +65,18 @@ lab inventory/
 │   ├── supabase-setup.sql  # SQL script for database setup
 │   └── SUPABASE_SETUP.md   # Database setup instructions
 ├── images/                 # Logo and image files
-└── README.md               # This file
+├── README.md               # This file
+└── VERCEL_DEPLOY.md        # Vercel deployment guide
 ```
+
+## Deployment
+
+This application can be easily deployed to Vercel. See `VERCEL_DEPLOY.md` for detailed deployment instructions.
+
+Quick steps:
+1. Push code to GitHub
+2. Import project in Vercel
+3. Deploy (no build needed - it's a static site)
 
 ## Technical Details
 
