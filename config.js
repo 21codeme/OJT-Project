@@ -46,8 +46,10 @@ function checkSupabaseConnection() {
     return false;
 }
 
-// Alias for easier access
-const supabase = window.supabaseClient;
+// Create a getter function for easier access
+function getSupabaseClient() {
+    return window.supabaseClient;
+}
 
 // Try to initialize when DOM is ready
 if (document.readyState === 'loading') {
