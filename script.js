@@ -388,26 +388,41 @@ window.addEventListener('click', function(event) {
 addItemForm.addEventListener('submit', function(e) {
     e.preventDefault();
     
+    // Validate required fields
+    const article = document.getElementById('article').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const condition = document.getElementById('condition').value.trim();
+    
+    if (!article || !description || !condition) {
+        alert('Please fill in all required fields (Article/It, Description, and Condition).');
+        return;
+    }
+    
     // Get form values
     const formData = {
-        article: document.getElementById('article').value.trim().toUpperCase(),
-        description: document.getElementById('description').value.trim().toUpperCase(),
+        article: article.toUpperCase(),
+        description: description.toUpperCase(),
         oldProperty: document.getElementById('oldProperty').value.trim(),
         unitOfMeas: document.getElementById('unitOfMeas').value.trim(),
         unitValue: document.getElementById('unitValue').value.trim(),
         quantity: document.getElementById('quantity').value.trim(),
         location: document.getElementById('location').value.trim(),
-        condition: document.getElementById('condition').value.trim(),
+        condition: condition,
         remarks: document.getElementById('remarks').value.trim(),
         user: document.getElementById('user').value.trim(),
         picture: selectedImageData
     };
     
     // Add item to table
-    addItemFromForm(formData);
-    
-    // Close modal and reset form
-    closeModalFunc();
+    try {
+        addItemFromForm(formData);
+        
+        // Close modal and reset form
+        closeModalFunc();
+    } catch (error) {
+        console.error('Error adding item:', error);
+        alert('Error adding item. Please try again.');
+    }
 });
 
 // Create picture cell
