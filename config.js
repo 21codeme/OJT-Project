@@ -7,8 +7,8 @@ const SUPABASE_CONFIG = {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmZXJma3JrZWp3Y2N2ZnNpZ3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1NTUsImV4cCI6MjA4NTg0OTU1NX0.4nc1SgH-lXD4GvZ6XSbfzyCp-Swf6Mon-O3dA_mEpXE'
 };
 
-// Initialize Supabase client
-let supabase = null;
+// Initialize Supabase client (use window object to avoid conflicts)
+window.supabaseClient = null;
 
 // Function to initialize Supabase (called after library loads)
 function initSupabase() {
@@ -17,9 +17,9 @@ function initSupabase() {
         SUPABASE_CONFIG.anonKey && SUPABASE_CONFIG.anonKey !== 'YOUR_SUPABASE_ANON_KEY') {
         try {
             // Supabase JS v2 exposes 'supabase' in global scope
-            if (typeof supabase !== 'undefined' && supabase.createClient) {
-                window.supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-                supabase = window.supabaseClient;
+            // Check if the library is loaded
+            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+                window.supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
                 console.log('Supabase connected successfully');
                 return true;
             } else {
@@ -40,11 +40,14 @@ function initSupabase() {
 
 // Function to check Supabase connection
 function checkSupabaseConnection() {
-    if (typeof supabase !== 'undefined' && supabase !== null) {
+    if (typeof window.supabaseClient !== 'undefined' && window.supabaseClient !== null) {
         return true;
     }
     return false;
 }
+
+// Alias for easier access
+const supabase = window.supabaseClient;
 
 // Try to initialize when DOM is ready
 if (document.readyState === 'loading') {

@@ -886,7 +886,7 @@ async function syncToSupabase() {
         const sheet = getCurrentSheet();
         
         // Save/update sheet in Supabase
-        const { error: sheetError } = await supabase
+        const { error: sheetError } = await window.supabaseClient
             .from('sheets')
             .upsert({
                 id: currentSheetId,
@@ -903,7 +903,7 @@ async function syncToSupabase() {
         console.log(`📄 Sheet "${sheet.name}" saved to Supabase`);
         
         // Delete existing items for this sheet
-        const { error: deleteError } = await supabase
+        const { error: deleteError } = await window.supabaseClient
             .from('inventory_items')
             .delete()
             .eq('sheet_id', currentSheetId);
@@ -971,7 +971,7 @@ async function syncToSupabase() {
         
         // Insert all items
         if (itemsToInsert.length > 0) {
-            const { error: insertError } = await supabase
+            const { error: insertError } = await window.supabaseClient
                 .from('inventory_items')
                 .insert(itemsToInsert);
             
@@ -998,7 +998,7 @@ async function loadFromSupabase() {
     
     try {
         // Load all sheets
-        const { data: sheetsData, error: sheetsError } = await supabase
+        const { data: sheetsData, error: sheetsError } = await window.supabaseClient
             .from('sheets')
             .select('*')
             .order('created_at', { ascending: true });
@@ -1019,7 +1019,7 @@ async function loadFromSupabase() {
         
         // Load each sheet and its items
         for (const sheetData of sheetsData) {
-            const { data: itemsData, error: itemsError } = await supabase
+            const { data: itemsData, error: itemsError } = await window.supabaseClient
                 .from('inventory_items')
                 .select('*')
                 .eq('sheet_id', sheetData.id)
@@ -1138,7 +1138,7 @@ async function deleteSheet(sheetId) {
                 }
                 
                 // Delete sheet
-                const { error: sheetError } = await supabase
+                const { error: sheetError } = await window.supabaseClient
                     .from('sheets')
                     .delete()
                     .eq('id', sheetId);
