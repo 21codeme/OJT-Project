@@ -590,8 +590,16 @@ function addItemFromForm(formData) {
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
     
-    // Update data
+    // Update data and sync to Supabase
     updateDataFromTable();
+    
+    // Explicitly sync to Supabase after adding item
+    if (checkSupabaseConnection()) {
+        // Use setTimeout to ensure DOM is fully updated
+        setTimeout(() => {
+            syncToSupabase();
+        }, 100);
+    }
 }
 
 // Add PC Section button
@@ -966,9 +974,15 @@ async function syncToSupabase() {
             
             if (insertError) {
                 console.error('Error inserting items to Supabase:', insertError);
+                // Show user-friendly error message
+                const errorMsg = insertError.message || 'Failed to save to database';
+                console.error('Supabase error details:', errorMsg);
+                // Don't show alert for every sync, just log it
             } else {
-                console.log('Data synced to Supabase successfully');
+                console.log(`✅ Successfully saved ${itemsToInsert.length} item(s) to Supabase`);
             }
+        } else {
+            console.log('No items to sync to Supabase');
         }
     } catch (error) {
         console.error('Error syncing to Supabase:', error);
