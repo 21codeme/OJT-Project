@@ -17,15 +17,28 @@ document.addEventListener('DOMContentLoaded', async function() {
             initSupabase();
         }
         
-        // Wait a bit more for Supabase to initialize
-        setTimeout(async () => {
+        // Wait a bit more for Supabase to initialize, with retry logic
+        let initAttempts = 0;
+        const maxAttempts = 10;
+        const checkSupabaseInit = setInterval(async () => {
+            initAttempts++;
             if (checkSupabaseConnection()) {
-                console.log('Supabase connected, loading data...');
+                console.log('✅ Supabase connected, loading data...');
+                clearInterval(checkSupabaseInit);
                 await loadFromSupabase();
-            } else {
-                console.log('Supabase not configured, using local storage only');
+                
+                // Verify data was loaded
+                const hasData = hasAnyData();
+                if (hasData) {
+                    console.log('✅ Data loaded successfully from Supabase');
+                } else {
+                    console.log('ℹ️ No existing data found in Supabase (this is normal for first use)');
+                }
+            } else if (initAttempts >= maxAttempts) {
+                console.warn('⚠️ Supabase initialization timeout. Using local storage only.');
+                clearInterval(checkSupabaseInit);
             }
-        }, 300);
+        }, 500); // Check every 500ms
     }, 200);
 });
 
