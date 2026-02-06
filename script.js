@@ -596,9 +596,12 @@ function addItemFromForm(formData) {
     // Explicitly sync to Supabase after adding item
     if (checkSupabaseConnection()) {
         // Use setTimeout to ensure DOM is fully updated
-        setTimeout(() => {
-            syncToSupabase();
-        }, 100);
+        setTimeout(async () => {
+            console.log('🔄 Syncing new item to Supabase...');
+            await syncToSupabase();
+        }, 300); // Increased delay to ensure DOM is fully updated
+    } else {
+        console.warn('⚠️ Supabase not connected. Item added locally but not saved to database.');
     }
 }
 
@@ -880,13 +883,17 @@ function saveCurrentSheetData() {
 
 // Supabase Sync Functions
 async function syncToSupabase() {
-    if (!checkSupabaseConnection()) return;
+    if (!checkSupabaseConnection()) {
+        console.warn('⚠️ Cannot sync: Supabase not connected');
+        return;
+    }
     
     try {
         const sheet = getCurrentSheet();
+        console.log(`📤 Starting sync for sheet: ${sheet.name} (${currentSheetId})`);
         
         // Save/update sheet in Supabase
-        const { error: sheetError } = await window.supabaseClient
+        const { data: sheetData, error: sheetError } = await window.supabaseClient
             .from('sheets')
             .upsert({
                 id: currentSheetId,
@@ -895,12 +902,13 @@ async function syncToSupabase() {
             }, { onConflict: 'id' });
         
         if (sheetError) {
-            console.error('Error saving sheet to Supabase:', sheetError);
-            console.error('Sheet error details:', sheetError.message);
+            console.error('❌ Error saving sheet to Supabase:', sheetError);
+            console.error('Sheet error details:', sheetError.message, sheetError.details, sheetError.hint);
+            alert(`Error saving to database: ${sheetError.message}`);
             return;
         }
         
-        console.log(`📄 Sheet "${sheet.name}" saved to Supabase`);
+        console.log(`✅ Sheet "${sheet.name}" saved to Supabase`);
         
         // Delete existing items for this sheet
         const { error: deleteError } = await window.supabaseClient
@@ -909,14 +917,20 @@ async function syncToSupabase() {
             .eq('sheet_id', currentSheetId);
         
         if (deleteError) {
-            console.error('Error deleting old items:', deleteError);
+            console.error('❌ Error deleting old items:', deleteError);
+            console.error('Delete error details:', deleteError.message, deleteError.details, deleteError.hint);
+            alert(`Error updating database: ${deleteError.message}`);
             return;
         }
+        
+        console.log('🗑️ Old items deleted, preparing new items...');
         
         // Prepare items to insert
         const itemsToInsert = [];
         const tbody = document.getElementById('tableBody');
         const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+        
+        console.log(`📋 Found ${rows.length} row(s) in table`);
         
         rows.forEach((row, rowIndex) => {
             if (row.classList.contains('pc-header-row')) {
@@ -925,14 +939,16 @@ async function syncToSupabase() {
                 if (firstCell) {
                     const input = firstCell.querySelector('input');
                     const pcName = input ? input.value : firstCell.textContent.trim();
-                    itemsToInsert.push({
-                        sheet_id: currentSheetId,
-                        sheet_name: sheet.name,
-                        row_index: rowIndex,
-                        article: pcName,
-                        is_pc_header: true,
-                        is_highlighted: false
-                    });
+                    if (pcName) {
+                        itemsToInsert.push({
+                            sheet_id: currentSheetId,
+                            sheet_name: sheet.name,
+                            row_index: rowIndex,
+                            article: pcName,
+                            is_pc_header: true,
+                            is_highlighted: false
+                        });
+                    }
                 }
             } else {
                 // Regular row
@@ -947,48 +963,57 @@ async function syncToSupabase() {
                         }
                     }
                     
-                    itemsToInsert.push({
-                        sheet_id: currentSheetId,
-                        sheet_name: sheet.name,
-                        row_index: rowIndex,
-                        article: cells[0]?.querySelector('input')?.value || '',
-                        description: cells[1]?.querySelector('input')?.value || '',
-                        old_property_n_assigned: cells[2]?.querySelector('input')?.value || '',
-                        unit_of_meas: cells[3]?.querySelector('input')?.value || '',
-                        unit_value: cells[4]?.querySelector('input')?.value || '',
-                        quantity: cells[5]?.querySelector('input')?.value || '',
-                        location: cells[6]?.querySelector('input')?.value || '',
-                        condition: cells[7]?.querySelector('input')?.value || '',
-                        remarks: cells[8]?.querySelector('input')?.value || '',
-                        user: cells[9]?.querySelector('input')?.value || '',
-                        picture_url: pictureUrl,
-                        is_pc_header: false,
-                        is_highlighted: row.classList.contains('highlighted-row')
-                    });
+                    const article = cells[0]?.querySelector('input')?.value || '';
+                    const description = cells[1]?.querySelector('input')?.value || '';
+                    
+                    // Only insert if there's at least article or description
+                    if (article || description) {
+                        itemsToInsert.push({
+                            sheet_id: currentSheetId,
+                            sheet_name: sheet.name,
+                            row_index: rowIndex,
+                            article: article,
+                            description: description,
+                            old_property_n_assigned: cells[2]?.querySelector('input')?.value || '',
+                            unit_of_meas: cells[3]?.querySelector('input')?.value || '',
+                            unit_value: cells[4]?.querySelector('input')?.value || '',
+                            quantity: cells[5]?.querySelector('input')?.value || '',
+                            location: cells[6]?.querySelector('input')?.value || '',
+                            condition: cells[7]?.querySelector('input')?.value || '',
+                            remarks: cells[8]?.querySelector('input')?.value || '',
+                            user: cells[9]?.querySelector('input')?.value || '',
+                            picture_url: pictureUrl,
+                            is_pc_header: false,
+                            is_highlighted: row.classList.contains('highlighted-row')
+                        });
+                    }
                 }
             }
         });
         
+        console.log(`📦 Prepared ${itemsToInsert.length} item(s) to insert`);
+        
         // Insert all items
         if (itemsToInsert.length > 0) {
-            const { error: insertError } = await window.supabaseClient
+            const { data: insertedData, error: insertError } = await window.supabaseClient
                 .from('inventory_items')
-                .insert(itemsToInsert);
+                .insert(itemsToInsert)
+                .select();
             
             if (insertError) {
-                console.error('Error inserting items to Supabase:', insertError);
-                // Show user-friendly error message
-                const errorMsg = insertError.message || 'Failed to save to database';
-                console.error('Supabase error details:', errorMsg);
-                // Don't show alert for every sync, just log it
+                console.error('❌ Error inserting items to Supabase:', insertError);
+                console.error('Insert error details:', insertError.message, insertError.details, insertError.hint);
+                alert(`Error saving items to database: ${insertError.message}\n\nPlease check the browser console for more details.`);
             } else {
                 console.log(`✅ Successfully saved ${itemsToInsert.length} item(s) to Supabase`);
+                console.log('Inserted data:', insertedData);
             }
         } else {
-            console.log('No items to sync to Supabase');
+            console.log('⚠️ No items to sync to Supabase (all rows are empty)');
         }
     } catch (error) {
-        console.error('Error syncing to Supabase:', error);
+        console.error('❌ Unexpected error syncing to Supabase:', error);
+        alert(`Unexpected error: ${error.message}\n\nPlease check the browser console for more details.`);
     }
 }
 
