@@ -56,6 +56,8 @@ let sheets = {
 let currentSheetId = 'sheet-1';
 let sheetCounter = 1;
 let isLoadingFromSupabase = false; // Flag to prevent sync during load
+let isSyncing = false; // Flag to prevent concurrent syncs
+let syncTimeout = null; // For debouncing sync calls
 let originalWorkbook = null;
 
 // Get current sheet data
@@ -602,23 +604,14 @@ function addItemFromForm(formData) {
     tr.appendChild(actionCell);
     
     tbody.appendChild(tr);
-    setCurrentSheetData(getCurrentSheet().data, true);
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
     
-    // Update data and sync to Supabase
-    updateDataFromTable();
-    
-    // Explicitly sync to Supabase after adding item
-    if (checkSupabaseConnection()) {
-        // Use setTimeout to ensure DOM is fully updated
-        setTimeout(async () => {
-            console.log('🔄 Syncing new item to Supabase...');
-            await syncToSupabase();
-        }, 300); // Increased delay to ensure DOM is fully updated
-    } else {
-        console.warn('⚠️ Supabase not connected. Item added locally but not saved to database.');
-    }
+    // Update data and sync to Supabase (only once, with delay to ensure DOM is updated)
+    // Use setTimeout to ensure the row is fully added to DOM before syncing
+    setTimeout(() => {
+        updateDataFromTable(); // This will call saveCurrentSheetData() which calls syncToSupabase()
+    }, 100);
 }
 
 // Add PC Section button
@@ -931,8 +924,16 @@ function saveCurrentSheetData() {
     sheets[currentSheetId].pictureUrls = pictureUrls;
     
     // Sync to Supabase if connected (but not during initial load)
+    // Debounce sync calls to prevent duplicates
     if (checkSupabaseConnection() && !isLoadingFromSupabase) {
-        syncToSupabase();
+        // Clear any pending sync
+        if (syncTimeout) {
+            clearTimeout(syncTimeout);
+        }
+        // Debounce sync - wait 500ms before syncing
+        syncTimeout = setTimeout(() => {
+            syncToSupabase();
+        }, 500);
     }
 }
 
@@ -942,6 +943,14 @@ async function syncToSupabase() {
         console.warn('⚠️ Cannot sync: Supabase not connected');
         return;
     }
+    
+    // Prevent concurrent syncs
+    if (isSyncing) {
+        console.log('⏸️ Sync already in progress, skipping duplicate call');
+        return;
+    }
+    
+    isSyncing = true;
     
     try {
         const sheet = getCurrentSheet();
@@ -1069,6 +1078,8 @@ async function syncToSupabase() {
     } catch (error) {
         console.error('❌ Unexpected error syncing to Supabase:', error);
         alert(`Unexpected error: ${error.message}\n\nPlease check the browser console for more details.`);
+    } finally {
+        isSyncing = false;
     }
 }
 
