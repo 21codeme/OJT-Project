@@ -1153,7 +1153,7 @@ async function deleteSheet(sheetId) {
         if (checkSupabaseConnection()) {
             try {
                 // Delete items first
-                const { error: itemsError } = await supabase
+                const { error: itemsError } = await window.supabaseClient
                     .from('inventory_items')
                     .delete()
                     .eq('sheet_id', sheetId);
