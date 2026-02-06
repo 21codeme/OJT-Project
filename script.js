@@ -55,6 +55,7 @@ let sheets = {
 };
 let currentSheetId = 'sheet-1';
 let sheetCounter = 1;
+let isLoadingFromSupabase = false; // Flag to prevent sync during load
 let originalWorkbook = null;
 
 // Get current sheet data
@@ -673,8 +674,11 @@ function displayData(data) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
     
+    console.log(`🖥️ Displaying data: ${data ? data.length : 0} row(s)`);
+    
     if (!data || data.length === 0) {
         tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data found in the Excel file.</td></tr>';
+        console.log('⚠️ No data to display');
         return;
     }
     
@@ -912,8 +916,8 @@ function saveCurrentSheetData() {
     sheets[currentSheetId].highlightStates = highlightStates;
     sheets[currentSheetId].pictureUrls = pictureUrls;
     
-    // Sync to Supabase if connected
-    if (checkSupabaseConnection()) {
+    // Sync to Supabase if connected (but not during initial load)
+    if (checkSupabaseConnection() && !isLoadingFromSupabase) {
         syncToSupabase();
     }
 }
@@ -1058,6 +1062,9 @@ async function syncToSupabase() {
 async function loadFromSupabase() {
     if (!checkSupabaseConnection()) return;
     
+    // Set loading flag to prevent sync during load
+    isLoadingFromSupabase = true;
+    
     try {
         // Load all sheets
         const { data: sheetsData, error: sheetsError } = await window.supabaseClient
@@ -1096,6 +1103,8 @@ async function loadFromSupabase() {
             const rowData = [];
             const highlightStates = [];
             const pictureUrls = []; // Store picture URLs separately
+            
+            console.log(`📥 Loading ${itemsData.length} item(s) for sheet "${sheetData.name}"`);
             
             itemsData.forEach(item => {
                 if (item.is_pc_header) {
@@ -1141,15 +1150,30 @@ async function loadFromSupabase() {
         const firstSheetId = Object.keys(sheets)[0];
         if (firstSheetId) {
             currentSheetId = firstSheetId;
+            const sheet = sheets[firstSheetId];
+            console.log(`📋 Switching to sheet "${sheet.name}" with ${sheet.data.length} row(s)`);
             switchToSheet(firstSheetId);
+        } else {
+            console.log('⚠️ No sheets found to display');
         }
         
         // Update sheet tabs
         updateSheetTabs();
         
-        console.log('Data loaded from Supabase successfully');
+        console.log(`✅ Data loaded from Supabase successfully: ${Object.keys(sheets).length} sheet(s) loaded`);
+        
+        // Log summary of loaded data
+        Object.values(sheets).forEach(sheet => {
+            console.log(`  - ${sheet.name}: ${sheet.data.length} row(s)`);
+        });
     } catch (error) {
         console.error('Error loading from Supabase:', error);
+    } finally {
+        // Clear loading flag after a short delay to ensure display is complete
+        setTimeout(() => {
+            isLoadingFromSupabase = false;
+            console.log('✅ Loading complete, sync enabled');
+        }, 1000);
     }
 }
 
