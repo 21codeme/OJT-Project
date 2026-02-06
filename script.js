@@ -872,6 +872,12 @@ function switchToSheet(sheetId) {
 }
 
 function saveCurrentSheetData() {
+    // Don't save if we're currently loading from Supabase
+    if (isLoadingFromSupabase) {
+        console.log('⏸️ Skipping saveCurrentSheetData during load from Supabase');
+        return;
+    }
+    
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr:not(.empty-row)');
     
@@ -1090,9 +1096,12 @@ async function loadFromSupabase() {
             return;
         }
         
-        // Clear existing sheets
+        // Clear existing sheets (but preserve the structure)
+        // Don't clear completely - just reset to empty object
+        const oldSheets = { ...sheets };
         sheets = {};
         sheetCounter = 0;
+        console.log(`🗑️ Cleared ${Object.keys(oldSheets).length} existing sheet(s) before loading from Supabase`);
         
         // Load each sheet and its items
         for (const sheetData of sheetsData) {
