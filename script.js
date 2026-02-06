@@ -856,6 +856,14 @@ function switchToSheet(sheetId) {
     
     // Load sheet data
     const sheet = sheets[sheetId];
+    if (!sheet) {
+        console.error(`❌ Sheet ${sheetId} not found in sheets object`);
+        return;
+    }
+    
+    console.log(`📋 switchToSheet: Sheet "${sheet.name}" has ${sheet.data ? sheet.data.length : 0} row(s) in memory`);
+    console.log(`📋 switchToSheet: Sheet data:`, sheet.data);
+    
     displayData(sheet.data);
     
     // Update buttons
@@ -1106,13 +1114,14 @@ async function loadFromSupabase() {
             
             console.log(`📥 Loading ${itemsData.length} item(s) for sheet "${sheetData.name}"`);
             
-            itemsData.forEach(item => {
+            itemsData.forEach((item, index) => {
                 if (item.is_pc_header) {
-                    rowData.push([item.article]);
+                    rowData.push([item.article || '']);
                     highlightStates.push(false);
                     pictureUrls.push(null); // PC headers don't have pictures
+                    console.log(`  [${index}] PC Header: ${item.article || '(empty)'}`);
                 } else {
-                    rowData.push([
+                    const row = [
                         item.article || '',
                         item.description || '',
                         item.old_property_n_assigned || '',
@@ -1123,11 +1132,15 @@ async function loadFromSupabase() {
                         item.condition || '',
                         item.remarks || '',
                         item.user || ''
-                    ]);
+                    ];
+                    rowData.push(row);
                     highlightStates.push(item.is_highlighted || false);
                     pictureUrls.push(item.picture_url || null); // Store picture URL
+                    console.log(`  [${index}] Item: ${item.article || '(empty)'} - ${item.description || '(empty)'}`);
                 }
             });
+            
+            console.log(`✅ Converted ${rowData.length} row(s) for sheet "${sheetData.name}"`);
             
             // Create sheet
             sheets[sheetData.id] = {
@@ -1138,6 +1151,8 @@ async function loadFromSupabase() {
                 highlightStates: highlightStates,
                 pictureUrls: pictureUrls // Store picture URLs
             };
+            
+            console.log(`✅ Sheet "${sheetData.name}" created with ${sheets[sheetData.id].data.length} row(s) in memory`);
             
             // Update sheet counter
             const sheetNum = parseInt(sheetData.id.replace('sheet-', ''));
@@ -1151,7 +1166,15 @@ async function loadFromSupabase() {
         if (firstSheetId) {
             currentSheetId = firstSheetId;
             const sheet = sheets[firstSheetId];
-            console.log(`📋 Switching to sheet "${sheet.name}" with ${sheet.data.length} row(s)`);
+            console.log(`📋 Switching to sheet "${sheet.name}" with ${sheet.data ? sheet.data.length : 0} row(s)`);
+            console.log(`📋 Sheet data before switch:`, JSON.stringify(sheet.data));
+            
+            // Verify data is actually in the sheet object
+            if (!sheet.data || sheet.data.length === 0) {
+                console.error(`❌ ERROR: Sheet "${sheet.name}" has no data even though items were loaded!`);
+                console.error(`   Sheet object:`, sheet);
+            }
+            
             switchToSheet(firstSheetId);
         } else {
             console.log('⚠️ No sheets found to display');
