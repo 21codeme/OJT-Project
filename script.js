@@ -35,7 +35,9 @@ let sheets = {
         id: 'sheet-1',
         name: 'Sheet 1',
         data: [],
-        hasData: false
+        hasData: false,
+        highlightStates: [],
+        pictureUrls: []
     }
 };
 let currentSheetId = 'sheet-1';
@@ -746,8 +748,14 @@ function displayData(data) {
             const conditionValue = row[7] ? row[7].toString().trim() : '';
             applyConditionColor(tr, conditionValue);
             
-            // Add picture cell (empty for imported data)
-            const pictureCell = createPictureCell(null);
+            // Get picture URL from sheet metadata if available
+            let pictureData = null;
+            if (sheet.pictureUrls && sheet.pictureUrls[dataRowIndex]) {
+                pictureData = sheet.pictureUrls[dataRowIndex];
+            }
+            
+            // Add picture cell
+            const pictureCell = createPictureCell(pictureData);
             tr.appendChild(pictureCell);
             
             // Add action cell
@@ -781,7 +789,9 @@ function createNewSheet(name = null, data = null) {
         id: sheetId,
         name: sheetName,
         data: data || [],
-        hasData: data ? true : false
+        hasData: data ? true : false,
+        highlightStates: [], // Initialize highlight states
+        pictureUrls: [] // Initialize picture URLs
     };
     
     // Create tab
@@ -842,6 +852,7 @@ function saveCurrentSheetData() {
     
     const sheetData = [];
     const highlightStates = [];
+    const pictureUrls = []; // Store picture URLs
     
     rows.forEach((row, index) => {
         // Check if this is a PC header row
@@ -854,6 +865,7 @@ function saveCurrentSheetData() {
                 // Store PC header as a single cell value (will be detected in export)
                 sheetData.push([pcName]);
                 highlightStates.push(false); // PC headers can't be highlighted
+                pictureUrls.push(null); // PC headers don't have pictures
             }
         } else {
             // Regular row - get all editable cells
@@ -867,13 +879,25 @@ function saveCurrentSheetData() {
                 sheetData.push(rowData);
                 // Save highlight state
                 highlightStates.push(row.classList.contains('highlighted-row'));
+                
+                // Get picture URL from picture cell
+                const pictureCell = row.querySelector('.picture-cell');
+                let pictureUrl = null;
+                if (pictureCell) {
+                    const img = pictureCell.querySelector('img');
+                    if (img && img.src) {
+                        pictureUrl = img.src; // Base64 or URL
+                    }
+                }
+                pictureUrls.push(pictureUrl);
             }
         }
     });
     
     setCurrentSheetData(sheetData, sheetData.length > 0);
-    // Store highlight states in sheet metadata
+    // Store highlight states and picture URLs in sheet metadata
     sheets[currentSheetId].highlightStates = highlightStates;
+    sheets[currentSheetId].pictureUrls = pictureUrls;
     
     // Sync to Supabase if connected
     if (checkSupabaseConnection()) {
@@ -1058,11 +1082,13 @@ async function loadFromSupabase() {
             // Convert items back to row data format
             const rowData = [];
             const highlightStates = [];
+            const pictureUrls = []; // Store picture URLs separately
             
             itemsData.forEach(item => {
                 if (item.is_pc_header) {
                     rowData.push([item.article]);
                     highlightStates.push(false);
+                    pictureUrls.push(null); // PC headers don't have pictures
                 } else {
                     rowData.push([
                         item.article || '',
@@ -1077,6 +1103,7 @@ async function loadFromSupabase() {
                         item.user || ''
                     ]);
                     highlightStates.push(item.is_highlighted || false);
+                    pictureUrls.push(item.picture_url || null); // Store picture URL
                 }
             });
             
@@ -1086,7 +1113,8 @@ async function loadFromSupabase() {
                 name: sheetData.name,
                 data: rowData,
                 hasData: rowData.length > 0,
-                highlightStates: highlightStates
+                highlightStates: highlightStates,
+                pictureUrls: pictureUrls // Store picture URLs
             };
             
             // Update sheet counter
