@@ -1477,11 +1477,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC Header row - merge across all data columns (B to L)
-                    // Create row with empty first cell (column A) then PC header in column B
-                    const pcRow = worksheet.addRow(['', firstCell]);
-                    // Get the cell in column B (index 2, since ExcelJS is 1-indexed)
-                    const pcCell = pcRow.getCell(2);
+                    // PC Section: one row merged across the whole table (all 11 columns A–K)
+                    const pcRowValues = [firstCell].concat(Array(10).fill(''));
+                    const pcRow = worksheet.addRow(pcRowValues);
+                    const pcCell = pcRow.getCell(1);
                     pcCell.font = { bold: true, size: 12 };
                     pcCell.alignment = { horizontal: 'center', vertical: 'middle' };
                     pcCell.fill = {
@@ -1489,11 +1488,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         pattern: 'solid',
                         fgColor: { argb: 'FFD3D3D3' } // Light gray
                     };
-                    // Merge cells across all 11 data columns (B to L)
-                    // Column B = index 2, Column L = index 12 (11 columns total: 2,3,4,5,6,7,8,9,10,11,12)
-                    worksheet.mergeCells(currentRow, 2, currentRow, 12);
-                    
-                    // Add borders to the merged cell (only need to style the first cell)
+                    worksheet.mergeCells(currentRow, 1, currentRow, 11);
                     pcCell.border = {
                         top: { style: 'thin' },
                         left: { style: 'thin' },
@@ -1501,12 +1496,13 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         right: { style: 'thin' }
                     };
                 } else if (rowData.length >= 10) {
-                    // Regular data row with full data
-                    const exportRow = [...rowData];
-                    // Add picture note if needed
-                    if (exportRow.length === 10) {
-                        exportRow.push(''); // Picture column
+                    // Regular row: normalize so empty/missing columns are blank
+                    const exportRow = [];
+                    for (let i = 0; i < 10; i++) {
+                        const val = rowData[i];
+                        exportRow.push(val != null && String(val).trim() !== '' ? String(val).trim() : '');
                     }
+                    exportRow.push(''); // Picture column (blank in Excel)
                     const dataRow = worksheet.addRow(exportRow);
                     
                     // Get condition value (index 7)
