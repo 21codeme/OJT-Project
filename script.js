@@ -642,17 +642,22 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         const tr = document.createElement('tr');
         tr.classList.add('pc-header-row');
         
-        // Create first cell that spans all columns (12 columns total including Picture and Actions)
         const td = document.createElement('td');
         td.colSpan = 12;
-        td.style.textAlign = 'center';
         td.style.fontWeight = 'bold';
         td.style.fontSize = '14px';
+        
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'space-between';
+        wrapper.style.gap = '10px';
+        wrapper.style.width = '100%';
         
         const input = document.createElement('input');
         input.type = 'text';
         input.value = pcName;
-        input.style.width = '100%';
+        input.style.flex = '1';
         input.style.textAlign = 'center';
         input.style.fontWeight = 'bold';
         input.style.fontSize = '14px';
@@ -662,12 +667,30 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
             updateDataFromTable();
         });
         input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                this.blur();
+            if (e.key === 'Enter') this.blur();
+        });
+        
+        const deleteSectionBtn = document.createElement('button');
+        deleteSectionBtn.type = 'button';
+        deleteSectionBtn.textContent = '🗑️ Delete section';
+        deleteSectionBtn.className = 'delete-btn';
+        deleteSectionBtn.style.flexShrink = '0';
+        deleteSectionBtn.addEventListener('click', function() {
+            if (confirm('Delete this PC section and all items under it?')) {
+                tr.remove();
+                updateDataFromTable();
+                const remaining = tbody.querySelectorAll('tr:not(.empty-row)').length;
+                if (remaining === 0) {
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                    setCurrentSheetData([], false);
+                    document.getElementById('clearBtn').disabled = true;
+                }
             }
         });
         
-        td.appendChild(input);
+        wrapper.appendChild(input);
+        wrapper.appendChild(deleteSectionBtn);
+        td.appendChild(wrapper);
         tr.appendChild(td);
         
         tbody.appendChild(tr);
@@ -734,17 +757,22 @@ function displayData(data) {
         if (isPCHeader) {
             tr.classList.add('pc-header-row');
             
-            // For PC headers, create a single cell that spans all columns
             const td = document.createElement('td');
             td.colSpan = 12;
-            td.style.textAlign = 'center';
             td.style.fontWeight = 'bold';
             td.style.fontSize = '14px';
+            
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.justifyContent = 'space-between';
+            wrapper.style.gap = '10px';
+            wrapper.style.width = '100%';
             
             const input = document.createElement('input');
             input.type = 'text';
             input.value = firstCell;
-            input.style.width = '100%';
+            input.style.flex = '1';
             input.style.textAlign = 'center';
             input.style.fontWeight = 'bold';
             input.style.fontSize = '14px';
@@ -754,12 +782,30 @@ function displayData(data) {
                 updateDataFromTable();
             });
             input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    this.blur();
+                if (e.key === 'Enter') this.blur();
+            });
+            
+            const deleteSectionBtn = document.createElement('button');
+            deleteSectionBtn.type = 'button';
+            deleteSectionBtn.textContent = '🗑️ Delete section';
+            deleteSectionBtn.className = 'delete-btn';
+            deleteSectionBtn.style.flexShrink = '0';
+            deleteSectionBtn.addEventListener('click', function() {
+                const tbody = document.getElementById('tableBody');
+                if (confirm('Delete this PC section and all items under it?')) {
+                    tr.remove();
+                    updateDataFromTable();
+                    if (tbody.querySelectorAll('tr:not(.empty-row)').length === 0) {
+                        tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                        setCurrentSheetData([], false);
+                        document.getElementById('clearBtn').disabled = true;
+                    }
                 }
             });
             
-            td.appendChild(input);
+            wrapper.appendChild(input);
+            wrapper.appendChild(deleteSectionBtn);
+            td.appendChild(wrapper);
             tr.appendChild(td);
         } else {
             // Create 10 editable cells for regular rows
