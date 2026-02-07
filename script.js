@@ -1478,18 +1478,20 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC row: A–D blank, E–J merged, gray fill on all merged cells, PC name centered
+                    // PC row: buong row may kulay (A–K), E–J merged, PC name centered (gaya sa reference)
                     const pcNameOnly = firstCell;
                     const pcRowValues = ['', '', '', '', pcNameOnly, '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
                     const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
                     const pcBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-                    for (let col = 5; col <= 10; col++) {
+                    for (let col = 1; col <= 11; col++) {
                         const c = pcRow.getCell(col);
                         c.fill = grayFill;
-                        c.alignment = { horizontal: 'center', vertical: 'middle' };
                         c.border = pcBorder;
-                        c.font = { bold: true, size: 12 };
+                        if (col >= 5 && col <= 10) {
+                            c.alignment = { horizontal: 'center', vertical: 'middle' };
+                            c.font = { bold: true, size: 12 };
+                        }
                     }
                     pcRow.getCell(5).value = pcNameOnly;
                     worksheet.mergeCells(currentRow, 5, currentRow, 10);
