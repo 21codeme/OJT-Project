@@ -1435,22 +1435,13 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 'Picture'
             ]);
             
-            // Style header row
+            // Style header row (dark grey, white text, black borders – gaya sa picture)
+            const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
             headerRow.eachCell((cell) => {
-                cell.font = { bold: true, size: 11 };
+                cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                cell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FF495057' }
-                };
-                cell.font.color = { argb: 'FFFFFFFF' };
-                cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
-                };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF495057' } };
+                cell.border = blackBorder;
             });
             
             // Add data rows
@@ -1478,23 +1469,23 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC row: buong row may kulay (A–K), E–J merged, PC name centered (gaya sa reference)
+                    // PC row: gaya sa picture – buong row grey, "PC 1" sa G merged G–K (cols 7–11), centered
                     const pcNameOnly = firstCell;
-                    const pcRowValues = ['', '', '', '', pcNameOnly, '', '', '', '', '', ''];
+                    const pcRowValues = ['', '', '', '', '', '', pcNameOnly, '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
                     const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
-                    const pcBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                    const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
                     for (let col = 1; col <= 11; col++) {
                         const c = pcRow.getCell(col);
                         c.fill = grayFill;
-                        c.border = pcBorder;
-                        if (col >= 5 && col <= 10) {
+                        c.border = blackBorder;
+                        if (col >= 7 && col <= 11) {
                             c.alignment = { horizontal: 'center', vertical: 'middle' };
                             c.font = { bold: true, size: 12 };
                         }
                     }
-                    pcRow.getCell(5).value = pcNameOnly;
-                    worksheet.mergeCells(currentRow, 5, currentRow, 10);
+                    pcRow.getCell(7).value = pcNameOnly;
+                    worksheet.mergeCells(currentRow, 7, currentRow, 11);
                 } else if (rowData.length >= 10) {
                     // Regular row: normalize so empty/missing columns are blank
                     const exportRow = [];
@@ -1511,44 +1502,27 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     // Check if this row should be highlighted
                     const isHighlighted = sheet.highlightStates && sheet.highlightStates[dataRowIndex] === true;
                     
-                    // Determine row color based on condition
+                    // Row color: condition > highlighted (yellow) > default light grey (gaya sa picture)
                     let conditionColor = null;
                     if (conditionValue === 'Borrowed') {
                         conditionColor = { argb: 'FFFFFF3D' }; // Yellow
                     } else if (conditionValue === 'Unserviceable') {
                         conditionColor = { argb: 'FFF8D7DA' }; // Light red
                     }
+                    const lightGreyFill = { argb: 'FFE8E8E8' }; // Default para sa data rows
                     
-                    // Add borders, colors, and center alignment to data cells
+                    const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
+                    
                     dataRow.eachCell((cell) => {
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' }
-                        };
+                        cell.border = blackBorder;
+                        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                         
-                        // Center align all cells
-                        cell.alignment = {
-                            horizontal: 'center',
-                            vertical: 'middle',
-                            wrapText: true
-                        };
-                        
-                        // Apply condition-based color (priority over highlight)
                         if (conditionColor) {
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: conditionColor
-                            };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: conditionColor };
                         } else if (isHighlighted) {
-                            // Apply yellow highlight if row is highlighted and no condition color
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: { argb: 'FFFFFF3D' } // Yellow background
-                            };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF3D' } };
+                        } else {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: lightGreyFill };
                         }
                     });
                     
