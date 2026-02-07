@@ -1465,30 +1465,32 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 
                 const firstCell = rowData[0] ? rowData[0].toString().trim() : '';
                 
-                // Check if this is a PC header row
-                // PC headers are stored as single-element arrays [pcName]
-                // or have PC-related text in first cell
+                // Check if this is a PC header row (export only PC name in one merged row, no other columns)
+                // Match: [pcName] only, or first cell is "PC", "PC 1", "PC1", "PC USED BY...", "SERVER"
+                const firstUpper = (firstCell || '').toUpperCase();
                 const isPCHeader = firstCell && (
-                    rowData.length === 1 || // Single cell = PC header
-                    firstCell.toUpperCase().includes('PC USED BY') ||
-                    firstCell.toUpperCase() === 'SERVER' ||
-                    firstCell.toUpperCase().startsWith('PC ') ||
-                    firstCell.toUpperCase() === 'PC'
+                    rowData.length === 1 ||
+                    firstUpper === 'SERVER' ||
+                    firstUpper === 'PC' ||
+                    /^PC\s*\d*$/.test(firstUpper) ||           // PC, PC1, PC 2, etc.
+                    /^PC\s+USED\s+BY/i.test(firstCell) ||
+                    firstUpper.startsWith('PC ')
                 );
                 
                 if (isPCHeader) {
-                    // PC Section: one row merged across the whole table (all 11 columns A–K)
-                    const pcRowValues = [firstCell].concat(Array(10).fill(''));
+                    // PC Section: columns A–D blank, "PC 1" in E merged E–J (desired layout)
+                    const pcNameOnly = firstCell;
+                    const pcRowValues = ['', '', '', '', pcNameOnly, '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
-                    const pcCell = pcRow.getCell(1);
+                    const pcCell = pcRow.getCell(5);
                     pcCell.font = { bold: true, size: 12 };
                     pcCell.alignment = { horizontal: 'center', vertical: 'middle' };
                     pcCell.fill = {
                         type: 'pattern',
                         pattern: 'solid',
-                        fgColor: { argb: 'FFD3D3D3' } // Light gray
+                        fgColor: { argb: 'FFD3D3D3' }
                     };
-                    worksheet.mergeCells(currentRow, 1, currentRow, 11);
+                    worksheet.mergeCells(currentRow, 5, currentRow, 10);
                     pcCell.border = {
                         top: { style: 'thin' },
                         left: { style: 'thin' },
