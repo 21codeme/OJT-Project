@@ -136,10 +136,14 @@ function applyConditionColor(row, condition) {
     }
 }
 
+// Column order: must match table header and Excel export (Article/It, Description, ..., User)
+const DATA_COLUMN_ORDER = ['Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 'Unit Value', 'Quantity per Physical count', 'Location/Whereabout', 'Condition', 'Remarks', 'User'];
+
 // Create editable cell
 function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = null) {
     const td = document.createElement('td');
     td.classList.add('editable');
+    if (cellIndex >= 0) td.setAttribute('data-column', String(cellIndex));
     
     const input = document.createElement('input');
     input.type = 'text';
@@ -900,8 +904,9 @@ function saveCurrentSheetData(skipSync) {
                 pictureUrls.push(null); // PC headers don't have pictures
             }
         } else {
-            // Regular row - get all editable cells
-            const cells = row.querySelectorAll('td.editable');
+            // Regular row - get editable cells in column order (0=Article .. 9=User) para tumugma sa Excel
+            const cells = Array.from(row.querySelectorAll('td.editable'));
+            cells.sort((a, b) => (parseInt(a.getAttribute('data-column') || '0', 10) - parseInt(b.getAttribute('data-column') || '0', 10)));
             const rowData = [];
             cells.forEach(cell => {
                 const input = cell.querySelector('input');
@@ -1026,8 +1031,9 @@ async function syncToSupabase() {
                     }
                 }
             } else {
-                // Regular row
-                const cells = row.querySelectorAll('td.editable');
+                // Regular row – same column order as table (0=Article .. 9=User)
+                const cells = Array.from(row.querySelectorAll('td.editable'));
+                cells.sort((a, b) => (parseInt(a.getAttribute('data-column') || '0', 10) - parseInt(b.getAttribute('data-column') || '0', 10)));
                 if (cells.length >= 10) {
                     const pictureCell = row.querySelector('.picture-cell');
                     let pictureUrl = null;
@@ -1041,7 +1047,6 @@ async function syncToSupabase() {
                     const article = cells[0]?.querySelector('input')?.value || '';
                     const description = cells[1]?.querySelector('input')?.value || '';
                     
-                    // Only insert if there's at least article or description
                     if (article || description) {
                         itemsToInsert.push({
                             sheet_id: currentSheetId,
@@ -1487,17 +1492,24 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     pcRow.getCell(7).value = pcNameOnly;
                     worksheet.mergeCells(currentRow, 7, currentRow, 11);
                 } else if (rowData.length >= 10) {
-                    // Regular row: normalize so empty/missing columns are blank
-                    const exportRow = [];
-                    for (let i = 0; i < 10; i++) {
-                        const val = rowData[i];
-                        exportRow.push(val != null && String(val).trim() !== '' ? String(val).trim() : '');
-                    }
-                    exportRow.push(''); // Picture column (blank in Excel)
+                    // Export row: same order as header – bawat column tumutugma sa header
+                    const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
+                    const exportRow = [
+                        toStr(rowData[0]),  // A Article/It
+                        toStr(rowData[1]),  // B Description
+                        toStr(rowData[2]),  // C Old Property N Assigned
+                        toStr(rowData[3]),  // D Unit of meas
+                        toStr(rowData[4]),  // E Unit Value
+                        toStr(rowData[5]),  // F Quantity per Physical count
+                        toStr(rowData[6]),  // G Location/Whereabout
+                        toStr(rowData[7]),  // H Condition
+                        toStr(rowData[8]),  // I Remarks
+                        toStr(rowData[9]),  // J User
+                        ''                  // K Picture
+                    ];
                     const dataRow = worksheet.addRow(exportRow);
                     
-                    // Get condition value (index 7)
-                    const conditionValue = rowData[7] ? rowData[7].toString().trim() : '';
+                    const conditionValue = toStr(rowData[7]); // H Condition
                     
                     // Check if this row should be highlighted
                     const isHighlighted = sheet.highlightStates && sheet.highlightStates[dataRowIndex] === true;
