@@ -1478,25 +1478,21 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC Section: columns A–D blank, "PC 1" in E merged E–J (desired layout)
+                    // PC row: A–D blank, E–J merged, gray fill on all merged cells, PC name centered
                     const pcNameOnly = firstCell;
                     const pcRowValues = ['', '', '', '', pcNameOnly, '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
-                    const pcCell = pcRow.getCell(5);
-                    pcCell.font = { bold: true, size: 12 };
-                    pcCell.alignment = { horizontal: 'center', vertical: 'middle' };
-                    pcCell.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: 'FFD3D3D3' }
-                    };
+                    const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+                    const pcBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                    for (let col = 5; col <= 10; col++) {
+                        const c = pcRow.getCell(col);
+                        c.fill = grayFill;
+                        c.alignment = { horizontal: 'center', vertical: 'middle' };
+                        c.border = pcBorder;
+                        c.font = { bold: true, size: 12 };
+                    }
+                    pcRow.getCell(5).value = pcNameOnly;
                     worksheet.mergeCells(currentRow, 5, currentRow, 10);
-                    pcCell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
                 } else if (rowData.length >= 10) {
                     // Regular row: normalize so empty/missing columns are blank
                     const exportRow = [];
