@@ -12,6 +12,10 @@ window.supabaseClient = null;
 
 // Function to initialize Supabase (called after library loads)
 function initSupabase() {
+    // Avoid multiple GoTrueClient instances (only one client per page)
+    if (window.supabaseClient) {
+        return true;
+    }
     // Check if Supabase credentials are configured
     if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.url !== 'YOUR_SUPABASE_URL' && 
         SUPABASE_CONFIG.anonKey && SUPABASE_CONFIG.anonKey !== 'YOUR_SUPABASE_ANON_KEY') {

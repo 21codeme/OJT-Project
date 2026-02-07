@@ -846,8 +846,11 @@ function createNewSheet(name = null, data = null) {
 function switchToSheet(sheetId) {
     if (!sheets[sheetId]) return;
     
-    // Save current sheet data
-    saveCurrentSheetData();
+    // Save current sheet data from table only when NOT loading from Supabase
+    // (during load, table is still empty so save would overwrite the data we just loaded)
+    if (!isLoadingFromSupabase) {
+        saveCurrentSheetData();
+    }
     
     // Switch to new sheet
     currentSheetId = sheetId;
