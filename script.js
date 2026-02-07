@@ -402,9 +402,17 @@ window.addEventListener('click', function(event) {
     }
 });
 
+// Prevent double submit when adding item (one item = one record)
+let isAddingItem = false;
+
 // Handle form submission
 addItemForm.addEventListener('submit', function(e) {
     e.preventDefault();
+    
+    if (isAddingItem) {
+        console.log('⏸️ Add item already in progress, ignoring duplicate submit');
+        return;
+    }
     
     // Validate required fields
     const article = document.getElementById('article').value.trim();
@@ -431,8 +439,9 @@ addItemForm.addEventListener('submit', function(e) {
         picture: selectedImageData
     };
     
-    // Add item to table
+    // Add item to table (only once)
     try {
+        isAddingItem = true;
         addItemFromForm(formData);
         
         // Close modal and reset form
@@ -440,6 +449,11 @@ addItemForm.addEventListener('submit', function(e) {
     } catch (error) {
         console.error('Error adding item:', error);
         alert('Error adding item. Please try again.');
+    } finally {
+        // Re-enable form after a short delay so one click = one add
+        setTimeout(function() {
+            isAddingItem = false;
+        }, 800);
     }
 });
 
@@ -607,11 +621,8 @@ function addItemFromForm(formData) {
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
     
-    // Update data and sync to Supabase (only once, with delay to ensure DOM is updated)
-    // Use setTimeout to ensure the row is fully added to DOM before syncing
-    setTimeout(() => {
-        updateDataFromTable(); // This will call saveCurrentSheetData() which calls syncToSupabase()
-    }, 100);
+    // Update in-memory data and queue one sync (no extra triggers)
+    updateDataFromTable();
 }
 
 // Add PC Section button
@@ -864,13 +875,7 @@ function switchToSheet(sheetId) {
     document.getElementById('clearBtn').disabled = !sheet.hasData;
 }
 
-function saveCurrentSheetData() {
-    // Don't save if we're currently loading from Supabase
-    if (isLoadingFromSupabase) {
-        console.log('⏸️ Skipping saveCurrentSheetData during load from Supabase');
-        return;
-    }
-    
+function saveCurrentSheetData(skipSync) {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr:not(.empty-row)');
     
@@ -923,17 +928,20 @@ function saveCurrentSheetData() {
     sheets[currentSheetId].highlightStates = highlightStates;
     sheets[currentSheetId].pictureUrls = pictureUrls;
     
-    // Sync to Supabase if connected (but not during initial load)
-    // Debounce sync calls to prevent duplicates
-    if (checkSupabaseConnection() && !isLoadingFromSupabase) {
-        // Clear any pending sync
+    // Don't sync if we're loading from Supabase or caller asked to skip (e.g. when preserving table during load)
+    if (skipSync || isLoadingFromSupabase) {
+        if (isLoadingFromSupabase) console.log('⏸️ Skipping sync during load from Supabase');
+        return;
+    }
+    // Debounce sync so one save = one sync (no duplicate records)
+    if (checkSupabaseConnection()) {
         if (syncTimeout) {
             clearTimeout(syncTimeout);
         }
-        // Debounce sync - wait 500ms before syncing
         syncTimeout = setTimeout(() => {
+            syncTimeout = null;
             syncToSupabase();
-        }, 500);
+        }, 600);
     }
 }
 
@@ -1186,6 +1194,12 @@ async function loadFromSupabase() {
         if (firstSheetId) {
             currentSheetId = firstSheetId;
             const sheet = sheets[firstSheetId];
+            // If user added rows during load, keep table content (avoid overwriting with older DB data)
+            const tbody = document.getElementById('tableBody');
+            const tableRowCount = tbody ? tbody.querySelectorAll('tr:not(.empty-row)').length : 0;
+            if (tableRowCount > 0 && sheet.data.length < tableRowCount) {
+                saveCurrentSheetData(true);
+            }
             console.log(`📋 Switching to sheet "${sheet.name}" with ${sheet.data ? sheet.data.length : 0} row(s)`);
             console.log(`📋 Sheet data before switch:`, JSON.stringify(sheet.data));
             
