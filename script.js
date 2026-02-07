@@ -1110,29 +1110,48 @@ async function loadFromSupabase() {
             return;
         }
         
-        if (!sheetsData || sheetsData.length === 0) {
-            console.log('No sheets found in Supabase');
-            return;
-        }
-        
-        // Clear existing sheets (but preserve the structure)
-        // Don't clear completely - just reset to empty object
         const oldSheets = { ...sheets };
         sheets = {};
         sheetCounter = 0;
         console.log(`🗑️ Cleared ${Object.keys(oldSheets).length} existing sheet(s) before loading from Supabase`);
         
-        // Load each sheet and its items
-        for (const sheetData of sheetsData) {
-            const { data: itemsData, error: itemsError } = await window.supabaseClient
+        // If no rows in sheets table, try loading from inventory_items (fallback so data still shows after refresh)
+        let sheetsToLoad = sheetsData && sheetsData.length > 0 ? sheetsData : [];
+        if (sheetsToLoad.length === 0) {
+            console.log('No rows in sheets table; loading from inventory_items as fallback...');
+            const { data: allItems, error: itemsErr } = await window.supabaseClient
                 .from('inventory_items')
                 .select('*')
-                .eq('sheet_id', sheetData.id)
+                .order('sheet_id', { ascending: true })
                 .order('row_index', { ascending: true });
-            
-            if (itemsError) {
-                console.error('Error loading items for sheet:', itemsError);
-                continue;
+            if (itemsErr || !allItems || allItems.length === 0) {
+                console.log('No inventory_items found in Supabase');
+                return;
+            }
+            const bySheet = {};
+            allItems.forEach(item => {
+                const sid = item.sheet_id || 'sheet-1';
+                if (!bySheet[sid]) bySheet[sid] = { id: sid, name: item.sheet_name || 'Sheet 1', items: [] };
+                bySheet[sid].items.push(item);
+            });
+            Object.values(bySheet).forEach(s => s.items.sort((a, b) => (a.row_index ?? 0) - (b.row_index ?? 0)));
+            sheetsToLoad = Object.values(bySheet);
+        }
+        
+        // Load each sheet and its items
+        for (const sheetData of sheetsToLoad) {
+            let itemsData = sheetData.items; // from fallback
+            if (!itemsData) {
+                const res = await window.supabaseClient
+                    .from('inventory_items')
+                    .select('*')
+                    .eq('sheet_id', sheetData.id)
+                    .order('row_index', { ascending: true });
+                if (res.error) {
+                    console.error('Error loading items for sheet:', res.error);
+                    continue;
+                }
+                itemsData = res.data || [];
             }
             
             // Convert items back to row data format
