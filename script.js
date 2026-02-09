@@ -130,6 +130,7 @@ function mergeUnitColumnsInTable() {
         const unitMeasTd = firstRow.querySelector(`td.editable[data-column="${UNIT_MEAS_COL}"]`);
         const unitValueTd = firstRow.querySelector(`td.editable[data-column="${UNIT_VALUE_COL}"]`);
         const userTd = firstRow.querySelector(`td.editable[data-column="${USER_COL}"]`);
+        const pictureTd = firstRow.querySelector('td.picture-cell');
         if (!unitMeasTd || !unitValueTd) continue;
         const n = indices.length;
         unitMeasTd.rowSpan = n;
@@ -137,6 +138,10 @@ function mergeUnitColumnsInTable() {
         if (userTd) {
             userTd.rowSpan = n;
             userTd.classList.add('col-no-bg');
+        }
+        if (pictureTd) {
+            pictureTd.rowSpan = n;
+            pictureTd.classList.add('col-no-bg');
         }
         unitMeasTd.classList.add('col-no-bg');
         unitValueTd.classList.add('col-no-bg');
@@ -146,6 +151,8 @@ function mergeUnitColumnsInTable() {
                 const td = row.querySelector(`td.editable[data-column="${col}"]`);
                 if (td) td.remove();
             });
+            const picTd = row.querySelector('td.picture-cell');
+            if (picTd) picTd.remove();
         }
     }
 }
@@ -456,7 +463,7 @@ addItemForm.addEventListener('submit', function(e) {
         condition: condition,
         remarks: document.getElementById('remarks').value.trim(),
         user: document.getElementById('user').value.trim(),
-        picture: selectedImageData
+        picture: null  // Picture: upload in table column only (form field disabled)
     };
     
     // Add item to table (only once)
@@ -1025,16 +1032,18 @@ function saveCurrentSheetData(skipSync) {
     
     const sheetData = [];
     const highlightStates = [];
-    const pictureUrls = []; // Store picture URLs
+    const pictureUrls = []; // Store picture URLs (per row; merged section uses first row's picture)
     let sectionUnitMeas = '';
     let sectionUnitValue = '';
     let sectionUser = '';
+    let sectionPictureUrl = null;
 
     rows.forEach((row, index) => {
         if (row.classList.contains('pc-header-row')) {
             sectionUnitMeas = '';
             sectionUnitValue = '';
             sectionUser = '';
+            sectionPictureUrl = null;
             const firstCell = row.querySelector('td');
             if (firstCell) {
                 const input = firstCell.querySelector('input');
@@ -1063,19 +1072,13 @@ function saveCurrentSheetData(skipSync) {
             }
             if (rowData.length > 0) {
                 sheetData.push(rowData);
-                // Save highlight state
                 highlightStates.push(row.classList.contains('highlighted-row'));
-                
-                // Get picture URL from picture cell
                 const pictureCell = row.querySelector('.picture-cell');
-                let pictureUrl = null;
                 if (pictureCell) {
                     const img = pictureCell.querySelector('img');
-                    if (img && img.src) {
-                        pictureUrl = img.src; // Base64 or URL
-                    }
+                    if (img && img.src) sectionPictureUrl = img.src;
                 }
-                pictureUrls.push(pictureUrl);
+                pictureUrls.push(sectionPictureUrl);
             }
         }
     });
@@ -1256,8 +1259,13 @@ async function syncToSupabase() {
                     let pictureUrl = null;
                     if (pictureCell) {
                         const img = pictureCell.querySelector('img');
-                        if (img && img.src && !String(img.src).startsWith('data:')) {
-                            pictureUrl = img.src;
+                        if (img && img.src) {
+                            const src = String(img.src);
+                            if (!src.startsWith('data:')) {
+                                pictureUrl = src;
+                            } else if (src.length <= 80000) {
+                                pictureUrl = src; // Allow small base64 so it saves to Supabase
+                            }
                         }
                     }
                     itemsToInsert.push({
@@ -1704,7 +1712,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             let exportSectionStart = null; // Para sa merge ng Unit of meas, Unit Value, User per section
             const exportSections = [];
             
-            sheet.data.forEach(rowData => {
+            sheet.data.forEach((rowData, rowIndex) => {
                 // Skip empty rows
                 if (!rowData || rowData.length === 0) {
                     return;
@@ -1748,6 +1756,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 } else if (rowData.length >= 10) {
                     if (exportSectionStart === null) exportSectionStart = currentRow;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
+                    const hasPicture = sheet.pictureUrls && sheet.pictureUrls[rowIndex];
                     const exportRow = [
                         '',                 // A (no item number column)
                         toStr(rowData[0]),  // B Article/It
@@ -1760,7 +1769,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         toStr(rowData[7]),  // I Condition
                         toStr(rowData[8]),  // J Remarks
                         toStr(rowData[9]),  // K User
-                        ''                  // L Picture
+                        hasPicture ? 'Image' : ''  // L Picture
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     
@@ -1779,7 +1788,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         const cell = dataRow.getCell(col);
                         cell.border = blackBorder;
                         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                        cell.fill = (col === 5 || col === 6 || col === 11) ? whiteFill : cellFill; // E,F,K walang kulay
+                        cell.fill = (col === 5 || col === 6 || col === 11 || col === 12) ? whiteFill : cellFill; // E,F,K,L walang kulay
                     }
                     
                     dataRowIndex++;
