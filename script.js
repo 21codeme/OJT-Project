@@ -42,6 +42,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     }, 200);
 });
 
+// Save bago mag-close/refresh para hindi mawala ang data
+function flushSaveBeforeUnload() {
+    saveCurrentSheetData();
+    if (syncTimeout) {
+        clearTimeout(syncTimeout);
+        syncTimeout = null;
+    }
+    if (checkSupabaseConnection() && !isSyncing) {
+        syncToSupabase(); // fire sync; page might close before it finishes, but we try
+    }
+}
+window.addEventListener('beforeunload', function() {
+    flushSaveBeforeUnload();
+});
+
 // Sheet management
 let sheets = {
     'sheet-1': {
@@ -1075,7 +1090,7 @@ function saveCurrentSheetData(skipSync) {
         if (isLoadingFromSupabase) console.log('⏸️ Skipping sync during load from Supabase');
         return;
     }
-    // Debounce sync so one save = one sync (no duplicate records)
+    // Debounce sync so one save = one sync (no duplicate records) — mas mabilis para hindi mawala sa refresh
     if (checkSupabaseConnection()) {
         if (syncTimeout) {
             clearTimeout(syncTimeout);
@@ -1083,7 +1098,7 @@ function saveCurrentSheetData(skipSync) {
         syncTimeout = setTimeout(() => {
             syncTimeout = null;
             syncToSupabase();
-        }, 600);
+        }, 250);
     }
 }
 
@@ -1101,6 +1116,11 @@ async function syncToSupabase() {
     }
     
     isSyncing = true;
+    const statusEl = document.getElementById('saveStatus');
+    if (statusEl) {
+        statusEl.textContent = 'Saving…';
+        statusEl.className = 'save-status saving';
+    }
     
     try {
         const sheet = getCurrentSheet();
@@ -1117,7 +1137,7 @@ async function syncToSupabase() {
         
         if (sheetError) {
             console.error('❌ Error saving sheet to Supabase:', sheetError);
-            console.error('Sheet error details:', sheetError.message, sheetError.details, sheetError.hint);
+            if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
             alert(`Error saving to database: ${sheetError.message}`);
             return;
         }
@@ -1132,7 +1152,7 @@ async function syncToSupabase() {
         
         if (deleteError) {
             console.error('❌ Error deleting old items:', deleteError);
-            console.error('Delete error details:', deleteError.message, deleteError.details, deleteError.hint);
+            if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
             alert(`Error updating database: ${deleteError.message}`);
             return;
         }
@@ -1216,7 +1236,7 @@ async function syncToSupabase() {
             
             if (insertError) {
                 console.error('❌ Error inserting items to Supabase:', insertError);
-                console.error('Insert error details:', insertError.message, insertError.details, insertError.hint);
+                if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
                 alert(`Error saving items to database: ${insertError.message}\n\nPlease check the browser console for more details.`);
             } else {
                 console.log(`✅ Successfully saved ${itemsToInsert.length} item(s) to Supabase`);
@@ -1225,8 +1245,17 @@ async function syncToSupabase() {
         } else {
             console.log('⚠️ No items to sync to Supabase (all rows are empty)');
         }
+        if (statusEl) {
+            statusEl.textContent = 'Saved';
+            statusEl.className = 'save-status saved';
+            setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'save-status'; }, 2500);
+        }
     } catch (error) {
         console.error('❌ Unexpected error syncing to Supabase:', error);
+        if (statusEl) {
+            statusEl.textContent = 'Error saving';
+            statusEl.className = 'save-status error';
+        }
         alert(`Unexpected error: ${error.message}\n\nPlease check the browser console for more details.`);
     } finally {
         isSyncing = false;

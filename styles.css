@@ -103,6 +103,24 @@ header h3 {
     flex-wrap: wrap;
 }
 
+.save-status {
+    font-size: 13px;
+    margin-left: 8px;
+    color: #6c757d;
+}
+.save-status.saving {
+    color: #ffc107;
+    font-weight: 500;
+}
+.save-status.saved {
+    color: #28a745;
+    font-weight: 500;
+}
+.save-status.error {
+    color: #dc3545;
+    font-weight: 500;
+}
+
 .upload-btn, .export-btn, .clear-btn, .add-btn, .add-pc-btn, .new-sheet-btn {
     padding: 12px 24px;
     border: none;
