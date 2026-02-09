@@ -1777,7 +1777,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     
-                    // Embed the same uploaded picture in Excel (once per section, sa unang row ng merged Picture)
+                    // Embed the same uploaded picture in Excel (once per section), fit inside Picture cell
                     if (isFirstRowOfSection && pictureDataUrl && String(pictureDataUrl).startsWith('data:image/')) {
                         try {
                             const match = pictureDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -1789,10 +1789,11 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                                     extension: ext === 'jpg' ? 'jpeg' : ext
                                 });
                                 const pictureCol = 11; // L = 0-based 11
-                                const pictureSize = 64; // Slightly larger so uploaded image is clearly visible
+                                const pictureSizePx = 38; // Small enough to fit inside one cell
+                                dataRow.height = 30; // Row height in points so image fits (no overflow)
                                 worksheet.addImage(imageId, {
                                     tl: { col: pictureCol, row: currentRow - 1 },
-                                    ext: { width: pictureSize, height: pictureSize }
+                                    ext: { width: pictureSizePx, height: pictureSizePx }
                                 });
                             }
                         } catch (imgErr) {
