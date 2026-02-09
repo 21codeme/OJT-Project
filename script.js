@@ -1792,9 +1792,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             }
             exportSections.forEach(s => {
                 if (s.end >= s.start) {
-                    worksheet.mergeCells(s.start, 5, s.end, 5); // E Unit of meas
-                    worksheet.mergeCells(s.start, 6, s.end, 6); // F Unit Value
+                    worksheet.mergeCells(s.start, 5, s.end, 5);  // E Unit of meas
+                    worksheet.mergeCells(s.start, 6, s.end, 6);  // F Unit Value
                     worksheet.mergeCells(s.start, 11, s.end, 11); // K User
+                    worksheet.mergeCells(s.start, 12, s.end, 12); // L Picture
                 }
             });
             
