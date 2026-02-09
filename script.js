@@ -1777,7 +1777,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     
-                    // Embed the same uploaded picture in Excel (once per section), fit inside Picture cell
+                    // Embed the same uploaded picture in Excel (once per section), strictly inside Picture cell L
                     if (isFirstRowOfSection && pictureDataUrl && String(pictureDataUrl).startsWith('data:image/')) {
                         try {
                             const match = pictureDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -1789,11 +1789,12 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                                     extension: ext === 'jpg' ? 'jpeg' : ext
                                 });
                                 const pictureCol = 11; // L = 0-based 11
-                                const pictureSizePx = 38; // Small enough to fit inside one cell
-                                dataRow.height = 30; // Row height in points so image fits (no overflow)
+                                dataRow.height = 24; // Row height (points) so one cell is small
+                                // Use tl+br to lock image inside one cell (no ext = scale to fit range)
                                 worksheet.addImage(imageId, {
-                                    tl: { col: pictureCol, row: currentRow - 1 },
-                                    ext: { width: pictureSizePx, height: pictureSizePx }
+                                    tl: { col: pictureCol + 0.02, row: currentRow - 1 + 0.02 },
+                                    br: { col: pictureCol + 0.98, row: currentRow - 1 + 0.98 },
+                                    editAs: 'oneCell'
                                 });
                             }
                         } catch (imgErr) {
