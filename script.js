@@ -1462,9 +1462,12 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             worksheet.mergeCells(3, 2, 3, 8);
             
             const row4 = worksheet.addRow(['', `AS OF ${currentDate}`]);
-            row4.getCell(2).font = { bold: true, size: 11 };
-            row4.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(4, 2, 4, 8);
+            worksheet.mergeCells(4, 2, 4, 8); // merge muna bago alignment
+            const cell4 = worksheet.getRow(4).getCell(2);
+            cell4.value = `AS OF ${currentDate}`;
+            cell4.font = { bold: true, size: 11 };
+            cell4.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            worksheet.getRow(4).commit();
             
             // Empty row for spacing (row 5)
             worksheet.addRow([]);
