@@ -147,12 +147,12 @@ function mergeUnitColumnsInTable() {
         unitValueTd.classList.add('col-no-bg');
         for (let j = 1; j < n; j++) {
             const row = rows[indices[j]];
+            const picTd = row.querySelector('td.picture-cell');
+            if (picTd) picTd.remove();
             [USER_COL, UNIT_VALUE_COL, UNIT_MEAS_COL].forEach(col => {
                 const td = row.querySelector(`td.editable[data-column="${col}"]`);
                 if (td) td.remove();
             });
-            const picTd = row.querySelector('td.picture-cell');
-            if (picTd) picTd.remove();
         }
     }
 }
@@ -879,7 +879,8 @@ function displayData(data) {
         
         tbody.appendChild(tr);
     }
-    mergeUnitColumnsInTable();
+    // Run merge after DOM is fully updated so Picture (and User, Unit of meas, Unit Value) merge correctly
+    setTimeout(function() { mergeUnitColumnsInTable(); }, 0);
 }
 
 // 3-dot menu on sheet tab: Rename / Delete
