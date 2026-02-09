@@ -1206,6 +1206,7 @@ async function syncToSupabase() {
         let sectionUnitMeas = '';
         let sectionUnitValue = '';
         let sectionUser = '';
+        let sectionPictureUrl = null;
         
         console.log(`📋 Found ${rows.length} row(s) in table`);
         
@@ -1214,6 +1215,7 @@ async function syncToSupabase() {
                 sectionUnitMeas = '';
                 sectionUnitValue = '';
                 sectionUser = '';
+                sectionPictureUrl = null;
                 const firstCell = row.querySelector('td');
                 if (firstCell) {
                     const input = firstCell.querySelector('input');
@@ -1257,15 +1259,14 @@ async function syncToSupabase() {
                 const description = rowData[1] || '';
                 if (article || description) {
                     const pictureCell = row.querySelector('.picture-cell');
-                    let pictureUrl = null;
                     if (pictureCell) {
                         const img = pictureCell.querySelector('img');
                         if (img && img.src) {
                             const src = String(img.src);
                             if (!src.startsWith('data:')) {
-                                pictureUrl = src;
+                                sectionPictureUrl = src;
                             } else if (src.length <= 80000) {
-                                pictureUrl = src; // Allow small base64 so it saves to Supabase
+                                sectionPictureUrl = src; // Allow small base64 so it saves to Supabase
                             }
                         }
                     }
@@ -1283,7 +1284,7 @@ async function syncToSupabase() {
                         condition: rowData[7] || '',
                         remarks: rowData[8] || '',
                         user: rowData[9] || '',
-                        picture_url: pictureUrl,
+                        picture_url: sectionPictureUrl,
                         is_pc_header: false,
                         is_highlighted: row.classList.contains('highlighted-row')
                     });
