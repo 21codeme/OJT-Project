@@ -898,6 +898,7 @@ function setupSheetTabMenu(tab, sheetId) {
     if (!menuBtn || !dropdown) return;
     
     menuBtn.addEventListener('click', function(e) {
+        e.preventDefault();
         e.stopPropagation();
         document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => {
             if (d !== dropdown) d.classList.remove('show');
