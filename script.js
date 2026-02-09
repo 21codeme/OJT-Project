@@ -1102,6 +1102,26 @@ function saveCurrentSheetData(skipSync) {
     }
 }
 
+// Retry async op on "Failed to fetch" / network errors (common on Vercel)
+async function withRetry(fn, maxAttempts = 3, delayMs = 1200) {
+    let lastErr;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return await fn();
+        } catch (e) {
+            lastErr = e;
+            const isNetwork = !e.status && (e.message === 'Failed to fetch' || e.name === 'TypeError');
+            if (attempt < maxAttempts && isNetwork) {
+                console.warn(`⚠️ Attempt ${attempt} failed (${e.message}), retrying in ${delayMs}ms...`);
+                await new Promise(r => setTimeout(r, delayMs));
+            } else {
+                throw e;
+            }
+        }
+    }
+    throw lastErr;
+}
+
 // Supabase Sync Functions
 async function syncToSupabase() {
     if (!checkSupabaseConnection()) {
@@ -1126,16 +1146,19 @@ async function syncToSupabase() {
         const sheet = getCurrentSheet();
         console.log(`📤 Starting sync for sheet: ${sheet.name} (${currentSheetId})`);
         
-        // Save/update sheet in Supabase
-        const { data: sheetData, error: sheetError } = await window.supabaseClient
-            .from('sheets')
-            .upsert({
-                id: currentSheetId,
-                name: sheet.name,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
+        // Save/update sheet in Supabase (with retry for Failed to fetch)
+        const sheetResult = await withRetry(async () => {
+            return await window.supabaseClient
+                .from('sheets')
+                .upsert({
+                    id: currentSheetId,
+                    name: sheet.name,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'id' });
+        });
         
-        if (sheetError) {
+        if (sheetResult.error) {
+            const sheetError = sheetResult.error;
             console.error('❌ Error saving sheet to Supabase:', sheetError);
             if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
             alert(`Error saving to database: ${sheetError.message}`);
@@ -1144,13 +1167,16 @@ async function syncToSupabase() {
         
         console.log(`✅ Sheet "${sheet.name}" saved to Supabase`);
         
-        // Delete existing items for this sheet
-        const { error: deleteError } = await window.supabaseClient
-            .from('inventory_items')
-            .delete()
-            .eq('sheet_id', currentSheetId);
+        // Delete existing items for this sheet (with retry)
+        const deleteResult = await withRetry(async () => {
+            return await window.supabaseClient
+                .from('inventory_items')
+                .delete()
+                .eq('sheet_id', currentSheetId);
+        });
         
-        if (deleteError) {
+        if (deleteResult.error) {
+            const deleteError = deleteResult.error;
             console.error('❌ Error deleting old items:', deleteError);
             if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
             alert(`Error updating database: ${deleteError.message}`);
@@ -1227,25 +1253,34 @@ async function syncToSupabase() {
         
         console.log(`📦 Prepared ${itemsToInsert.length} item(s) to insert`);
         
-        // Insert all items
+        // Insert all items (with retry for Failed to fetch)
         if (itemsToInsert.length > 0) {
-            const { data: insertedData, error: insertError } = await window.supabaseClient
-                .from('inventory_items')
-                .insert(itemsToInsert)
-                .select();
+            let insertResult;
+            try {
+                insertResult = await withRetry(async () => {
+                    return await window.supabaseClient
+                        .from('inventory_items')
+                        .insert(itemsToInsert)
+                        .select();
+                });
+            } catch (e) {
+                insertResult = { data: null, error: e };
+            }
             
-            if (insertError) {
+            if (insertResult.error) {
+                const insertError = insertResult.error;
                 console.error('❌ Error inserting items to Supabase:', insertError);
                 if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
-                alert(`Error saving items to database: ${insertError.message}\n\nPlease check the browser console for more details.`);
+                alert(`Error saving items to database: ${insertError.message}\n\nKung "Failed to fetch", subukan ulit mamaya o check kung naka-pause ang Supabase project (free tier).`);
             } else {
+                const insertedData = insertResult.data;
                 console.log(`✅ Successfully saved ${itemsToInsert.length} item(s) to Supabase`);
                 console.log('Inserted data:', insertedData);
             }
         } else {
             console.log('⚠️ No items to sync to Supabase (all rows are empty)');
         }
-        if (statusEl) {
+        if (statusEl && !statusEl.classList.contains('error')) {
             statusEl.textContent = 'Saved';
             statusEl.className = 'save-status saved';
             setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'save-status'; }, 2500);
