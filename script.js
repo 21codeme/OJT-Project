@@ -850,10 +850,10 @@ function displayData(data) {
             const conditionValue = dataRow[7] ? dataRow[7].toString().trim() : '';
             applyConditionColor(tr, conditionValue);
             
-            // Get picture URL from sheet metadata if available
+            // Get picture URL from sheet metadata (pictureUrls is aligned with sheet.data by row index i)
             let pictureData = null;
-            if (sheet.pictureUrls && sheet.pictureUrls[dataRowIndex]) {
-                pictureData = sheet.pictureUrls[dataRowIndex];
+            if (sheet.pictureUrls && sheet.pictureUrls[i]) {
+                pictureData = sheet.pictureUrls[i];
             }
             
             // Add picture cell
@@ -1265,8 +1265,8 @@ async function syncToSupabase() {
                             const src = String(img.src);
                             if (!src.startsWith('data:')) {
                                 sectionPictureUrl = src;
-                            } else if (src.length <= 80000) {
-                                sectionPictureUrl = src; // Allow small base64 so it saves to Supabase
+                            } else if (src.length <= 500000) {
+                                sectionPictureUrl = src; // Allow base64 up to ~500KB so it saves to Supabase
                             }
                         }
                     }
