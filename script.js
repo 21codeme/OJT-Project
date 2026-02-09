@@ -1465,37 +1465,40 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             row4.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
             worksheet.mergeCells(4, 2, 4, 8);
             
-            // Empty row for spacing
+            // Empty row for spacing (row 5)
             worksheet.addRow([]);
             
-            // Header row: laging unang row ng table – Article/It, Description, … Picture (walang merge)
-            const headerValues = [
-                '',  // A empty
-                'Article/It',
-                'Description',
-                'Old Property N Assigned',
-                'Unit of meas',
-                'Unit Value',
-                'Quantity per Physical count',
-                'Location/Whereabout',
-                'Condition',
-                'Remarks',
-                'User',
-                'Picture'
+            // Header row: isulat direkta sa row 6, lahat ng 12 columns (A–L) para hindi mawala
+            const headerLabels = [
+                '',  // A blank
+                'Article/It',           // B
+                'Description',          // C
+                'Old Property N Assigned', // D
+                'Unit of meas',         // E
+                'Unit Value',           // F
+                'Quantity per Physical count', // G
+                'Location/Whereabout',  // H
+                'Condition',            // I
+                'Remarks',              // J
+                'User',                 // K
+                'Picture'               // L
             ];
-            const headerRow = worksheet.addRow(headerValues);
+            const headerRowNum = 6;
+            const headerRow = worksheet.getRow(headerRowNum);
             headerRow.height = 22;
             const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
             for (let c = 1; c <= 12; c++) {
                 const cell = headerRow.getCell(c);
-                if (headerValues[c - 1] !== undefined) cell.value = headerValues[c - 1];
+                cell.value = headerLabels[c - 1];
                 cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF495057' } };
                 cell.border = blackBorder;
             }
+            headerRow.commit();
             
-            let currentRow = 7; // Data starts after header (row 6)
+            // Data rows simula row 7 (hindi na overwrite ang row 6)
+            let currentRow = 7;
             let dataRowIndex = 0; // Index for tracking highlight states
             
             sheet.data.forEach(rowData => {
