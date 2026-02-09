@@ -1558,28 +1558,22 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     
-                    const conditionValue = toStr(rowData[7]); // H Condition
-                    
-                    // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba = white
-                    let conditionColor = null;
+                    const conditionValue = (toStr(rowData[7]) || '').trim(); // Condition
+                    // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba (Serviceable, etc.) = puti
+                    let fillColor = { argb: 'FFFFFFFF' }; // default puti
                     if (conditionValue === 'Borrowed') {
-                        conditionColor = { argb: 'FFFFFF3D' }; // Yellow
+                        fillColor = { argb: 'FFFFFF3D' }; // Yellow
                     } else if (conditionValue === 'Unserviceable') {
-                        conditionColor = { argb: 'FFF8D7DA' }; // Light red
+                        fillColor = { argb: 'FFF8D7DA' }; // Light red
                     }
-                    const whiteFill = { argb: 'FFFFFFFF' };
-                    
+                    const cellFill = { type: 'pattern', pattern: 'solid', fgColor: fillColor };
                     const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
-                    
-                    dataRow.eachCell((cell) => {
+                    for (let col = 1; col <= 12; col++) {
+                        const cell = dataRow.getCell(col);
                         cell.border = blackBorder;
                         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                        if (conditionColor) {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: conditionColor };
-                        } else {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: whiteFill };
-                        }
-                    });
+                        cell.fill = cellFill;
+                    }
                     
                     dataRowIndex++;
                 }
