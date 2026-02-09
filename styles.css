@@ -460,13 +460,11 @@ tbody tr:hover {
     background-color: #c0c0c0 !important;
 }
 
+/* PC section: isang merged cell mula # hanggang Picture (colspan 12), kulay gray */
 .pc-header-row td:first-child {
     text-align: center;
     font-weight: 700;
-}
-
-.pc-header-row td:not(:first-child) {
-    display: none;
+    vertical-align: middle;
 }
 
 /* Responsive design */

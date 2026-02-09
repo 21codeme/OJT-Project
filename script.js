@@ -678,10 +678,9 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         
         const tr = document.createElement('tr');
         tr.classList.add('pc-header-row');
-        tr.appendChild(createRowNumCell('')); // # column blank for PC section
-        
+        // Isang merged cell mula # hanggang Picture (12 columns), kulay gray; walang number sa #
         const td = document.createElement('td');
-        td.colSpan = 11;
+        td.colSpan = 12;
         td.style.fontWeight = 'bold';
         td.style.fontSize = '14px';
         
@@ -731,6 +730,7 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         wrapper.appendChild(deleteSectionBtn);
         td.appendChild(wrapper);
         tr.appendChild(td);
+        tr.appendChild(document.createElement('td')); // Actions column (blank)
         
         tbody.appendChild(tr);
         setCurrentSheetData(getCurrentSheet().data, true);
@@ -793,10 +793,9 @@ function displayData(data) {
         const tr = document.createElement('tr');
         if (isPCHeader) {
             tr.classList.add('pc-header-row');
-            tr.appendChild(createRowNumCell('')); // # column blank for PC section
-            
+            // Isang merged cell mula # hanggang Picture (12 columns), kulay gray
             const td = document.createElement('td');
-            td.colSpan = 11;
+            td.colSpan = 12;
             td.style.fontWeight = 'bold';
             td.style.fontSize = '14px';
             
@@ -846,6 +845,7 @@ function displayData(data) {
             wrapper.appendChild(deleteSectionBtn);
             td.appendChild(wrapper);
             tr.appendChild(td);
+            tr.appendChild(document.createElement('td')); // Actions column (blank)
         } else {
             tr.appendChild(createRowNumCell(dataRowIndex + 1)); // # column: item number only
             // Create 10 editable cells for regular rows
