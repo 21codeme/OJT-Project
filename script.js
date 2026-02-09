@@ -1444,35 +1444,33 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 console.warn('Could not load logo image:', logoError);
             }
             
-            // Row 1: OCCIDENTAL MINDORO STATE COLLEGE (start from column B to avoid logo)
+            // Title block: merge B–H (2–8) gaya sa reference image
             const row1 = worksheet.addRow(['', 'OCCIDENTAL MINDORO STATE COLLEGE']);
             row1.getCell(2).font = { bold: true, size: 18 };
             row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(1, 2, 1, 11); // Merge columns B to K (2-11)
+            worksheet.mergeCells(1, 2, 1, 8);
             
-            // Row 2: Multimedia and Speech Laboratory
             const row2 = worksheet.addRow(['', 'Multimedia and Speech Laboratory']);
             row2.getCell(2).font = { bold: true, size: 14 };
             row2.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(2, 2, 2, 11);
+            worksheet.mergeCells(2, 2, 2, 8);
             
-            // Row 3: ICT Equipment, Devices & Accessories
             const row3 = worksheet.addRow(['', 'ICT Equipment, Devices & Accessories']);
             row3.getCell(2).font = { bold: true, size: 12 };
             row3.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(3, 2, 3, 11);
+            worksheet.mergeCells(3, 2, 3, 8);
             
-            // Row 4: AS OF date
             const row4 = worksheet.addRow(['', `AS OF ${currentDate.toUpperCase()}`]);
             row4.getCell(2).font = { bold: true, size: 11 };
             row4.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(4, 2, 4, 11);
+            worksheet.mergeCells(4, 2, 4, 8);
             
             // Empty row for spacing
             worksheet.addRow([]);
             
-            // Column headers row (row 6, 0-indexed: row 5)
-            const headerRow = worksheet.addRow([
+            // Header row: column A empty, B–L = Article/It … Picture (tumutugma sa web table)
+            const headerValues = [
+                '',  // A empty
                 'Article/It',
                 'Description',
                 'Old Property N Assigned',
@@ -1484,9 +1482,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 'Remarks',
                 'User',
                 'Picture'
-            ]);
+            ];
+            const headerRow = worksheet.addRow(headerValues);
             
-            // Style header row (dark grey, white text, black borders – gaya sa picture)
             const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
             headerRow.eachCell((cell) => {
                 cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
@@ -1520,38 +1518,39 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC row: gaya sa picture – buong row grey, "PC 1" sa G merged G–K (cols 7–11), centered
+                    // PC row: A empty, B empty, C–L merged "PC 1" (gaya sa reference)
                     const pcNameOnly = firstCell;
-                    const pcRowValues = ['', '', '', '', '', '', pcNameOnly, '', '', '', ''];
+                    const pcRowValues = ['', '', pcNameOnly, '', '', '', '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
                     const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
                     const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
-                    for (let col = 1; col <= 11; col++) {
+                    for (let col = 1; col <= 12; col++) {
                         const c = pcRow.getCell(col);
                         c.fill = grayFill;
                         c.border = blackBorder;
-                        if (col >= 7 && col <= 11) {
+                        if (col >= 3 && col <= 12) {
                             c.alignment = { horizontal: 'center', vertical: 'middle' };
                             c.font = { bold: true, size: 12 };
                         }
                     }
-                    pcRow.getCell(7).value = pcNameOnly;
-                    worksheet.mergeCells(currentRow, 7, currentRow, 11);
+                    pcRow.getCell(3).value = pcNameOnly;
+                    worksheet.mergeCells(currentRow, 3, currentRow, 12);
                 } else if (rowData.length >= 10) {
-                    // Export row: same order as header – bawat column tumutugma sa header
+                    // Export row: A empty, B–L = same order as web table (naka-align sa header)
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
                     const exportRow = [
-                        toStr(rowData[0]),  // A Article/It
-                        toStr(rowData[1]),  // B Description
-                        toStr(rowData[2]),  // C Old Property N Assigned
-                        toStr(rowData[3]),  // D Unit of meas
-                        toStr(rowData[4]),  // E Unit Value
-                        toStr(rowData[5]),  // F Quantity per Physical count
-                        toStr(rowData[6]),  // G Location/Whereabout
-                        toStr(rowData[7]),  // H Condition
-                        toStr(rowData[8]),  // I Remarks
-                        toStr(rowData[9]),  // J User
-                        ''                  // K Picture
+                        '',                 // A empty
+                        toStr(rowData[0]),  // B Article/It
+                        toStr(rowData[1]),  // C Description
+                        toStr(rowData[2]),  // D Old Property N Assigned
+                        toStr(rowData[3]),  // E Unit of meas
+                        toStr(rowData[4]),  // F Unit Value
+                        toStr(rowData[5]),  // G Quantity per Physical count
+                        toStr(rowData[6]),  // H Location/Whereabout
+                        toStr(rowData[7]),  // I Condition
+                        toStr(rowData[8]),  // J Remarks
+                        toStr(rowData[9]),  // K User
+                        ''                  // L Picture
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     
@@ -1589,30 +1588,28 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 currentRow++;
             });
             
-            // Auto-fit column widths based on content
-            const maxColumnWidths = [12, 30, 20, 12, 15, 25, 25, 12, 20, 25, 20]; // Minimum widths
-            const columnHeaders = ['Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 
+            // Auto-fit column widths (12 columns: A empty, B–L data)
+            const maxColumnWidths = [3, 12, 30, 20, 12, 15, 25, 25, 12, 20, 25, 20];
+            const columnHeaders = ['', 'Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 
                                    'Unit Value', 'Quantity per Physical count', 'Location/Whereabout', 
                                    'Condition', 'Remarks', 'User', 'Picture'];
             
-            // Calculate max width for each column
             worksheet.eachRow((row, rowNumber) => {
                 row.eachCell((cell, colNumber) => {
-                    if (colNumber <= 11) { // Only for data columns
+                    if (colNumber <= 12) {
                         const cellValue = cell.value ? cell.value.toString() : '';
                         const cellLength = cellValue.length;
-                        // Add some padding (multiply by 1.2 for better fit)
-                        const estimatedWidth = Math.max(cellLength * 1.2, columnHeaders[colNumber - 1].length * 1.2);
+                        const headerLen = (columnHeaders[colNumber - 1] || '').length;
+                        const estimatedWidth = Math.max(cellLength * 1.2, headerLen * 1.2);
                         if (estimatedWidth > maxColumnWidths[colNumber - 1]) {
-                            maxColumnWidths[colNumber - 1] = Math.min(estimatedWidth, 50); // Cap at 50 to prevent too wide
+                            maxColumnWidths[colNumber - 1] = Math.min(estimatedWidth, 50);
                         }
                     }
                 });
             });
             
-            // Set column widths with auto-fit
             worksheet.columns = maxColumnWidths.map((width, index) => ({
-                width: Math.max(width, columnHeaders[index].length * 1.2)
+                width: Math.max(width, (columnHeaders[index] || '').length * 1.2)
             }));
             
             // Set row heights for header rows
