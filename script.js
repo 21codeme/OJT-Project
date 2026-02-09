@@ -173,6 +173,9 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
     const input = document.createElement('input');
     input.type = 'text';
     input.value = value || '';
+    if (cellIndex === UNIT_MEAS_COL) input.placeholder = 'e.g., pcs, set, unit';
+    if (cellIndex === UNIT_VALUE_COL) input.placeholder = 'e.g., ₱5,000.00';
+    if (cellIndex === USER_COL) input.placeholder = 'e.g., MR TO ANGELINA C. PAQUIBOT';
     
     // Auto uppercase for Article/It (index 0) and Description (index 1)
     const isAutoUppercase = cellIndex === 0 || cellIndex === 1;

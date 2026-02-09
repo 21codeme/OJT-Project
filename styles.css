@@ -489,12 +489,26 @@ tbody td input:focus {
     background-color: #f5c2c7 !important;
 }
 
-/* Unit of measure, Unit Value, User: walang kulay (puti lang), gaya sa PC 9 */
+/* Unit of measure, Unit Value, User: puti lang; input visible para makapag-input */
 tbody td.col-no-bg {
     background-color: white !important;
 }
 tbody td.col-no-bg input {
-    background: transparent !important;
+    background: #fff !important;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 6px 10px;
+    min-width: 80px;
+    width: 100%;
+    box-sizing: border-box;
+}
+tbody td.col-no-bg input::placeholder {
+    color: #6c757d;
+}
+tbody td.col-no-bg input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 /* Default: lahat ng data row puti; kulay lang kung Borrowed o Unserviceable */
