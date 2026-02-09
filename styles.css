@@ -296,14 +296,15 @@ header h3 {
     color: #495057;
     opacity: 1;
 }
-.sheet-tab:not(.active) .sheet-tab-menu {
+/* 3-dot nakatago; lalabas lang kapag hover sa tab */
+.sheet-tab .sheet-tab-menu {
     display: none;
 }
-.sheet-tab.active .sheet-tab-menu,
 .sheet-tab:hover .sheet-tab-menu {
     display: inline-flex;
 }
 
+/* Kapag pinindot, naka-float lang ang Rename at Delete (walang scrollbar) */
 .sheet-tab-dropdown {
     display: none;
     position: absolute;
@@ -317,6 +318,7 @@ header h3 {
     z-index: 20;
     min-width: 120px;
     overflow: hidden;
+    max-height: none;
 }
 .sheet-tab-dropdown.show {
     display: block;
