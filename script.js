@@ -1426,7 +1426,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                            'July', 'August', 'September', 'October', 'November', 'December'];
             const currentDate = `${months[now.getMonth()]} ${now.getFullYear()}`;
             
-            // Add logo in column A, rows 1-2 (0-indexed: rows 0-1)
+            // Logo: 4 cm (~151 px), centered (columns A–D area so nasa gitna ng header)
+            const logoSizeCm = 4;
+            const logoSizePx = Math.round(logoSizeCm * 37.8); // ~37.8 px per cm at 96 DPI
             try {
                 const logoResponse = await fetch('images/omsc.png');
                 const logoBuffer = await logoResponse.arrayBuffer();
@@ -1434,17 +1436,16 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     buffer: logoBuffer,
                     extension: 'png',
                 });
-                
-                // Insert logo in cell A1, spanning 2 rows
+                // Logo sa A1, laki 4 cm (centered sa sariling area)
                 worksheet.addImage(imageId, {
                     tl: { col: 0, row: 0 },
-                    ext: { width: 120, height: 120 }
+                    ext: { width: logoSizePx, height: logoSizePx }
                 });
             } catch (logoError) {
                 console.warn('Could not load logo image:', logoError);
             }
             
-            // Title block: merge B–H (2–8) gaya sa reference image
+            // Title block: merge B–H (2–8), lahat naka-center
             const row1 = worksheet.addRow(['', 'OCCIDENTAL MINDORO STATE COLLEGE']);
             row1.getCell(2).font = { bold: true, size: 18 };
             row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1460,7 +1461,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             row3.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
             worksheet.mergeCells(3, 2, 3, 8);
             
-            const row4 = worksheet.addRow(['', `AS OF ${currentDate.toUpperCase()}`]);
+            const row4 = worksheet.addRow(['', `AS OF ${currentDate}`]);
             row4.getCell(2).font = { bold: true, size: 11 };
             row4.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
             worksheet.mergeCells(4, 2, 4, 8);
