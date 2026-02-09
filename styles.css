@@ -424,8 +424,12 @@ tbody td input:focus {
     background-color: #f5c2c7 !important;
 }
 
+/* Default: lahat ng data row puti; kulay lang kung Borrowed o Unserviceable */
+tbody tr {
+    background-color: white;
+}
 tbody tr:nth-child(even) {
-    background-color: #f8f9fa;
+    background-color: white;
 }
 
 tbody tr:hover {

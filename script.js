@@ -1560,30 +1560,24 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     
                     const conditionValue = toStr(rowData[7]); // H Condition
                     
-                    // Check if this row should be highlighted
-                    const isHighlighted = sheet.highlightStates && sheet.highlightStates[dataRowIndex] === true;
-                    
-                    // Row color: condition > highlighted (yellow) > default light grey (gaya sa picture)
+                    // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba = white
                     let conditionColor = null;
                     if (conditionValue === 'Borrowed') {
                         conditionColor = { argb: 'FFFFFF3D' }; // Yellow
                     } else if (conditionValue === 'Unserviceable') {
                         conditionColor = { argb: 'FFF8D7DA' }; // Light red
                     }
-                    const lightGreyFill = { argb: 'FFE8E8E8' }; // Default para sa data rows
+                    const whiteFill = { argb: 'FFFFFFFF' };
                     
                     const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
                     
                     dataRow.eachCell((cell) => {
                         cell.border = blackBorder;
                         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                        
                         if (conditionColor) {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: conditionColor };
-                        } else if (isHighlighted) {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF3D' } };
                         } else {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: lightGreyFill };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: whiteFill };
                         }
                     });
                     
