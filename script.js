@@ -1195,16 +1195,21 @@ async function syncToSupabase() {
         
         console.log('🗑️ Old items deleted, preparing new items...');
         
-        // Prepare items to insert
+        // Prepare items to insert — use same logic as saveCurrentSheetData so merged rows (7–8 cells) are included
         const itemsToInsert = [];
         const tbody = document.getElementById('tableBody');
         const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+        let sectionUnitMeas = '';
+        let sectionUnitValue = '';
+        let sectionUser = '';
         
         console.log(`📋 Found ${rows.length} row(s) in table`);
         
         rows.forEach((row, rowIndex) => {
             if (row.classList.contains('pc-header-row')) {
-                // PC header row
+                sectionUnitMeas = '';
+                sectionUnitValue = '';
+                sectionUser = '';
                 const firstCell = row.querySelector('td');
                 if (firstCell) {
                     const input = firstCell.querySelector('input');
@@ -1221,42 +1226,58 @@ async function syncToSupabase() {
                     }
                 }
             } else {
-                // Regular row – same column order as table (0=Article .. 9=User)
                 const cells = Array.from(row.querySelectorAll('td.editable'));
                 cells.sort((a, b) => (parseInt(a.getAttribute('data-column') || '0', 10) - parseInt(b.getAttribute('data-column') || '0', 10)));
-                if (cells.length >= 10) {
+                const vals = cells.map(c => (c.querySelector('input')?.value || '').trim());
+                // Rebuild 10 columns when row has merged cells (7 or 8 editable cells)
+                let rowData = vals;
+                if (vals.length === 7) {
+                    rowData = [
+                        vals[0], vals[1], vals[2],
+                        sectionUnitMeas, sectionUnitValue,
+                        vals[3], vals[4], vals[5], vals[6],
+                        sectionUser
+                    ];
+                } else if (vals.length === 8) {
+                    rowData = [
+                        vals[0], vals[1], vals[2],
+                        sectionUnitMeas, sectionUnitValue,
+                        vals[3], vals[4], vals[5], vals[6], vals[7]
+                    ];
+                } else if (vals.length >= 10) {
+                    sectionUnitMeas = vals[UNIT_MEAS_COL] || '';
+                    sectionUnitValue = vals[UNIT_VALUE_COL] || '';
+                    sectionUser = vals[USER_COL] || '';
+                }
+                const article = rowData[0] || '';
+                const description = rowData[1] || '';
+                if (article || description) {
                     const pictureCell = row.querySelector('.picture-cell');
                     let pictureUrl = null;
                     if (pictureCell) {
                         const img = pictureCell.querySelector('img');
                         if (img && img.src && !String(img.src).startsWith('data:')) {
-                            pictureUrl = img.src; // Only external URLs; skip base64 to avoid huge payload and Failed to fetch
+                            pictureUrl = img.src;
                         }
                     }
-                    
-                    const article = cells[0]?.querySelector('input')?.value || '';
-                    const description = cells[1]?.querySelector('input')?.value || '';
-                    
-                    if (article || description) {
-                        itemsToInsert.push({
-                            sheet_id: currentSheetId,
-                            sheet_name: sheet.name,
-                            row_index: rowIndex,
-                            article: article,
-                            description: description,
-                            old_property_n_assigned: cells[2]?.querySelector('input')?.value || '',
-                            unit_of_meas: cells[3]?.querySelector('input')?.value || '',
-                            unit_value: cells[4]?.querySelector('input')?.value || '',
-                            quantity: cells[5]?.querySelector('input')?.value || '',
-                            location: cells[6]?.querySelector('input')?.value || '',
-                            condition: cells[7]?.querySelector('input')?.value || '',
-                            remarks: cells[8]?.querySelector('input')?.value || '',
-                            user: cells[9]?.querySelector('input')?.value || '',
-                            picture_url: pictureUrl,
-                            is_pc_header: false,
-                            is_highlighted: row.classList.contains('highlighted-row')
-                        });
-                    }
+                    itemsToInsert.push({
+                        sheet_id: currentSheetId,
+                        sheet_name: sheet.name,
+                        row_index: rowIndex,
+                        article: article,
+                        description: description,
+                        old_property_n_assigned: rowData[2] || '',
+                        unit_of_meas: rowData[3] || '',
+                        unit_value: rowData[4] || '',
+                        quantity: rowData[5] || '',
+                        location: rowData[6] || '',
+                        condition: rowData[7] || '',
+                        remarks: rowData[8] || '',
+                        user: rowData[9] || '',
+                        picture_url: pictureUrl,
+                        is_pc_header: false,
+                        is_highlighted: row.classList.contains('highlighted-row')
+                    });
                 }
             }
         });
