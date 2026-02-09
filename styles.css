@@ -304,21 +304,17 @@ header h3 {
     display: inline-flex;
 }
 
-/* Kapag pinindot, naka-float lang ang Rename at Delete (walang scrollbar) */
+/* Kapag pinindot, naka-float sa table (fixed, walang scroll) — top/left din set sa JS */
 .sheet-tab-dropdown {
     display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 2px;
+    position: fixed;
     background: white;
     border: 1px solid #dee2e6;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 20;
+    z-index: 9999;
     min-width: 120px;
     overflow: hidden;
-    max-height: none;
 }
 .sheet-tab-dropdown.show {
     display: block;

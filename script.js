@@ -901,14 +901,24 @@ function setupSheetTabMenu(tab, sheetId) {
         e.preventDefault();
         e.stopPropagation();
         document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => {
-            if (d !== dropdown) d.classList.remove('show');
+            d.classList.remove('show');
+            d.removeAttribute('style');
         });
+        const isOpening = !dropdown.classList.contains('show');
         dropdown.classList.toggle('show');
+        if (isOpening) {
+            const rect = menuBtn.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 4) + 'px';
+            dropdown.style.left = Math.max(8, rect.right - 120) + 'px';
+        } else {
+            dropdown.removeAttribute('style');
+        }
     });
     
     dropdown.querySelector('.rename-option')?.addEventListener('click', async function(e) {
         e.stopPropagation();
         dropdown.classList.remove('show');
+        dropdown.removeAttribute('style');
         const sheet = sheets[sheetId];
         if (!sheet) return;
         const newName = prompt('Rename sheet:', sheet.name);
@@ -928,12 +938,16 @@ function setupSheetTabMenu(tab, sheetId) {
     dropdown.querySelector('.delete-option')?.addEventListener('click', function(e) {
         e.stopPropagation();
         dropdown.classList.remove('show');
+        dropdown.removeAttribute('style');
         deleteSheet(sheetId);
     });
 }
 
 document.addEventListener('click', function() {
-    document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => d.classList.remove('show'));
+    document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => {
+        d.classList.remove('show');
+        d.removeAttribute('style');
+    });
 });
 
 // Sheet Management Functions
