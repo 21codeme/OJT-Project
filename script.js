@@ -71,34 +71,6 @@ function setCurrentSheetData(data, hasDataFlag = true) {
     sheets[currentSheetId].hasData = hasDataFlag;
 }
 
-// First column: number for added items only (not PC section)
-function createRowNumCell(numberOrEmpty) {
-    const td = document.createElement('td');
-    td.className = 'row-num';
-    td.style.textAlign = 'center';
-    td.style.fontWeight = '500';
-    if (numberOrEmpty !== '' && numberOrEmpty !== undefined && numberOrEmpty !== null) {
-        td.textContent = numberOrEmpty;
-    }
-    return td;
-}
-function updateRowNumbers() {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    const rows = tbody.querySelectorAll('tr:not(.empty-row)');
-    let itemNum = 0;
-    rows.forEach(tr => {
-        const firstTd = tr.querySelector('td:first-child');
-        if (!firstTd || !firstTd.classList.contains('row-num')) return;
-        if (tr.classList.contains('pc-header-row')) {
-            firstTd.textContent = '';
-        } else {
-            itemNum++;
-            firstTd.textContent = String(itemNum);
-        }
-    });
-}
-
 // Apply condition-based row color
 function applyConditionColor(row, condition) {
     // Remove existing condition classes
@@ -268,14 +240,13 @@ function createActionCell() {
             const tr = this.closest('tr');
             if (tr) {
                 tr.remove();
-                updateRowNumbers();
                 mergeUnitColumnsInTable();
                 updateDataFromTable();
                 
                 // Check if table is now empty
                 const tbody = document.getElementById('tableBody');
                 if (tbody.children.length === 0) {
-                    tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
                     setCurrentSheetData([], false);
                     document.getElementById('exportBtn').disabled = !hasAnyData();
                     document.getElementById('clearBtn').disabled = true;
@@ -306,7 +277,6 @@ function addItemRow(isPCHeader = false) {
     if (isPCHeader) {
         tr.classList.add('pc-header-row');
     }
-    tr.appendChild(createRowNumCell('')); // # column (PC = blank, data = set by updateRowNumbers)
     // Create 10 editable cells
     for (let j = 0; j < 10; j++) {
         let defaultValue = '';
@@ -325,7 +295,6 @@ function addItemRow(isPCHeader = false) {
     tr.appendChild(actionCell);
     
     tbody.appendChild(tr);
-    updateRowNumbers();
     if (!isPCHeader) mergeUnitColumnsInTable();
     setCurrentSheetData(getCurrentSheet().data, true);
     document.getElementById('exportBtn').disabled = false;
@@ -622,7 +591,6 @@ function addItemFromForm(formData) {
     }
     
     const tr = document.createElement('tr');
-    tr.appendChild(createRowNumCell('')); // # column, filled by updateRowNumbers
     
     // Create cells with form data
     const cells = [
@@ -655,7 +623,6 @@ function addItemFromForm(formData) {
     tr.appendChild(actionCell);
     
     tbody.appendChild(tr);
-    updateRowNumbers();
     mergeUnitColumnsInTable();
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
@@ -675,9 +642,9 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         
         const tr = document.createElement('tr');
         tr.classList.add('pc-header-row');
-        // Isang merged cell mula # hanggang Picture (12 columns), kulay gray; walang number sa #
+        // Isang merged cell mula Article/It hanggang Picture (11 columns), kulay gray
         const td = document.createElement('td');
-        td.colSpan = 12;
+        td.colSpan = 11;
         td.style.fontWeight = 'bold';
         td.style.fontSize = '14px';
         
@@ -712,12 +679,11 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         deleteSectionBtn.addEventListener('click', function() {
             if (confirm('Delete this PC section and all items under it?')) {
                 tr.remove();
-                updateRowNumbers();
                 mergeUnitColumnsInTable();
                 updateDataFromTable();
                 const remaining = tbody.querySelectorAll('tr:not(.empty-row)').length;
                 if (remaining === 0) {
-                    tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
                     setCurrentSheetData([], false);
                     document.getElementById('clearBtn').disabled = true;
                 }
@@ -746,7 +712,7 @@ function displayData(data) {
     console.log(`🖥️ Displaying data: ${data ? data.length : 0} row(s)`);
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data found in the Excel file.</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data found in the Excel file.</td></tr>';
         console.log('⚠️ No data to display');
         return;
     }
@@ -792,9 +758,9 @@ function displayData(data) {
         const tr = document.createElement('tr');
         if (isPCHeader) {
             tr.classList.add('pc-header-row');
-            // Isang merged cell mula # hanggang Picture (12 columns), kulay gray
+            // Isang merged cell mula Article/It hanggang Picture (11 columns), kulay gray
             const td = document.createElement('td');
-            td.colSpan = 12;
+            td.colSpan = 11;
             td.style.fontWeight = 'bold';
             td.style.fontSize = '14px';
             
@@ -830,11 +796,10 @@ function displayData(data) {
                 const tbody = document.getElementById('tableBody');
                 if (confirm('Delete this PC section and all items under it?')) {
                     tr.remove();
-                    updateRowNumbers();
                     mergeUnitColumnsInTable();
                     updateDataFromTable();
                     if (tbody.querySelectorAll('tr:not(.empty-row)').length === 0) {
-                        tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                        tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
                         setCurrentSheetData([], false);
                         document.getElementById('clearBtn').disabled = true;
                     }
@@ -847,7 +812,6 @@ function displayData(data) {
             tr.appendChild(td);
             tr.appendChild(document.createElement('td')); // Actions column (blank)
         } else {
-            tr.appendChild(createRowNumCell(dataRowIndex + 1)); // # column: item number only
             // Create 10 editable cells for regular rows
             for (let j = 0; j < 10; j++) {
                 const cellValue = row[j] !== undefined && row[j] !== null ? row[j].toString() : '';
@@ -1637,7 +1601,6 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             // Data rows simula row 8 (2 blank rows after title)
             let currentRow = 8;
             let dataRowIndex = 0;
-            let exportItemNum = 0;
             let exportSectionStart = null; // Para sa merge ng Unit of meas, Unit Value, User per section
             const exportSections = [];
             
@@ -1684,10 +1647,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     worksheet.mergeCells(currentRow, 3, currentRow, 12);
                 } else if (rowData.length >= 10) {
                     if (exportSectionStart === null) exportSectionStart = currentRow;
-                    exportItemNum++;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
                     const exportRow = [
-                        exportItemNum,      // A item number
+                        '',                 // A (no item number column)
                         toStr(rowData[0]),  // B Article/It
                         toStr(rowData[1]),  // C Description
                         toStr(rowData[2]),  // D Old Property N Assigned
@@ -1852,7 +1814,7 @@ document.getElementById('clearBtn').addEventListener('click', function() {
     if (confirm(`Are you sure you want to clear all data in "${currentSheet.name}"?`)) {
         setCurrentSheetData([], false);
         document.getElementById('tableBody').innerHTML = 
-            '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+            '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
         document.getElementById('exportBtn').disabled = !hasAnyData();
         document.getElementById('clearBtn').disabled = true;
     }
