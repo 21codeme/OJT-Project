@@ -113,6 +113,47 @@ function applyConditionColor(row, condition) {
 
 // Column order: must match table header and Excel export (Article/It, Description, ..., User)
 const DATA_COLUMN_ORDER = ['Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 'Unit Value', 'Quantity per Physical count', 'Location/Whereabout', 'Condition', 'Remarks', 'User'];
+const UNIT_MEAS_COL = 3;
+const UNIT_VALUE_COL = 4;
+
+// Per PC section: merge Unit of meas at Unit Value vertically (isang cell para sa buong section)
+function mergeUnitColumnsInTable() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr:not(.empty-row)'));
+    const sections = [];
+    let group = [];
+    for (let i = 0; i < rows.length; i++) {
+        if (rows[i].classList.contains('pc-header-row')) {
+            if (group.length > 0) {
+                sections.push(group);
+                group = [];
+            }
+        } else {
+            group.push(i);
+        }
+    }
+    if (group.length > 0) sections.push(group);
+
+    for (const indices of sections) {
+        if (indices.length === 0) continue;
+        const firstIdx = indices[0];
+        const firstRow = rows[firstIdx];
+        const unitMeasTd = firstRow.querySelector(`td.editable[data-column="${UNIT_MEAS_COL}"]`);
+        const unitValueTd = firstRow.querySelector(`td.editable[data-column="${UNIT_VALUE_COL}"]`);
+        if (!unitMeasTd || !unitValueTd) continue;
+        const n = indices.length;
+        unitMeasTd.rowSpan = n;
+        unitValueTd.rowSpan = n;
+        for (let j = 1; j < n; j++) {
+            const row = rows[indices[j]];
+            const td3 = row.querySelector(`td.editable[data-column="${UNIT_MEAS_COL}"]`);
+            const td4 = row.querySelector(`td.editable[data-column="${UNIT_VALUE_COL}"]`);
+            if (td4) td4.remove();
+            if (td3) td3.remove();
+        }
+    }
+}
 
 // Create editable cell
 function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = null) {
@@ -216,6 +257,7 @@ function createActionCell() {
             if (tr) {
                 tr.remove();
                 updateRowNumbers();
+                mergeUnitColumnsInTable();
                 updateDataFromTable();
                 
                 // Check if table is now empty
@@ -272,15 +314,13 @@ function addItemRow(isPCHeader = false) {
     
     tbody.appendChild(tr);
     updateRowNumbers();
+    if (!isPCHeader) mergeUnitColumnsInTable();
     setCurrentSheetData(getCurrentSheet().data, true);
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
     
-    // Focus on first input
     const firstInput = tr.querySelector('td input');
-    if (firstInput) {
-        firstInput.focus();
-    }
+    if (firstInput) firstInput.focus();
 }
 
 // Modal functionality
@@ -604,10 +644,10 @@ function addItemFromForm(formData) {
     
     tbody.appendChild(tr);
     updateRowNumbers();
+    mergeUnitColumnsInTable();
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
     
-    // Update in-memory data and queue one sync (no extra triggers)
     updateDataFromTable();
 }
 
@@ -661,6 +701,7 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
             if (confirm('Delete this PC section and all items under it?')) {
                 tr.remove();
                 updateRowNumbers();
+                mergeUnitColumnsInTable();
                 updateDataFromTable();
                 const remaining = tbody.querySelectorAll('tr:not(.empty-row)').length;
                 if (remaining === 0) {
@@ -678,6 +719,7 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         tr.appendChild(document.createElement('td')); // Actions column (blank)
         
         tbody.appendChild(tr);
+        mergeUnitColumnsInTable();
         setCurrentSheetData(getCurrentSheet().data, true);
         document.getElementById('exportBtn').disabled = false;
         document.getElementById('clearBtn').disabled = false;
@@ -777,6 +819,7 @@ function displayData(data) {
                 if (confirm('Delete this PC section and all items under it?')) {
                     tr.remove();
                     updateRowNumbers();
+                    mergeUnitColumnsInTable();
                     updateDataFromTable();
                     if (tbody.querySelectorAll('tr:not(.empty-row)').length === 0) {
                         tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
@@ -833,6 +876,7 @@ function displayData(data) {
         
         tbody.appendChild(tr);
     }
+    mergeUnitColumnsInTable();
 }
 
 // 3-dot menu on sheet tab: Rename / Delete
@@ -986,22 +1030,22 @@ function saveCurrentSheetData(skipSync) {
     const sheetData = [];
     const highlightStates = [];
     const pictureUrls = []; // Store picture URLs
-    
+    let sectionUnitMeas = '';
+    let sectionUnitValue = '';
+
     rows.forEach((row, index) => {
-        // Check if this is a PC header row
         if (row.classList.contains('pc-header-row')) {
-            // PC header row - get the text from the first cell (which spans all columns)
+            sectionUnitMeas = '';
+            sectionUnitValue = '';
             const firstCell = row.querySelector('td');
             if (firstCell) {
                 const input = firstCell.querySelector('input');
                 const pcName = input ? input.value : firstCell.textContent.trim();
-                // Store PC header as a single cell value (will be detected in export)
                 sheetData.push([pcName]);
-                highlightStates.push(false); // PC headers can't be highlighted
-                pictureUrls.push(null); // PC headers don't have pictures
+                highlightStates.push(false);
+                pictureUrls.push(null);
             }
         } else {
-            // Regular row - get editable cells in column order (0=Article .. 9=User) para tumugma sa Excel
             const cells = Array.from(row.querySelectorAll('td.editable'));
             cells.sort((a, b) => (parseInt(a.getAttribute('data-column') || '0', 10) - parseInt(b.getAttribute('data-column') || '0', 10)));
             const rowData = [];
@@ -1009,6 +1053,12 @@ function saveCurrentSheetData(skipSync) {
                 const input = cell.querySelector('input');
                 rowData.push(input ? input.value : '');
             });
+            if (rowData.length === 8) {
+                rowData.splice(3, 0, sectionUnitMeas, sectionUnitValue);
+            } else if (rowData.length >= 10) {
+                sectionUnitMeas = rowData[UNIT_MEAS_COL] || '';
+                sectionUnitValue = rowData[UNIT_VALUE_COL] || '';
+            }
             if (rowData.length > 0) {
                 sheetData.push(rowData);
                 // Save highlight state
