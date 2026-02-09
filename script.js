@@ -812,15 +812,20 @@ function displayData(data) {
             tr.appendChild(td);
             tr.appendChild(document.createElement('td')); // Actions column (blank)
         } else {
+            // Legacy: kung na-save dati with # column (11 elements, first is number), strip it
+            let dataRow = row;
+            if (Array.isArray(row) && row.length === 11 && /^\d+$/.test(String(row[0] || '').trim())) {
+                dataRow = row.slice(1);
+            }
             // Create 10 editable cells for regular rows
             for (let j = 0; j < 10; j++) {
-                const cellValue = row[j] !== undefined && row[j] !== null ? row[j].toString() : '';
+                const cellValue = dataRow[j] !== undefined && dataRow[j] !== null ? dataRow[j].toString() : '';
                 const td = createEditableCell(cellValue, false, j, tr);
                 tr.appendChild(td);
             }
             
             // Apply condition-based color (condition is at index 7)
-            const conditionValue = row[7] ? row[7].toString().trim() : '';
+            const conditionValue = dataRow[7] ? dataRow[7].toString().trim() : '';
             applyConditionColor(tr, conditionValue);
             
             // Get picture URL from sheet metadata if available
