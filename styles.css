@@ -722,6 +722,12 @@ tbody tr:hover {
     cursor: pointer;
 }
 
+.form-field-blocked {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    color: #6c757d;
+}
+
 .form-group.full-width {
     grid-column: 1 / -1;
 }
