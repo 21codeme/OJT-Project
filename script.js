@@ -1756,9 +1756,11 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     pcRow.getCell(3).value = pcNameOnly;
                     worksheet.mergeCells(currentRow, 3, currentRow, 12);
                 } else if (rowData.length >= 10) {
+                    const isFirstRowOfSection = (exportSectionStart === null);
                     if (exportSectionStart === null) exportSectionStart = currentRow;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
-                    const hasPicture = sheet.pictureUrls && sheet.pictureUrls[rowIndex];
+                    const pictureDataUrl = sheet.pictureUrls && sheet.pictureUrls[rowIndex];
+                    const hasPicture = !!pictureDataUrl;
                     const exportRow = [
                         '',                 // A (no item number column)
                         toStr(rowData[0]),  // B Article/It
@@ -1771,9 +1773,32 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         toStr(rowData[7]),  // I Condition
                         toStr(rowData[8]),  // J Remarks
                         toStr(rowData[9]),  // K User
-                        hasPicture ? 'Image' : ''  // L Picture
+                        hasPicture ? 'Image' : ''  // L Picture (text fallback; toembed = same as uploaded)
                     ];
                     const dataRow = worksheet.addRow(exportRow);
+                    
+                    // Embed the same uploaded picture in Excel (once per section, sa unang row ng merged Picture)
+                    if (isFirstRowOfSection && pictureDataUrl && String(pictureDataUrl).startsWith('data:image/')) {
+                        try {
+                            const match = pictureDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+                            if (match) {
+                                const ext = match[1].toLowerCase() === 'jpeg' ? 'jpeg' : match[1].toLowerCase();
+                                const base64 = match[2];
+                                const imageId = workbook.addImage({
+                                    base64: base64,
+                                    extension: ext === 'jpg' ? 'jpeg' : ext
+                                });
+                                const pictureCol = 11; // L = 0-based 11
+                                const pictureSize = 64; // Slightly larger so uploaded image is clearly visible
+                                worksheet.addImage(imageId, {
+                                    tl: { col: pictureCol, row: currentRow - 1 },
+                                    ext: { width: pictureSize, height: pictureSize }
+                                });
+                            }
+                        } catch (imgErr) {
+                            console.warn('Could not embed picture in Excel:', imgErr);
+                        }
+                    }
                     
                     const conditionValue = (toStr(rowData[7]) || '').trim(); // Condition
                     // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba (Serviceable, etc.) = puti
