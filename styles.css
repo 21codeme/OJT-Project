@@ -272,6 +272,64 @@ header h3 {
     display: block;
 }
 
+.sheet-tab-menu {
+    font-size: 18px;
+    font-weight: bold;
+    color: #6c757d;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.8;
+    position: relative;
+}
+.sheet-tab-menu:hover {
+    background: #dee2e6;
+    color: #495057;
+    opacity: 1;
+}
+.sheet-tab:not(.active) .sheet-tab-menu {
+    display: none;
+}
+.sheet-tab:hover .sheet-tab-menu {
+    display: block;
+}
+
+.sheet-tab-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 2px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 20;
+    min-width: 120px;
+    overflow: hidden;
+}
+.sheet-tab-dropdown.show {
+    display: block;
+}
+.sheet-tab-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 8px 14px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    color: #212529;
+}
+.sheet-tab-dropdown button:hover {
+    background: #f8f9fa;
+}
+.sheet-tab-dropdown button.delete-option {
+    color: #dc3545;
+}
+
 /* Ensure controls and sheet tabs stay above table with proper stacking */
 .controls {
     position: relative;

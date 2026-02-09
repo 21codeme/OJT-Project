@@ -890,6 +890,51 @@ function displayData(data) {
     }
 }
 
+// 3-dot menu on sheet tab: Rename / Delete
+function setupSheetTabMenu(tab, sheetId) {
+    const menuBtn = tab.querySelector('.sheet-tab-menu');
+    const dropdown = tab.querySelector('.sheet-tab-dropdown');
+    const nameSpan = tab.querySelector('.sheet-name');
+    if (!menuBtn || !dropdown) return;
+    
+    menuBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => {
+            if (d !== dropdown) d.classList.remove('show');
+        });
+        dropdown.classList.toggle('show');
+    });
+    
+    dropdown.querySelector('.rename-option')?.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        dropdown.classList.remove('show');
+        const sheet = sheets[sheetId];
+        if (!sheet) return;
+        const newName = prompt('Rename sheet:', sheet.name);
+        if (newName !== null && newName.trim() !== '') {
+            sheet.name = newName.trim();
+            if (nameSpan) nameSpan.textContent = sheet.name;
+            if (checkSupabaseConnection()) {
+                try {
+                    await window.supabaseClient.from('sheets').update({ name: sheet.name }).eq('id', sheetId);
+                } catch (err) {
+                    console.warn('Supabase sheet rename sync failed:', err);
+                }
+            }
+        }
+    });
+    
+    dropdown.querySelector('.delete-option')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.classList.remove('show');
+        deleteSheet(sheetId);
+    });
+}
+
+document.addEventListener('click', function() {
+    document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => d.classList.remove('show'));
+});
+
 // Sheet Management Functions
 function createNewSheet(name = null, data = null) {
     sheetCounter++;
@@ -912,11 +957,16 @@ function createNewSheet(name = null, data = null) {
     tab.setAttribute('data-sheet-id', sheetId);
     tab.innerHTML = `
         <span class="sheet-name">${sheetName}</span>
+        <span class="sheet-tab-menu" data-sheet-id="${sheetId}" title="More">⋮</span>
+        <div class="sheet-tab-dropdown">
+            <button type="button" class="rename-option">Rename</button>
+            <button type="button" class="delete-option">Delete</button>
+        </div>
         <span class="close-sheet" data-sheet-id="${sheetId}">×</span>
     `;
     
     tab.addEventListener('click', function(e) {
-        if (!e.target.classList.contains('close-sheet')) {
+        if (!e.target.closest('.close-sheet') && !e.target.closest('.sheet-tab-menu') && !e.target.closest('.sheet-tab-dropdown')) {
             switchToSheet(sheetId);
         }
     });
@@ -927,6 +977,7 @@ function createNewSheet(name = null, data = null) {
         deleteSheet(sheetId);
     });
     
+    setupSheetTabMenu(tab, sheetId);
     sheetTabs.appendChild(tab);
     switchToSheet(sheetId);
     
@@ -1358,11 +1409,16 @@ function updateSheetTabs() {
         tab.setAttribute('data-sheet-id', sheet.id);
         tab.innerHTML = `
             <span class="sheet-name">${sheet.name}</span>
+            <span class="sheet-tab-menu" data-sheet-id="${sheet.id}" title="More">⋮</span>
+            <div class="sheet-tab-dropdown">
+                <button type="button" class="rename-option">Rename</button>
+                <button type="button" class="delete-option">Delete</button>
+            </div>
             <span class="close-sheet" data-sheet-id="${sheet.id}">×</span>
         `;
         
         tab.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('close-sheet')) {
+            if (!e.target.closest('.close-sheet') && !e.target.closest('.sheet-tab-menu') && !e.target.closest('.sheet-tab-dropdown')) {
                 switchToSheet(sheet.id);
             }
         });
@@ -1373,6 +1429,7 @@ function updateSheetTabs() {
             deleteSheet(sheet.id);
         });
         
+        setupSheetTabMenu(tab, sheet.id);
         sheetTabs.appendChild(tab);
     });
 }
@@ -1727,7 +1784,7 @@ setTimeout(function() {
     const firstTab = document.querySelector('.sheet-tab');
     if (firstTab) {
         firstTab.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('close-sheet')) {
+            if (!e.target.closest('.close-sheet') && !e.target.closest('.sheet-tab-menu') && !e.target.closest('.sheet-tab-dropdown')) {
                 switchToSheet('sheet-1');
             }
         });
@@ -1739,6 +1796,7 @@ setTimeout(function() {
                 deleteSheet('sheet-1');
             });
         }
+        setupSheetTabMenu(firstTab, 'sheet-1');
     }
 }, 100);
 
