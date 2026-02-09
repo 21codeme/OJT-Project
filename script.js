@@ -71,61 +71,6 @@ function setCurrentSheetData(data, hasDataFlag = true) {
     sheets[currentSheetId].hasData = hasDataFlag;
 }
 
-// File input handler
-document.getElementById('excelFile').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                originalWorkbook = workbook;
-                
-                // Get the first sheet
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Convert to JSON with header row
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-                    header: 1, 
-                    defval: '',
-                    raw: false 
-                });
-                
-                // Strip column A (item number) from re-imported exports so row[0] = Article/It
-                function normalizeImportedRows(rows) {
-                    return (rows || []).map(row => {
-                        if (!row || row.length < 2) return row;
-                        if (/^\d+$/.test(String(row[0] || '').trim())) return row.slice(1);
-                        return row;
-                    });
-                }
-                // Import all sheets from workbook
-                workbook.SheetNames.forEach((sheetName, index) => {
-                    const worksheet = workbook.Sheets[sheetName];
-                    let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false });
-                    jsonData = normalizeImportedRows(jsonData);
-                    if (index === 0) {
-                        setCurrentSheetData(jsonData, true);
-                        displayData(jsonData);
-                    } else {
-                        createNewSheet(sheetName, jsonData);
-                    }
-                });
-                
-                // Enable export and clear buttons
-                document.getElementById('exportBtn').disabled = false;
-                document.getElementById('clearBtn').disabled = false;
-            } catch (error) {
-                alert('Error reading Excel file: ' + error.message);
-                console.error(error);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-});
-
 // First column: number for added items only (not PC section)
 function createRowNumCell(numberOrEmpty) {
     const td = document.createElement('td');
