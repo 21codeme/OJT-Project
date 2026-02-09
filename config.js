@@ -23,7 +23,26 @@ function initSupabase() {
             // Supabase JS v2 exposes 'supabase' in global scope
             // Check if the library is loaded
             if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-                window.supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+                // Custom fetch: longer timeout + retry once on failure (helps with Vercel/cdn and flaky networks)
+                const supabaseFetch = function(input, init) {
+                    const timeoutMs = 25000;
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), timeoutMs);
+                    const merged = { ...init, signal: init?.signal || controller.signal };
+                    return fetch(input, merged).then(
+                        (r) => { clearTimeout(id); return r; },
+                        (err) => {
+                            clearTimeout(id);
+                            if (err && err.name === 'AbortError') {
+                                return Promise.reject(new Error('Request timeout'));
+                            }
+                            return Promise.reject(err);
+                        }
+                    );
+                };
+                window.supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
+                    global: { fetch: supabaseFetch }
+                });
                 console.log('Supabase connected successfully');
                 return true;
             } else {

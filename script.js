@@ -1103,15 +1103,25 @@ function saveCurrentSheetData(skipSync) {
 }
 
 // Retry async op on "Failed to fetch" / network errors (common on Vercel)
-async function withRetry(fn, maxAttempts = 3, delayMs = 1200) {
+// Supabase returns { data, error } and does NOT throw on fetch failure — so we must throw when error is fetch-related to trigger retry
+function isFetchError(err) {
+    if (!err) return false;
+    const msg = (err.message || '').toString();
+    return msg === 'Failed to fetch' || msg.includes('fetch') || err.name === 'TypeError';
+}
+async function withRetry(fn, maxAttempts = 4, delayMs = 1500) {
     let lastErr;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            return await fn();
+            const result = await fn();
+            // Supabase client resolves with { error } on network failure; throw so we retry
+            if (result && result.error && isFetchError(result.error)) {
+                throw result.error;
+            }
+            return result;
         } catch (e) {
             lastErr = e;
-            const isNetwork = !e.status && (e.message === 'Failed to fetch' || e.name === 'TypeError');
-            if (attempt < maxAttempts && isNetwork) {
+            if (attempt < maxAttempts && isFetchError(e)) {
                 console.warn(`⚠️ Attempt ${attempt} failed (${e.message}), retrying in ${delayMs}ms...`);
                 await new Promise(r => setTimeout(r, delayMs));
             } else {
@@ -1219,8 +1229,8 @@ async function syncToSupabase() {
                     let pictureUrl = null;
                     if (pictureCell) {
                         const img = pictureCell.querySelector('img');
-                        if (img && img.src) {
-                            pictureUrl = img.src; // Base64 or URL
+                        if (img && img.src && !String(img.src).startsWith('data:')) {
+                            pictureUrl = img.src; // Only external URLs; skip base64 to avoid huge payload and Failed to fetch
                         }
                     }
                     
