@@ -371,13 +371,10 @@ table {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Sticky only within table-container so it doesn't overlap buttons when page scrolls */
+/* Header sumasabay sa scroll para walang overlap sa row (Highlight/Delete) */
 thead {
     background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
     color: white;
-    position: sticky;
-    top: 0;
-    z-index: 3;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
