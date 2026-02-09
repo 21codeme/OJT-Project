@@ -1633,8 +1633,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             
             // Data rows simula row 8 (2 blank rows after title)
             let currentRow = 8;
-            let dataRowIndex = 0; // Index for tracking highlight states
-            let exportItemNum = 0; // Column A: number for added items only (not PC section)
+            let dataRowIndex = 0;
+            let exportItemNum = 0;
+            let exportSectionStart = null; // Para sa merge ng Unit of meas, Unit Value, User per section
+            const exportSections = [];
             
             sheet.data.forEach(rowData => {
                 // Skip empty rows
@@ -1657,7 +1659,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 );
                 
                 if (isPCHeader) {
-                    // PC row: A empty, B empty, C–L merged "PC 1" (gaya sa reference)
+                    if (exportSectionStart !== null) {
+                        exportSections.push({ start: exportSectionStart, end: currentRow - 1 });
+                        exportSectionStart = null;
+                    }
                     const pcNameOnly = firstCell;
                     const pcRowValues = ['', '', pcNameOnly, '', '', '', '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
@@ -1675,7 +1680,8 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     pcRow.getCell(3).value = pcNameOnly;
                     worksheet.mergeCells(currentRow, 3, currentRow, 12);
                 } else if (rowData.length >= 10) {
-                    exportItemNum++; // Column A: item number (added items only)
+                    if (exportSectionStart === null) exportSectionStart = currentRow;
+                    exportItemNum++;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
                     const exportRow = [
                         exportItemNum,      // A item number
@@ -1702,17 +1708,29 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         fillColor = { argb: 'FFF8D7DA' }; // Light red
                     }
                     const cellFill = { type: 'pattern', pattern: 'solid', fgColor: fillColor };
+                    const whiteFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
                     const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
                     for (let col = 1; col <= 12; col++) {
                         const cell = dataRow.getCell(col);
                         cell.border = blackBorder;
                         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                        cell.fill = cellFill;
+                        cell.fill = (col === 5 || col === 6 || col === 11) ? whiteFill : cellFill; // E,F,K walang kulay
                     }
                     
                     dataRowIndex++;
                 }
                 currentRow++;
+            });
+            
+            if (exportSectionStart !== null) {
+                exportSections.push({ start: exportSectionStart, end: currentRow - 1 });
+            }
+            exportSections.forEach(s => {
+                if (s.end >= s.start) {
+                    worksheet.mergeCells(s.start, 5, s.end, 5); // E Unit of meas
+                    worksheet.mergeCells(s.start, 6, s.end, 6); // F Unit Value
+                    worksheet.mergeCells(s.start, 11, s.end, 11); // K User
+                }
             });
             
             // Auto-fit column widths (12 columns: A empty, B–L data)
