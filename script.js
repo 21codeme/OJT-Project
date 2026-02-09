@@ -115,8 +115,9 @@ function applyConditionColor(row, condition) {
 const DATA_COLUMN_ORDER = ['Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 'Unit Value', 'Quantity per Physical count', 'Location/Whereabout', 'Condition', 'Remarks', 'User'];
 const UNIT_MEAS_COL = 3;
 const UNIT_VALUE_COL = 4;
+const USER_COL = 9;
 
-// Per PC section: merge Unit of meas at Unit Value vertically (isang cell para sa buong section)
+// Per PC section: merge Unit of meas, Unit Value, at User vertically; walang kulay ang columns na ito
 function mergeUnitColumnsInTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
@@ -141,16 +142,23 @@ function mergeUnitColumnsInTable() {
         const firstRow = rows[firstIdx];
         const unitMeasTd = firstRow.querySelector(`td.editable[data-column="${UNIT_MEAS_COL}"]`);
         const unitValueTd = firstRow.querySelector(`td.editable[data-column="${UNIT_VALUE_COL}"]`);
+        const userTd = firstRow.querySelector(`td.editable[data-column="${USER_COL}"]`);
         if (!unitMeasTd || !unitValueTd) continue;
         const n = indices.length;
         unitMeasTd.rowSpan = n;
         unitValueTd.rowSpan = n;
+        if (userTd) {
+            userTd.rowSpan = n;
+            userTd.classList.add('col-no-bg');
+        }
+        unitMeasTd.classList.add('col-no-bg');
+        unitValueTd.classList.add('col-no-bg');
         for (let j = 1; j < n; j++) {
             const row = rows[indices[j]];
-            const td3 = row.querySelector(`td.editable[data-column="${UNIT_MEAS_COL}"]`);
-            const td4 = row.querySelector(`td.editable[data-column="${UNIT_VALUE_COL}"]`);
-            if (td4) td4.remove();
-            if (td3) td3.remove();
+            [USER_COL, UNIT_VALUE_COL, UNIT_MEAS_COL].forEach(col => {
+                const td = row.querySelector(`td.editable[data-column="${col}"]`);
+                if (td) td.remove();
+            });
         }
     }
 }
@@ -160,6 +168,7 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
     const td = document.createElement('td');
     td.classList.add('editable');
     if (cellIndex >= 0) td.setAttribute('data-column', String(cellIndex));
+    if (cellIndex === UNIT_MEAS_COL || cellIndex === UNIT_VALUE_COL || cellIndex === USER_COL) td.classList.add('col-no-bg');
     
     const input = document.createElement('input');
     input.type = 'text';
@@ -1032,11 +1041,13 @@ function saveCurrentSheetData(skipSync) {
     const pictureUrls = []; // Store picture URLs
     let sectionUnitMeas = '';
     let sectionUnitValue = '';
+    let sectionUser = '';
 
     rows.forEach((row, index) => {
         if (row.classList.contains('pc-header-row')) {
             sectionUnitMeas = '';
             sectionUnitValue = '';
+            sectionUser = '';
             const firstCell = row.querySelector('td');
             if (firstCell) {
                 const input = firstCell.querySelector('input');
@@ -1053,11 +1064,15 @@ function saveCurrentSheetData(skipSync) {
                 const input = cell.querySelector('input');
                 rowData.push(input ? input.value : '');
             });
-            if (rowData.length === 8) {
+            if (rowData.length === 7) {
+                rowData.splice(3, 0, sectionUnitMeas, sectionUnitValue);
+                rowData.splice(9, 0, sectionUser);
+            } else if (rowData.length === 8) {
                 rowData.splice(3, 0, sectionUnitMeas, sectionUnitValue);
             } else if (rowData.length >= 10) {
                 sectionUnitMeas = rowData[UNIT_MEAS_COL] || '';
                 sectionUnitValue = rowData[UNIT_VALUE_COL] || '';
+                sectionUser = rowData[USER_COL] || '';
             }
             if (rowData.length > 0) {
                 sheetData.push(rowData);

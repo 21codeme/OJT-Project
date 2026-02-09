@@ -489,6 +489,14 @@ tbody td input:focus {
     background-color: #f5c2c7 !important;
 }
 
+/* Unit of measure, Unit Value, User: walang kulay (puti lang), gaya sa PC 9 */
+tbody td.col-no-bg {
+    background-color: white !important;
+}
+tbody td.col-no-bg input {
+    background: transparent !important;
+}
+
 /* Default: lahat ng data row puti; kulay lang kung Borrowed o Unserviceable */
 tbody tr {
     background-color: white;
