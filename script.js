@@ -1426,9 +1426,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                            'July', 'August', 'September', 'October', 'November', 'December'];
             const currentDate = `${months[now.getMonth()]} ${now.getFullYear()}`;
             
-            // Logo: 4 cm (~151 px), centered (columns A–D area so nasa gitna ng header)
+            // Logo: 4 cm, naka-center sa kaliwang bahagi (col C)
             const logoSizeCm = 4;
-            const logoSizePx = Math.round(logoSizeCm * 37.8); // ~37.8 px per cm at 96 DPI
+            const logoSizePx = Math.round(logoSizeCm * 37.8);
             try {
                 const logoResponse = await fetch('images/omsc.png');
                 const logoBuffer = await logoResponse.arrayBuffer();
@@ -1436,7 +1436,6 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     buffer: logoBuffer,
                     extension: 'png',
                 });
-                // Logo sa A1, laki 4 cm (centered sa sariling area)
                 worksheet.addImage(imageId, {
                     tl: { col: 0, row: 0 },
                     ext: { width: logoSizePx, height: logoSizePx }
@@ -1445,34 +1444,43 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 console.warn('Could not load logo image:', logoError);
             }
             
-            // Title block: merge B–H (2–8), lahat naka-center
-            const row1 = worksheet.addRow(['', 'OCCIDENTAL MINDORO STATE COLLEGE']);
-            row1.getCell(2).font = { bold: true, size: 18 };
-            row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(1, 2, 1, 8);
+            // Title block: naka-center sa sheet (merge D–I, cols 4–9)
+            const titleStartCol = 4;
+            const titleEndCol = 9;
+            const row1 = worksheet.addRow(['', '', '', 'OCCIDENTAL MINDORO STATE COLLEGE']);
+            worksheet.mergeCells(1, titleStartCol, 1, titleEndCol);
+            const c1 = worksheet.getRow(1).getCell(titleStartCol);
+            c1.value = 'OCCIDENTAL MINDORO STATE COLLEGE';
+            c1.font = { bold: true, size: 18 };
+            c1.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row2 = worksheet.addRow(['', 'Multimedia and Speech Laboratory']);
-            row2.getCell(2).font = { bold: true, size: 14 };
-            row2.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(2, 2, 2, 8);
+            const row2 = worksheet.addRow(['', '', '', 'Multimedia and Speech Laboratory']);
+            worksheet.mergeCells(2, titleStartCol, 2, titleEndCol);
+            const c2 = worksheet.getRow(2).getCell(titleStartCol);
+            c2.value = 'Multimedia and Speech Laboratory';
+            c2.font = { bold: true, size: 14 };
+            c2.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row3 = worksheet.addRow(['', 'ICT Equipment, Devices & Accessories']);
-            row3.getCell(2).font = { bold: true, size: 12 };
-            row3.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-            worksheet.mergeCells(3, 2, 3, 8);
+            const row3 = worksheet.addRow(['', '', '', 'ICT Equipment, Devices & Accessories']);
+            worksheet.mergeCells(3, titleStartCol, 3, titleEndCol);
+            const c3 = worksheet.getRow(3).getCell(titleStartCol);
+            c3.value = 'ICT Equipment, Devices & Accessories';
+            c3.font = { bold: true, size: 12 };
+            c3.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row4 = worksheet.addRow(['', `AS OF ${currentDate}`]);
-            worksheet.mergeCells(4, 2, 4, 8); // merge muna bago alignment
-            const cell4 = worksheet.getRow(4).getCell(2);
-            cell4.value = `AS OF ${currentDate}`;
-            cell4.font = { bold: true, size: 11 };
-            cell4.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            const row4 = worksheet.addRow(['', '', '', `AS OF ${currentDate}`]);
+            worksheet.mergeCells(4, titleStartCol, 4, titleEndCol);
+            const c4 = worksheet.getRow(4).getCell(titleStartCol);
+            c4.value = `AS OF ${currentDate}`;
+            c4.font = { bold: true, size: 11 };
+            c4.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             worksheet.getRow(4).commit();
             
-            // Empty row for spacing (row 5)
+            // Dalawang blank rows para sa space sa pagitan ng title at table
+            worksheet.addRow([]);
             worksheet.addRow([]);
             
-            // Header row: isulat direkta sa row 6, lahat ng 12 columns (A–L) para hindi mawala
+            // Header row: row 7 (dahil 2 blank rows na)
             const headerLabels = [
                 '',  // A blank
                 'Article/It',           // B
@@ -1487,7 +1495,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 'User',                 // K
                 'Picture'               // L
             ];
-            const headerRowNum = 6;
+            const headerRowNum = 7;
             const headerRow = worksheet.getRow(headerRowNum);
             headerRow.height = 22;
             const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
@@ -1501,8 +1509,8 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             }
             headerRow.commit();
             
-            // Data rows simula row 7 (hindi na overwrite ang row 6)
-            let currentRow = 7;
+            // Data rows simula row 8 (2 blank rows after title)
+            let currentRow = 8;
             let dataRowIndex = 0; // Index for tracking highlight states
             
             sheet.data.forEach(rowData => {
@@ -1613,7 +1621,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             worksheet.getRow(2).height = 25; // Multimedia and Speech Laboratory
             worksheet.getRow(3).height = 22; // ICT Equipment
             worksheet.getRow(4).height = 20; // AS OF date
-            worksheet.getRow(6).height = 25; // Column headers
+            worksheet.getRow(7).height = 25; // Column headers
             
             // Configure page setup for long bond paper and fit to one page
             worksheet.pageSetup = {
