@@ -1468,7 +1468,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             // Empty row for spacing
             worksheet.addRow([]);
             
-            // Header row: column A empty, B–L = Article/It … Picture (tumutugma sa web table)
+            // Header row: laging unang row ng table – Article/It, Description, … Picture (walang merge)
             const headerValues = [
                 '',  // A empty
                 'Article/It',
@@ -1484,17 +1484,18 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 'Picture'
             ];
             const headerRow = worksheet.addRow(headerValues);
-            
+            headerRow.height = 22;
             const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
-            headerRow.eachCell((cell) => {
+            for (let c = 1; c <= 12; c++) {
+                const cell = headerRow.getCell(c);
+                if (headerValues[c - 1] !== undefined) cell.value = headerValues[c - 1];
                 cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF495057' } };
                 cell.border = blackBorder;
-            });
+            }
             
-            // Add data rows
-            let currentRow = 7; // Start after headers (0-indexed: row 6 is column headers, so data starts at row 7)
+            let currentRow = 7; // Data starts after header (row 6)
             let dataRowIndex = 0; // Index for tracking highlight states
             
             sheet.data.forEach(rowData => {
