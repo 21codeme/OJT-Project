@@ -1,0 +1,13 @@
+# Ping the deployed site every 6 days so Supabase project doesn't pause (free tier)
+name: Supabase Keep-Alive
+on:
+  schedule:
+    - cron: '0 8 */6 * *'  # Every 6 days at 8:00 UTC
+  workflow_dispatch:        # Run manually from Actions tab
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping site (triggers Supabase activity)
+        run: |
+          curl -sSf -o /dev/null --max-time 30 "https://ojt-project-laboratory.vercel.app" || true
