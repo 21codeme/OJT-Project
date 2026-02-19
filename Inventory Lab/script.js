@@ -1629,7 +1629,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             const logoSizeCm = 4;
             const logoSizePx = Math.round(logoSizeCm * 37.8);
             try {
-                const logoResponse = await fetch('images/omsc.png');
+                const logoResponse = await fetch('../images/omsc.png');
                 const logoBuffer = await logoResponse.arrayBuffer();
                 const imageId = workbook.addImage({
                     buffer: logoBuffer,
