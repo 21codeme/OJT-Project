@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Inventory - Occidental Mindoro State College</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        .slideshow {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+        .slideshow img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1.2s ease-in-out;
+        }
+        .slideshow img.active {
+            opacity: 1;
+            z-index: 1;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.5) 100%);
+            pointer-events: none;
+        }
+
+        .content {
+            position: relative;
+            z-index: 3;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            pointer-events: none;
+        }
+        .content a {
+            pointer-events: auto;
+        }
+        .content h1 {
+            color: #fff;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .content p {
+            color: rgba(255,255,255,0.95);
+            text-shadow: 0 1px 10px rgba(0,0,0,0.5);
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            margin-bottom: 28px;
+        }
+        .buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            display: inline-block;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+        }
+        .btn-schedule {
+            background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="slideshow" id="slideshow"></div>
+    <div class="overlay"></div>
+    <div class="content">
+        <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
+        <p>Multimedia and Speech Laboratory</p>
+        <div class="buttons">
+            <a href="Inventory%20Lab/Inventory.html" class="btn">Inventory</a>
+            <a href="#" class="btn btn-schedule">Class Schedule</a>
+        </div>
+    </div>
+    <script>
+        const images = [
+            "1. DRONE 2024/DJI_0558-2.jpg",
+            "1. DRONE 2024/DJI_0562-2.jpg",
+            "1. DRONE 2024/DJI_0566-2.jpg",
+            "1. DRONE 2024/DJI_0574-2.jpg",
+            "1. DRONE 2024/DJI_0578-2.jpg",
+            "1. DRONE 2024/DJI_0582-2.jpg",
+            "1. DRONE 2024/DJI_0587-2.jpg",
+            "1. DRONE 2024/DJI_0592-2.jpg"
+        ];
+        const container = document.getElementById('slideshow');
+        images.forEach((src, i) => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = 'Drone photo ' + (i + 1);
+            if (i === 0) img.classList.add('active');
+            container.appendChild(img);
+        });
+        let idx = 0;
+        setInterval(() => {
+            const all = container.querySelectorAll('img');
+            all[idx].classList.remove('active');
+            idx = (idx + 1) % all.length;
+            all[idx].classList.add('active');
+        }, 4000);
+    </script>
+</body>
+</html>
