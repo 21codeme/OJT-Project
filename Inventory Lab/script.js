@@ -754,7 +754,7 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         
         tbody.appendChild(tr);
         mergeUnitColumnsInTable();
-        setCurrentSheetData(getCurrentSheet().data, true);
+        updateDataFromTable(); // Save and sync to Supabase
         document.getElementById('exportBtn').disabled = false;
         document.getElementById('clearBtn').disabled = false;
     }
