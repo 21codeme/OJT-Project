@@ -484,6 +484,34 @@ addItemForm.addEventListener('submit', function(e) {
     }
 });
 
+// Compress image so it saves to Supabase and appears in Excel (max 800px, JPEG 0.8)
+function compressImage(dataUrl) {
+    return new Promise(function(resolve) {
+        const img = new Image();
+        img.onload = function() {
+            const maxSize = 800;
+            let w = img.width, h = img.height;
+            if (w > maxSize || h > maxSize) {
+                if (w > h) { h = (h * maxSize) / w; w = maxSize; }
+                else { w = (w * maxSize) / h; h = maxSize; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            try {
+                const compressed = canvas.toDataURL('image/jpeg', 0.8);
+                resolve(compressed);
+            } catch (e) {
+                resolve(dataUrl); // fallback to original
+            }
+        };
+        img.onerror = function() { resolve(dataUrl); };
+        img.src = dataUrl;
+    });
+}
+
 // Create picture cell
 function createPictureCell(imageData = null) {
     const td = document.createElement('td');
@@ -494,7 +522,7 @@ function createPictureCell(imageData = null) {
         img.src = imageData;
         img.alt = 'Item Picture';
         img.addEventListener('click', function() {
-            showImageModal(imageData);
+            showImageModal(img.src);
         });
         td.appendChild(img);
         
@@ -512,8 +540,10 @@ function createPictureCell(imageData = null) {
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        img.src = e.target.result;
-                        updateDataFromTable();
+                        compressImage(e.target.result).then(function(compressed) {
+                            img.src = compressed;
+                            updateDataFromTable();
+                        });
                     };
                     reader.readAsDataURL(file);
                 }
@@ -539,38 +569,42 @@ function createPictureCell(imageData = null) {
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        td.innerHTML = '';
-                        const img = document.createElement('img');
-                        img.src = e.target.result;
-                        img.alt = 'Item Picture';
-                        img.addEventListener('click', function() {
-                            showImageModal(e.target.result);
-                        });
-                        td.appendChild(img);
-                        
-                        const changeBtn = document.createElement('button');
-                        changeBtn.className = 'upload-picture-btn';
-                        changeBtn.textContent = '📷 Change';
-                        changeBtn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const changeInput = document.createElement('input');
-                            changeInput.type = 'file';
-                            changeInput.accept = 'image/*';
-                            changeInput.addEventListener('change', function(e) {
-                                const file = e.target.files[0];
-                                if (file) {
-                                    const reader2 = new FileReader();
-                                    reader2.onload = function(e) {
-                                        img.src = e.target.result;
-                                        updateDataFromTable();
-                                    };
-                                    reader2.readAsDataURL(file);
-                                }
+                        compressImage(e.target.result).then(function(compressed) {
+                            td.innerHTML = '';
+                            const img = document.createElement('img');
+                            img.src = compressed;
+                            img.alt = 'Item Picture';
+                            img.addEventListener('click', function() {
+                                showImageModal(img.src);
                             });
-                            changeInput.click();
+                            td.appendChild(img);
+                            
+                            const changeBtn = document.createElement('button');
+                            changeBtn.className = 'upload-picture-btn';
+                            changeBtn.textContent = '📷 Change';
+                            changeBtn.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                const changeInput = document.createElement('input');
+                                changeInput.type = 'file';
+                                changeInput.accept = 'image/*';
+                                changeInput.addEventListener('change', function(e) {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        const reader2 = new FileReader();
+                                        reader2.onload = function(e) {
+                                            compressImage(e.target.result).then(function(c) {
+                                                img.src = c;
+                                                updateDataFromTable();
+                                            });
+                                        };
+                                        reader2.readAsDataURL(file);
+                                    }
+                                });
+                                changeInput.click();
+                            });
+                            td.appendChild(changeBtn);
+                            updateDataFromTable();
                         });
-                        td.appendChild(changeBtn);
-                        updateDataFromTable();
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1265,8 +1299,8 @@ async function syncToSupabase() {
                             const src = String(img.src);
                             if (!src.startsWith('data:')) {
                                 sectionPictureUrl = src;
-                            } else if (src.length <= 500000) {
-                                sectionPictureUrl = src; // Allow base64 up to ~500KB so it saves to Supabase
+                            } else if (src.length <= 800000) {
+                                sectionPictureUrl = src; // Compressed images fit; up to ~800KB for Supabase
                             }
                         }
                     }
