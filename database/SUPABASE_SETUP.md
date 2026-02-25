@@ -29,11 +29,9 @@ const SUPABASE_CONFIG = {
 5. Click **Run** to execute the SQL
 
 This will create:
-- `inventory_items` table - stores all inventory data
-- `sheets` table - stores sheet information
-- Indexes for better performance
-- Row Level Security policies
-- Auto-update triggers
+- **Lab Inventory**: `inventory_items` table, `sheets` table
+- **Class Schedule**: Run `class-schedule-supabase.sql` separately to create `class_schedule_sheets` and `class_schedule_entries`
+- Indexes, Row Level Security policies, and auto-update triggers
 
 ## Step 4: Verify Connection
 

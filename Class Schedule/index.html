@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Schedule - Occidental Mindoro State College</title>
+    <link rel="icon" href="../images/omsc.png" type="image/png" sizes="any">
+    <link rel="stylesheet" href="schedule.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+</head>
+<body>
+    <a href="../index.html" class="back">← Back to Home</a>
+    <div class="container">
+        <header class="page-header">
+            <div class="header-content">
+                <div class="logo-wrapper">
+                    <img src="../images/omsc.png" alt="OMSC Logo" class="header-logo">
+                </div>
+                <div class="header-text">
+                    <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
+                    <h2>Computer Laboratory Schedule</h2>
+                    <h3>Lab Schedule - Main Campus</h3>
+                    <p class="date-label">2nd Semester 2023 - 2024</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="schedule-section">
+            <h2>Weekly Schedule</h2>
+            <div class="schedule-toolbar">
+                <div class="add-schedule-dropdown">
+                    <button type="button" id="addScheduleBtn" class="btn-add-schedule" aria-haspopup="true" aria-expanded="false">➕ Add Schedule ▾</button>
+                    <div id="addScheduleMenu" class="add-schedule-menu" hidden>
+                        <button type="button" class="day-btn" data-day="Monday">Monday</button>
+                        <button type="button" class="day-btn" data-day="Tuesday">Tuesday</button>
+                        <button type="button" class="day-btn" data-day="Wednesday">Wednesday</button>
+                        <button type="button" class="day-btn" data-day="Thursday">Thursday</button>
+                        <button type="button" class="day-btn" data-day="Friday">Friday</button>
+                        <button type="button" class="day-btn" data-day="Saturday">Saturday</button>
+                    </div>
+                </div>
+                <div class="add-sheet-dropdown">
+                    <button type="button" id="addSheetBtn" class="btn-add-sheet" aria-haspopup="true" aria-expanded="false">📄 Add Sheet ▾</button>
+                    <div id="addSheetMenu" class="add-sheet-menu" hidden>
+                        <button type="button" class="sheet-option-btn" data-sheet="COMPUTER LABORATORY">COMPUTER LABORATORY</button>
+                        <button type="button" class="sheet-option-btn" data-sheet="MULTIMEDIA AND SPEECH LABORATORY">MULTIMEDIA AND SPEECH LABORATORY</button>
+                    </div>
+                </div>
+                <button type="button" id="exportExcelBtn" class="btn-export">📥 Export to Excel</button>
+            </div>
+            <div id="sheetTabsBar" class="sheet-tabs-bar"></div>
+            <div id="addFormPanel" class="add-form-panel" hidden>
+                <p class="form-panel-title">Add schedule for <span id="selectedDayLabel"></span></p>
+                <div class="form-row">
+                    <label>Time slot:</label>
+                    <input type="text" id="formTimeSlot" placeholder="e.g. 7:30 - 9:30 or 7:30 to 9:30">
+                </div>
+                <div class="form-row">
+                    <label>Type:</label>
+                    <select id="formType">
+                        <option value="">— Class —</option>
+                        <option value="BREAK">BREAK</option>
+                        <option value="LUNCH BREAK">LUNCH BREAK</option>
+                        <option value="VACANT">VACANT</option>
+                        <option value="VACANT/LAB MAINTENANCE">VACANT/LAB MAINTENANCE</option>
+                    </select>
+                </div>
+                <div id="formClassFields" class="form-class-fields">
+                    <div class="form-row"><label>Instructor:</label><input type="text" id="formInstructor" placeholder="Instructor name"></div>
+                    <div class="form-row"><label>Subject:</label><input type="text" id="formCourse" placeholder="Subject"></div>
+                    <div class="form-row">
+                        <label>Course / Student:</label>
+                        <select id="formCode">
+                            <option value="">— Select course —</option>
+                            <optgroup label="SCOA">
+                                <option value="BSAIS">BSAIS</option>
+                                <option value="BSOA">BSOA</option>
+                            </optgroup>
+                            <optgroup label="CBAM">
+                                <option value="BSBA">BSBA</option>
+                                <option value="OM">OM</option>
+                                <option value="BPA">BPA</option>
+                            </optgroup>
+                            <optgroup label="CAST">
+                                <option value="HM">HM</option>
+                                <option value="BSDC">BSDC</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-row" id="formYearRow" style="display:none">
+                        <label>Year:</label>
+                        <select id="formYear">
+                            <option value="">— Select year —</option>
+                            <option value="1">1st Year</option>
+                            <option value="2">2nd Year</option>
+                            <option value="3">3rd Year</option>
+                            <option value="4">4th Year</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="formSectionRow" style="display:none">
+                        <label>Section:</label>
+                        <select id="formSection">
+                            <option value="">— Select section —</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                            <option value="H">H</option>
+                            <option value="I">I</option>
+                            <option value="J">J</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="formStudentCountRow" style="display:none">
+                        <label>No. of Students:</label>
+                        <input type="number" id="formStudentCount" min="1" placeholder="e.g. 45">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="formSaveBtn" class="btn-save">Save</button>
+                    <button type="button" id="formCancelBtn" class="btn-cancel">Cancel</button>
+                </div>
+            </div>
+            <p class="hint">Click <strong>Add Schedule</strong>, then choose a day. Fill in the time slot and details, then Save. Entries will appear in the schedule below.</p>
+            <div class="schedule-grid-wrapper">
+                <table class="schedule-grid" id="scheduleGrid">
+                    <thead>
+                        <tr>
+                            <th colspan="2">Monday</th>
+                            <th colspan="2">Tuesday</th>
+                            <th colspan="2">Wednesday</th>
+                            <th colspan="2">Thursday</th>
+                            <th colspan="2">Friday</th>
+                            <th colspan="2">Saturday</th>
+                        </tr>
+                        <tr class="subhead">
+                            <th>Schedule</th><th>Time</th>
+                            <th>Schedule</th><th>Time</th>
+                            <th>Schedule</th><th>Time</th>
+                            <th>Schedule</th><th>Time</th>
+                            <th>Schedule</th><th>Time</th>
+                            <th>Schedule</th><th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bottom-tables">
+            <div class="table-block">
+                <h3>Instructor / College Association</h3>
+                <table class="data-table" id="instructorTable">
+                    <thead><tr><th>Dept/Category</th><th>Instructor(s)</th></tr></thead>
+                    <tbody>
+                        <tr><td><input value="SCOA"></td><td><input value="H. HERNANDEZ, H. GADAY"></td></tr>
+                        <tr><td><input value="CBAM"></td><td><input value="P. DAGUIHON, E. DE GUZMAN, P. CALARANAN, A. DALUYOT"></td></tr>
+                        <tr><td><input value="MH"></td><td><input value="N/A"></td></tr>
+                        <tr><td><input value="CAST"></td><td><input value="AM. DELA CRUZ"></td></tr>
+                        <tr><td><input value="VACANT"></td><td><input value=""></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-block">
+                <h3>Number of Existing PC</h3>
+                <table class="data-table" id="pcTable">
+                    <thead><tr><th></th><th>Core</th><th>2023 &amp; Earlier</th><th>2024</th><th>2025</th></tr></thead>
+                    <tbody>
+                        <tr><td>Core</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Car #1</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Car #2</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Car #3</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Total</td><td></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Overall</td><td></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-block">
+                <h3>Computer Programs Used</h3>
+                <table class="data-table" id="programsTable">
+                    <thead><tr><th>Dept/Category</th><th>Computer Programs Used</th></tr></thead>
+                    <tbody>
+                        <tr><td><input value="SCOA"></td><td><input value="MS OFFICE"></td></tr>
+                        <tr><td><input value="CBAM"></td><td><input value="AHW/PROJECT DEV/MSOFFICE"></td></tr>
+                        <tr><td><input value="MH"></td><td><input value="MINDUP/MS"></td></tr>
+                        <tr><td><input value="CAST"></td><td><input value="CARYN/MS OFFICE"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="signatures">
+            <div class="sig-row">
+                <label>Prepared by:</label>
+                <input type="text" id="preparedBy" value="JOYCE C. CRUZ, Laboratory Custodian">
+            </div>
+            <div class="sig-row">
+                <label>Approved by:</label>
+                <input type="text" id="approvedBy" value="JOSELITO D. AGRID, PhD., LPT, CHRA, Director for Instruction, CRIST / Immediate Supervisor">
+            </div>
+        </div>
+
+    </div>
+    <script src="schedule.js"></script>
+    <script>
+        if (typeof initSupabase === 'function') initSupabase();
+    </script>
+</body>
+</html>

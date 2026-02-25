@@ -1,0 +1,601 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: url("../1. DRONE 2024/DJI_0582-2.jpg") center/cover no-repeat fixed;
+    min-height: 100vh;
+    padding: 20px;
+}
+.back {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.back:hover { text-decoration: underline; }
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: calc(100vh - 40px);
+}
+
+/* Dark blue header - same style as Inventory Lab */
+.page-header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 24px 30px;
+    flex-shrink: 0;
+}
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.logo-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.header-logo {
+    height: 120px;
+    width: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    background: transparent;
+    display: block;
+}
+.header-text {
+    text-align: center;
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.page-header h1 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+.page-header h2 {
+    font-size: 20px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.page-header h3 {
+    font-size: 16px;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+.page-header .date-label {
+    font-size: 14px;
+    margin-top: 6px;
+    font-weight: 500;
+    opacity: 0.95;
+}
+
+.header-section {
+    margin-bottom: 24px;
+    padding: 24px 28px 20px;
+    border-bottom: 2px solid #dee2e6;
+    flex-shrink: 0;
+}
+.header-section .form-title {
+    font-size: 1.25rem;
+    color: #1e3c72;
+    margin-bottom: 16px;
+    text-align: center;
+}
+.header-fields .field-row {
+    margin-bottom: 12px;
+}
+.header-fields label {
+    display: block;
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 4px;
+}
+.header-fields input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+.header-fields .two-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.schedule-section {
+    margin-bottom: 28px;
+    padding: 24px 28px 0;
+    min-height: 0;
+}
+.schedule-section h2 {
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+.schedule-toolbar {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.add-schedule-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.btn-add-schedule {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+.btn-add-schedule:hover { filter: brightness(1.1); }
+.btn-add-sheet {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+.btn-add-sheet:hover { filter: brightness(1.1); }
+.add-sheet-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.add-sheet-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    min-width: 260px;
+    padding: 8px 0;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.add-sheet-menu[hidden] { display: none !important; }
+.add-sheet-menu .sheet-option-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    color: #333;
+    border: none;
+    border-radius: 0;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+.add-sheet-menu .sheet-option-btn:hover {
+    background: #e9ecef;
+    color: #1e3c72;
+}
+
+.sheet-tabs-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+.sheet-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f1f3f5;
+    border: 1px solid #dee2e6;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #495057;
+}
+.sheet-tab:hover {
+    background: #e9ecef;
+}
+.sheet-tab.active {
+    background: #fff;
+    border-bottom-color: #fff;
+    font-weight: 600;
+    color: #1e3c72;
+    margin-bottom: -1px;
+}
+.sheet-tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: #868e96;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.sheet-tab-close:hover {
+    background: #dee2e6;
+    color: #495057;
+}
+
+.add-schedule-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    min-width: 160px;
+    padding: 8px 0;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.add-schedule-menu[hidden] { display: none !important; }
+.add-schedule-menu .day-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    color: #333;
+    border: none;
+    border-radius: 0;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+.add-schedule-menu .day-btn:hover {
+    background: #e9ecef;
+    color: #1e3c72;
+}
+.day-btn {
+    padding: 8px 14px;
+    background: #5a6c8a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.day-btn:hover { background: #4a90a4; }
+.add-form-panel {
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+.form-panel-title {
+    margin-bottom: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.form-row {
+    margin-bottom: 12px;
+}
+.form-row label {
+    display: block;
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 4px;
+}
+.form-row input, .form-row select {
+    width: 100%;
+    max-width: 320px;
+    padding: 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+.form-class-fields .form-row { margin-bottom: 10px; }
+.form-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+}
+.btn-save {
+    padding: 8px 20px;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-save:hover { background: #218838; }
+.btn-cancel {
+    padding: 8px 20px;
+    background: #6c757d;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.btn-cancel:hover { background: #5a6268; }
+.schedule-section .hint {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 12px;
+}
+.schedule-grid-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    min-height: 380px;
+    background: #fff;
+}
+.schedule-grid {
+    width: 100%;
+    min-width: 1360px;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.schedule-grid th, .schedule-grid td {
+    border: 1px solid #dee2e6;
+    padding: 6px;
+    vertical-align: top;
+}
+.schedule-grid thead th {
+    background: #4a90a4;
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+}
+.schedule-grid thead tr.subhead th {
+    background: #5a6c8a;
+    font-size: 0.75rem;
+}
+.schedule-grid .cell-time {
+    min-width: 88px;
+    width: 88px;
+    background: #f8f9fa;
+    color: #1a1a1a;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-align: center;
+    vertical-align: middle;
+    position: relative;
+    padding-right: 24px;
+}
+.schedule-grid .cell-time-lunch {
+    background: #fff3cd;
+    font-weight: 700;
+}
+.schedule-grid .cell-lunch-break {
+    background: #FFFF00 !important;
+    color: #000;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-align: center;
+    vertical-align: middle;
+    padding: 10px;
+}
+.schedule-grid .cell-time .cell-time-menu {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.schedule-grid .cell-time .cell-time-menu:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #333;
+}
+.cell-wrap-lunch .cell-type { display: none !important; }
+.cell-lunch-label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #1a1a1a;
+    text-align: center;
+    padding: 4px 0;
+}
+.schedule-grid .cell-slot {
+    min-width: 140px;
+    min-height: 72px;
+}
+.schedule-grid .cell-slot input, .schedule-grid .cell-slot select {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+.schedule-grid .cell-slot input:last-of-type { margin-bottom: 0; }
+.schedule-grid .cell-slot select {
+    margin-bottom: 0;
+    background: #f8f9fa;
+}
+.schedule-grid .cell-slot.special-break { background: #fff3cd; }
+.schedule-grid .cell-slot.special-vacant { background: #d4edda; }
+.schedule-grid .cell-slot.cell-bg-pink { background: #f8caca !important; }
+.schedule-grid .cell-slot.cell-bg-light-pink { background: #fce4ec !important; }
+.schedule-grid .cell-slot.cell-bg-light-blue { background: #b8d4e8 !important; }
+.schedule-grid .cell-slot.cell-bg-blue { background: #87b3d9 !important; }
+.schedule-grid .cell-slot.cell-bg-green { background: #d4edda !important; }
+.schedule-grid .cell-slot.cell-display {
+    min-height: 48px;
+    position: relative;
+    font-size: 0.75rem;
+    padding-right: 28px;
+    vertical-align: middle;
+    text-align: center;
+}
+.schedule-grid .cell-slot.cell-display.cell-class .cell-class-content {
+    text-align: center;
+    line-height: 1.15;
+    margin: 0;
+    padding: 0;
+}
+.schedule-grid .cell-slot.cell-display.cell-class .cell-line-instructor,
+.schedule-grid .cell-slot.cell-display.cell-class .cell-line-code {
+    font-weight: 700;
+    margin: 0;
+    padding: 0;
+}
+.schedule-grid .cell-slot.cell-display.cell-class .cell-line-subject {
+    margin: 0;
+    padding: 0;
+}
+.schedule-grid .cell-slot.cell-display.cell-class .cell-class-content > div {
+    margin: 0;
+    padding: 0;
+}
+.schedule-grid .cell-slot.cell-display.cell-empty {
+    background: #f8f9fa;
+}
+.schedule-grid .cell-slot.cell-display .cell-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: #dc3545;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+.schedule-grid .cell-slot.cell-display .cell-delete:hover { background: #c82333; }
+
+.bottom-tables {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 32px;
+    margin-bottom: 24px;
+    padding: 28px 28px 0;
+    border-top: 2px solid #dee2e6;
+}
+.bottom-tables::before {
+    content: 'Instructor, PC & programs';
+    grid-column: 1 / -1;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+}
+.table-block h3 {
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.data-table th, .data-table td {
+    border: 1px solid #dee2e6;
+    padding: 6px 8px;
+}
+.data-table th {
+    background: #495057;
+    color: #fff;
+}
+.data-table input {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.signatures {
+    margin-bottom: 20px;
+    padding: 16px 28px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-left: 28px;
+    margin-right: 28px;
+}
+.sig-row { margin-bottom: 10px; }
+.sig-row:last-child { margin-bottom: 0; }
+.sig-row label {
+    display: block;
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 4px;
+}
+.sig-row input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+}
+
+.actions {
+    text-align: center;
+    padding: 20px 28px 28px;
+    flex-shrink: 0;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+.btn-export {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(30, 60, 114, 0.3);
+}
+.btn-export:hover {
+    filter: brightness(1.1);
+}
+
+@media (max-width: 900px) {
+    .bottom-tables { grid-template-columns: 1fr; }
+    .header-fields .two-cols { grid-template-columns: 1fr; }
+}
