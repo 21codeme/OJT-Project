@@ -1812,7 +1812,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         ''                 // L Picture (no text; image added after merge)
                     ];
                     const dataRow = worksheet.addRow(exportRow);
-                    dataRow.height = 28;   // Uniform row height; picture will span merged L
+                    dataRow.height = 20;   // Same as header rows; picture spans merged L
                     
                     const conditionValue = (toStr(rowData[7]) || '').trim(); // Condition
                     // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba (Serviceable, etc.) = puti
@@ -1893,12 +1893,14 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 width: Math.max(width, (columnHeaders[index] || '').length * 1.2)
             }));
             
-            // Set row heights for header rows
-            worksheet.getRow(1).height = 30; // OCCIDENTAL MINDORO STATE COLLEGE
-            worksheet.getRow(2).height = 25; // Multimedia and Speech Laboratory
-            worksheet.getRow(3).height = 22; // ICT Equipment
-            worksheet.getRow(4).height = 20; // AS OF date
-            worksheet.getRow(7).height = 25; // Column headers
+            // Set row heights: title/header same as data rows (compact, like reference)
+            worksheet.getRow(1).height = 20;
+            worksheet.getRow(2).height = 18;
+            worksheet.getRow(3).height = 18;
+            worksheet.getRow(4).height = 18;
+            worksheet.getRow(5).height = 15;
+            worksheet.getRow(6).height = 15;
+            worksheet.getRow(7).height = 20; // Column headers
             
             // Configure page setup for long bond paper and fit to one page
             worksheet.pageSetup = {
