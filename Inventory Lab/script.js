@@ -1807,11 +1807,11 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         toStr(rowData[7]),  // I Condition
                         toStr(rowData[8]),  // J Remarks
                         toStr(rowData[9]),  // K User
-                        hasPicture ? 'Image' : ''  // L Picture (text fallback; toembed = same as uploaded)
+                        ''                 // L Picture (no text; image embedded below)
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     
-                    // Embed the same uploaded picture in Excel (once per section), strictly inside Picture cell L
+                    // Embed picture in Excel: centered, fit to column L cell, no "Image" text
                     if (isFirstRowOfSection && pictureDataUrl && String(pictureDataUrl).startsWith('data:image/')) {
                         try {
                             const match = pictureDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -1822,12 +1822,12 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                                     base64: base64,
                                     extension: ext === 'jpg' ? 'jpeg' : ext
                                 });
-                                const pictureCol = 11; // L = 0-based 11
-                                dataRow.height = 24; // Row height (points) so one cell is small
-                                // Use tl+br to lock image inside one cell (no ext = scale to fit range)
+                                const pictureCol = 11; // L
+                                dataRow.height = 55; // Taller row so picture is visible
+                                // Fit image to whole cell, centered with small margin; moves/sizes with cell
                                 worksheet.addImage(imageId, {
-                                    tl: { col: pictureCol + 0.02, row: currentRow - 1 + 0.02 },
-                                    br: { col: pictureCol + 0.98, row: currentRow - 1 + 0.98 },
+                                    tl: { col: pictureCol + 0.05, row: currentRow - 1 + 0.05 },
+                                    br: { col: pictureCol + 0.95, row: currentRow - 1 + 0.95 },
                                     editAs: 'oneCell'
                                 });
                             }
