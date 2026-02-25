@@ -1745,8 +1745,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             // Data rows simula row 8 (2 blank rows after title)
             let currentRow = 8;
             let dataRowIndex = 0;
-            let exportSectionStart = null; // Para sa merge ng Unit of meas, Unit Value, User per section
-            const exportSections = [];
+            let exportSectionStart = null;
+            let sectionPictureUrl = null; // Picture for current section (first row only)
+            const exportSections = [];   // { start, end, pictureUrl }
             
             sheet.data.forEach((rowData, rowIndex) => {
                 // Skip empty rows
@@ -1770,8 +1771,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 
                 if (isPCHeader) {
                     if (exportSectionStart !== null) {
-                        exportSections.push({ start: exportSectionStart, end: currentRow - 1 });
+                        exportSections.push({ start: exportSectionStart, end: currentRow - 1, pictureUrl: sectionPictureUrl || null });
                         exportSectionStart = null;
+                        sectionPictureUrl = null;
                     }
                     const pcNameOnly = firstCell;
                     const pcRowValues = ['', '', pcNameOnly, '', '', '', '', '', '', '', '', ''];
@@ -1794,7 +1796,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     if (exportSectionStart === null) exportSectionStart = currentRow;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
                     const pictureDataUrl = sheet.pictureUrls && sheet.pictureUrls[rowIndex];
-                    const hasPicture = !!pictureDataUrl;
+                    if (isFirstRowOfSection && pictureDataUrl) sectionPictureUrl = pictureDataUrl;
                     const exportRow = [
                         '',                 // A (no item number column)
                         toStr(rowData[0]),  // B Article/It
@@ -1807,34 +1809,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         toStr(rowData[7]),  // I Condition
                         toStr(rowData[8]),  // J Remarks
                         toStr(rowData[9]),  // K User
-                        ''                 // L Picture (no text; image embedded below)
+                        ''                 // L Picture (no text; image added after merge)
                     ];
                     const dataRow = worksheet.addRow(exportRow);
-                    
-                    // Embed picture in Excel: centered, fit to column L cell, no "Image" text
-                    if (isFirstRowOfSection && pictureDataUrl && String(pictureDataUrl).startsWith('data:image/')) {
-                        try {
-                            const match = pictureDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-                            if (match) {
-                                const ext = match[1].toLowerCase() === 'jpeg' ? 'jpeg' : match[1].toLowerCase();
-                                const base64 = match[2];
-                                const imageId = workbook.addImage({
-                                    base64: base64,
-                                    extension: ext === 'jpg' ? 'jpeg' : ext
-                                });
-                                const pictureCol = 11; // L
-                                dataRow.height = 55; // Taller row so picture is visible
-                                // Fit image to whole cell, centered with small margin; moves/sizes with cell
-                                worksheet.addImage(imageId, {
-                                    tl: { col: pictureCol + 0.05, row: currentRow - 1 + 0.05 },
-                                    br: { col: pictureCol + 0.95, row: currentRow - 1 + 0.95 },
-                                    editAs: 'oneCell'
-                                });
-                            }
-                        } catch (imgErr) {
-                            console.warn('Could not embed picture in Excel:', imgErr);
-                        }
-                    }
+                    dataRow.height = 28;   // Uniform row height; picture will span merged L
                     
                     const conditionValue = (toStr(rowData[7]) || '').trim(); // Condition
                     // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba (Serviceable, etc.) = puti
@@ -1860,7 +1838,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             });
             
             if (exportSectionStart !== null) {
-                exportSections.push({ start: exportSectionStart, end: currentRow - 1 });
+                exportSections.push({ start: exportSectionStart, end: currentRow - 1, pictureUrl: sectionPictureUrl || null });
             }
             exportSections.forEach(s => {
                 if (s.end >= s.start) {
@@ -1868,6 +1846,26 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     worksheet.mergeCells(s.start, 6, s.end, 6);  // F Unit Value
                     worksheet.mergeCells(s.start, 11, s.end, 11); // K User
                     worksheet.mergeCells(s.start, 12, s.end, 12); // L Picture
+                }
+            });
+            // One image per section: centered in merged L, fit to column (same as reference)
+            const pictureCol = 11; // L
+            exportSections.forEach(s => {
+                if (s.end < s.start || !s.pictureUrl || !String(s.pictureUrl).startsWith('data:image/')) return;
+                try {
+                    const match = String(s.pictureUrl).match(/^data:image\/(\w+);base64,(.+)$/);
+                    if (!match) return;
+                    const ext = match[1].toLowerCase() === 'jpeg' ? 'jpeg' : match[1].toLowerCase();
+                    const base64 = match[2];
+                    const imageId = workbook.addImage({ base64: base64, extension: ext === 'jpg' ? 'jpeg' : ext });
+                    // Fit image in merged L (s.start..s.end), centered with margin; 1-based row -> 0-based for addImage
+                    worksheet.addImage(imageId, {
+                        tl: { col: pictureCol + 0.05, row: (s.start - 1) + 0.05 },
+                        br: { col: pictureCol + 0.95, row: (s.end - 1) + 0.95 },
+                        editAs: 'oneCell'
+                    });
+                } catch (imgErr) {
+                    console.warn('Could not embed picture in Excel:', imgErr);
                 }
             });
             
