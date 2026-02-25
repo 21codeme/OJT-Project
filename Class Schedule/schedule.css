@@ -542,6 +542,9 @@ body {
     background: #495057;
     color: #fff;
 }
+.data-table tr.overall-row td {
+    background: #fffacd;
+}
 .data-table input {
     width: 100%;
     padding: 4px 6px;

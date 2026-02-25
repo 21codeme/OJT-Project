@@ -153,29 +153,28 @@
 
         <div class="bottom-tables">
             <div class="table-block">
-                <h3>Instructor / College Association</h3>
-                <table class="data-table" id="instructorTable">
+                <h3>LEGEND (Instructor / College Association)</h3>
+                <table class="data-table" id="legendTable">
                     <thead><tr><th>Dept/Category</th><th>Instructor(s)</th></tr></thead>
                     <tbody>
-                        <tr><td><input value="SCOA"></td><td><input value="H. HERNANDEZ, H. GADAY"></td></tr>
-                        <tr><td><input value="CBAM"></td><td><input value="P. DAGUIHON, E. DE GUZMAN, P. CALARANAN, A. DALUYOT"></td></tr>
-                        <tr><td><input value="MH"></td><td><input value="N/A"></td></tr>
-                        <tr><td><input value="CAST"></td><td><input value="AM. DELA CRUZ"></td></tr>
-                        <tr><td><input value="VACANT"></td><td><input value=""></td></tr>
+                        <tr data-category="SCOA"><td><input value="SCOA"></td><td><input value="M. HERNANDEZ, M. GABAY"></td></tr>
+                        <tr data-category="CBAM"><td><input value="CBAM"></td><td><input value="P. BAGUINON, E. DE GUZMAN, P. CALARANAN, A. BALUYOT"></td></tr>
+                        <tr data-category="HM"><td><input value="HM"></td><td><input value="N/A"></td></tr>
+                        <tr data-category="CAST"><td><input value="CAST"></td><td><input value="A M. DELA CRUZ"></td></tr>
+                        <tr data-category="VACANT"><td><input value="VACANT"></td><td><input value=""></td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="table-block">
                 <h3>Number of Existing PC</h3>
                 <table class="data-table" id="pcTable">
-                    <thead><tr><th></th><th>Core</th><th>2023 &amp; Earlier</th><th>2024</th><th>2025</th></tr></thead>
+                    <thead><tr><th></th><th>Core</th><th>2022 &amp; Earlier</th><th>2023</th><th>2024</th><th>2025</th></tr></thead>
                     <tbody>
-                        <tr><td>Core</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
-                        <tr><td>Car #1</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
-                        <tr><td>Car #2</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
-                        <tr><td>Car #3</td><td><input type="text"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
-                        <tr><td>Total</td><td></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
-                        <tr><td>Overall</td><td></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Core i7</td><td><input type="text" placeholder=""></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Core i5</td><td><input type="text" placeholder=""></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Core i3</td><td><input type="text" placeholder=""></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                        <tr><td>Total</td><td><input type="text" readonly placeholder=""></td><td><input type="number" readonly></td><td><input type="number" readonly></td><td><input type="number" readonly></td><td><input type="number" readonly></td></tr>
+                        <tr class="overall-row"><td>Overall</td><td></td><td><input type="number" readonly></td><td><input type="number" readonly></td><td><input type="number" readonly></td><td><input type="number" readonly></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -184,10 +183,10 @@
                 <table class="data-table" id="programsTable">
                     <thead><tr><th>Dept/Category</th><th>Computer Programs Used</th></tr></thead>
                     <tbody>
-                        <tr><td><input value="SCOA"></td><td><input value="MS OFFICE"></td></tr>
-                        <tr><td><input value="CBAM"></td><td><input value="AHW/PROJECT DEV/MSOFFICE"></td></tr>
-                        <tr><td><input value="MH"></td><td><input value="MINDUP/MS"></td></tr>
-                        <tr><td><input value="CAST"></td><td><input value="CARYN/MS OFFICE"></td></tr>
+                        <tr data-category="SCOA"><td><input value="SCOA"></td><td><input value="MS OFFICE"></td></tr>
+                        <tr data-category="CBAM"><td><input value="CBAM"></td><td><input value="CANVA/PROJECT DEV/MSOFFICE"></td></tr>
+                        <tr data-category="HM"><td><input value="HM"></td><td><input value="MyHotel PMS"></td></tr>
+                        <tr data-category="CAST"><td><input value="CAST"></td><td><input value="CANVA/MS OFFICE"></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -196,11 +195,11 @@
         <div class="signatures">
             <div class="sig-row">
                 <label>Prepared by:</label>
-                <input type="text" id="preparedBy" value="JOYCE C. CRUZ, Laboratory Custodian">
+                <input type="text" id="preparedBy" value="JOVEN T. CRUZ, Laboratory Custodian">
             </div>
             <div class="sig-row">
-                <label>Approved by:</label>
-                <input type="text" id="approvedBy" value="JOSELITO D. AGRID, PhD., LPT, CHRA, Director for Instruction, CRIST / Immediate Supervisor">
+                <label>Noted by:</label>
+                <input type="text" id="notedBy" value="JOSELITO D. AGUID, PhDs, LPT, CHRA, Director for Instruction, CAST / Immediate Supervisor">
             </div>
         </div>
 
