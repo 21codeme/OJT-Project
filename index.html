@@ -255,9 +255,10 @@
         passwordCancel.addEventListener('click', closePasswordModal);
         passwordSubmit.addEventListener('click', function() {
             var entered = passwordInput.value.trim();
-            if (entered === REQUIRED_PASSWORD && pendingHref) {
+            var target = pendingHref;
+            if (entered === REQUIRED_PASSWORD && target) {
                 closePasswordModal();
-                window.location.href = pendingHref;
+                window.location.href = target;
             } else {
                 passwordError.classList.add('show');
                 passwordInput.select();
