@@ -1523,12 +1523,6 @@ async function loadFromSupabase() {
             console.log(`📋 Switching to sheet "${sheet.name}" with ${sheet.data ? sheet.data.length : 0} row(s)`);
             console.log(`📋 Sheet data before switch:`, JSON.stringify(sheet.data));
             
-            // Verify data is actually in the sheet object
-            if (!sheet.data || sheet.data.length === 0) {
-                console.error(`❌ ERROR: Sheet "${sheet.name}" has no data even though items were loaded!`);
-                console.error(`   Sheet object:`, sheet);
-            }
-            
             switchToSheet(firstSheetId);
         } else {
             console.log('⚠️ No sheets found to display');
