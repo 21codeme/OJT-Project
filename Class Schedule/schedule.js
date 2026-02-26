@@ -231,9 +231,36 @@
                             contentTd.dataset.timeslot = entry.timeSlot;
                             if (info.segment.rowspan > 1) contentTd.setAttribute('rowspan', String(info.segment.rowspan));
                             if (entry.type) {
-                                contentTd.textContent = entry.type;
-                                var colorClass = getCourseColorClass(entry);
-                                if (colorClass) contentTd.classList.add(colorClass);
+                                var isVacantWithDetails = (entry.type === 'VACANT' || entry.type === 'VACANT/LAB MAINTENANCE') &&
+                                    (entry.instructor || entry.course || (entry.code && entry.code.trim()));
+                                if (isVacantWithDetails) {
+                                    contentTd.classList.add('cell-class');
+                                    var colorClass = getCourseColorClass(entry);
+                                    if (colorClass) contentTd.classList.add(colorClass);
+                                    var wrap = document.createElement('div');
+                                    wrap.className = 'cell-class-content';
+                                    var typeLine = document.createElement('div');
+                                    typeLine.className = 'cell-line-type-vacant';
+                                    typeLine.textContent = entry.type;
+                                    wrap.appendChild(typeLine);
+                                    var line1 = document.createElement('div');
+                                    line1.className = 'cell-line-instructor';
+                                    line1.textContent = entry.instructor || '';
+                                    var line2 = document.createElement('div');
+                                    line2.className = 'cell-line-subject';
+                                    line2.textContent = entry.course || '';
+                                    var line3 = document.createElement('div');
+                                    line3.className = 'cell-line-code';
+                                    line3.textContent = entry.code || '';
+                                    wrap.appendChild(line1);
+                                    wrap.appendChild(line2);
+                                    wrap.appendChild(line3);
+                                    contentTd.appendChild(wrap);
+                                } else {
+                                    contentTd.textContent = entry.type;
+                                    var colorClass = getCourseColorClass(entry);
+                                    if (colorClass) contentTd.classList.add(colorClass);
+                                }
                             } else {
                                 contentTd.classList.add('cell-class');
                                 var colorClass = getCourseColorClass(entry);
@@ -331,8 +358,10 @@
                     row.push({ type: 'LUNCH BREAK' });
                 } else if (info && info.segment.type === 'entry') {
                     var entry = info.segment.entry;
-                    if (entry.type) row.push({ type: entry.type });
-                    else row.push({ instructor: entry.instructor, course: entry.course, code: entry.code });
+                    var vacantWithDetails = (entry.type === 'VACANT' || entry.type === 'VACANT/LAB MAINTENANCE') &&
+                        (entry.instructor || entry.course || (entry.code && entry.code.trim()));
+                    if (entry.type && !vacantWithDetails) row.push({ type: entry.type });
+                    else row.push({ type: entry.type || null, instructor: entry.instructor || '', course: entry.course || '', code: entry.code || '' });
                 } else {
                     row.push({ type: '', instructor: '', course: '', code: '' });
                 }
@@ -491,17 +520,20 @@
                 const contentCell = ws.getCell(row, contentCol);
                 contentCell.border = thinBorder;
                 contentCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-                if (cell.type) {
+                if (cell.type && !(cell.instructor || cell.course || (cell.code && cell.code.trim()))) {
                     contentCell.value = cell.type;
                     contentCell.font = { size: 9 };
                     if (cell.type === 'VACANT' || cell.type === 'VACANT/LAB MAINTENANCE') contentCell.fill = greenFill;
                     else contentCell.fill = yellowFill;
                 } else {
                     var parts = [];
+                    if (cell.type === 'VACANT' || cell.type === 'VACANT/LAB MAINTENANCE') {
+                        parts.push({ font: { bold: true, size: 9 }, text: cell.type + '\n' });
+                    }
                     if (cell.instructor) { parts.push({ font: { bold: true, size: 9 }, text: cell.instructor + '\n' }); }
                     if (cell.course) { parts.push({ font: { size: 9 }, text: cell.course + '\n' }); }
                     if (cell.code) { parts.push({ font: { bold: true, size: 9 }, text: cell.code }); }
-                    if (parts.length) contentCell.value = { richText: parts }; else contentCell.value = '';
+                    if (parts.length) contentCell.value = { richText: parts }; else contentCell.value = cell.type || '';
                     var fillArgb = getCourseColorArgb(cell);
                     if (fillArgb) contentCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
                 }
