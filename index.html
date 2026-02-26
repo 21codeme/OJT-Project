@@ -97,6 +97,75 @@
         .btn-schedule {
             background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
         }
+
+        .password-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .password-modal.show {
+            display: flex;
+        }
+        .password-box {
+            background: #fff;
+            padding: 28px 32px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            width: 100%;
+            max-width: 360px;
+        }
+        .password-box h3 {
+            margin-bottom: 16px;
+            color: #1a1a1a;
+            font-size: 1.2rem;
+        }
+        .password-box input[type="password"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+        .password-box input:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        .password-box .error {
+            color: #c00;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            display: none;
+        }
+        .password-box .error.show {
+            display: block;
+        }
+        .password-box .actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .password-box button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        .password-box .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .password-box .btn-submit {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -107,11 +176,67 @@
         <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
         <p>Multimedia and Speech Laboratory</p>
         <div class="buttons">
-            <a href="Inventory%20Lab/Inventory.html" class="btn">Inventory</a>
-            <a href="Class%20Schedule/index.html" class="btn btn-schedule">Class Schedule</a>
+            <a href="Inventory%20Lab/Inventory.html" class="btn" id="btnInventory" data-href="Inventory%20Lab/Inventory.html">Inventory</a>
+            <a href="Class%20Schedule/index.html" class="btn btn-schedule" id="btnSchedule" data-href="Class%20Schedule/index.html">Class Schedule</a>
+        </div>
+    </div>
+
+    <div class="password-modal" id="passwordModal">
+        <div class="password-box">
+            <h3>Enter password</h3>
+            <p class="error" id="passwordError">Incorrect password.</p>
+            <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+            <div class="actions">
+                <button type="button" class="btn-cancel" id="passwordCancel">Cancel</button>
+                <button type="button" class="btn-submit" id="passwordSubmit">Submit</button>
+            </div>
         </div>
     </div>
     <script>
+        const REQUIRED_PASSWORD = 'Comlab2026@omsc';
+        const modal = document.getElementById('passwordModal');
+        const passwordInput = document.getElementById('passwordInput');
+        const passwordError = document.getElementById('passwordError');
+        const passwordSubmit = document.getElementById('passwordSubmit');
+        const passwordCancel = document.getElementById('passwordCancel');
+        let pendingHref = '';
+
+        document.getElementById('btnInventory').addEventListener('click', function(e) {
+            e.preventDefault();
+            pendingHref = this.getAttribute('data-href');
+            passwordError.classList.remove('show');
+            passwordInput.value = '';
+            modal.classList.add('show');
+            passwordInput.focus();
+        });
+        document.getElementById('btnSchedule').addEventListener('click', function(e) {
+            e.preventDefault();
+            pendingHref = this.getAttribute('data-href');
+            passwordError.classList.remove('show');
+            passwordInput.value = '';
+            modal.classList.add('show');
+            passwordInput.focus();
+        });
+
+        function closePasswordModal() {
+            modal.classList.remove('show');
+            pendingHref = '';
+        }
+        passwordCancel.addEventListener('click', closePasswordModal);
+        passwordSubmit.addEventListener('click', function() {
+            if (passwordInput.value === REQUIRED_PASSWORD) {
+                closePasswordModal();
+                window.location.href = pendingHref;
+            } else {
+                passwordError.classList.add('show');
+                passwordInput.select();
+            }
+        });
+        passwordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') passwordSubmit.click();
+            if (e.key === 'Escape') closePasswordModal();
+        });
+
         const images = [
             "1. DRONE 2024/DJI_0558-2.jpg",
             "1. DRONE 2024/DJI_0562-2.jpg",
