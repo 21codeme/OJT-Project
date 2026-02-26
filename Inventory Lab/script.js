@@ -332,28 +332,45 @@ const addItemForm = document.getElementById('addItemForm');
 const closeModal = document.querySelector('.close-modal');
 const cancelBtn = document.getElementById('cancelAddBtn');
 
-// Auto uppercase for Article/It and Description in form
-document.addEventListener('DOMContentLoaded', function() {
-    const articleInput = document.getElementById('article');
-    const descriptionInput = document.getElementById('description');
-    
-    if (articleInput) {
-        articleInput.style.textTransform = 'uppercase';
-        articleInput.addEventListener('input', function() {
-            const cursorPos = this.selectionStart;
-            this.value = this.value.toUpperCase();
-            this.setSelectionRange(cursorPos, cursorPos);
+// Article/Item list from INVENTORY-AS-OF-AUGUST-2026.xlsx (unique column values) - used when articles.json not loaded (e.g. file://)
+const ARTICLE_ITEMS_FALLBACK = ["ACCESS POINT","AIRCON","AMPLIFIER","AUDIO","AVR","CEILING/ORBIT FAN","Celing fan","Computer set","Computer Table","Cubicle","Headset","KEVLER UM-200SDual Wireless Mic W/ Receiver","Keyboard","Monitor","Mouse","NETWORK","ORBITAL FAN","PRINTER","Router","SERVER","SMOKE DETECTOR","SOHO FD-4 Westminster 4-Drawer Lateral Filing Cabinet","SPARE","SPEAKER","SWITCH HUB","System Unit","UNSERVICEABLE SYSTEM UNIT","UPS","WEBCAM","Wireless Mic","WOOD AND STEEL TABLE"];
+
+function loadArticleDropdown() {
+    const articleSelect = document.getElementById('article');
+    const articleOther = document.getElementById('articleOther');
+    if (!articleSelect) return;
+    function fillOptions(items) {
+        if (!Array.isArray(items) || items.length === 0) items = ARTICLE_ITEMS_FALLBACK;
+        const frag = document.createDocumentFragment();
+        items.forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = val;
+            frag.appendChild(opt);
         });
-        articleInput.addEventListener('paste', function(e) {
-            e.preventDefault();
-            const pastedText = (e.clipboardData || window.clipboardData).getData('text').toUpperCase();
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
-            this.value = this.value.substring(0, start) + pastedText + this.value.substring(end);
-            const newPos = start + pastedText.length;
-            this.setSelectionRange(newPos, newPos);
+        const otherOpt = document.createElement('option');
+        otherOpt.value = '__OTHER__';
+        otherOpt.textContent = 'Other (type below)';
+        frag.appendChild(otherOpt);
+        articleSelect.appendChild(frag);
+        articleSelect.addEventListener('change', function() {
+            if (articleOther) {
+                articleOther.style.display = this.value === '__OTHER__' ? 'block' : 'none';
+                articleOther.classList.toggle('form-field-blocked', this.value !== '__OTHER__');
+                if (this.value !== '__OTHER__') articleOther.value = '';
+            }
         });
     }
+    fetch('articles.json')
+        .then(res => res.ok ? res.json() : Promise.reject(new Error('Not found')))
+        .then(items => { fillOptions(items); })
+        .catch(() => { fillOptions(ARTICLE_ITEMS_FALLBACK); });
+}
+
+// Auto uppercase for Description in form (Article/It is now a dropdown)
+document.addEventListener('DOMContentLoaded', function() {
+    loadArticleDropdown();
+    const descriptionInput = document.getElementById('description');
     
     if (descriptionInput) {
         descriptionInput.style.textTransform = 'uppercase';
@@ -414,6 +431,11 @@ pictureInput.addEventListener('change', function(e) {
 function closeModalFunc() {
     modal.classList.remove('show');
     addItemForm.reset();
+    const articleOther = document.getElementById('articleOther');
+    if (articleOther) {
+        articleOther.style.display = 'none';
+        articleOther.value = '';
+    }
     selectedImageData = null;
     picturePreview.innerHTML = '<span class="empty">No image selected</span>';
     picturePreview.classList.add('empty');
@@ -441,17 +463,17 @@ addItemForm.addEventListener('submit', function(e) {
         return;
     }
     
-    // Validate required fields
-    const article = document.getElementById('article').value.trim();
+    // Get Article/It (dropdown or "Other" text) - allow blank
+    const articleEl = document.getElementById('article');
+    const articleOtherEl = document.getElementById('articleOther');
+    let article = (articleEl && articleEl.value) ? articleEl.value.trim() : '';
+    if (article === '__OTHER__' && articleOtherEl) {
+        article = articleOtherEl.value.trim();
+    }
     const description = document.getElementById('description').value.trim();
     const condition = document.getElementById('condition').value.trim();
     
-    if (!article || !description || !condition) {
-        alert('Please fill in all required fields (Article/It, Description, and Condition).');
-        return;
-    }
-    
-    // Get form values
+    // Get form values (saving allowed even with blanks)
     const formData = {
         article: article.toUpperCase(),
         description: description.toUpperCase(),

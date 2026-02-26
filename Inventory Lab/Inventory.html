@@ -90,11 +90,14 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="article">Article/It:</label>
-                        <input type="text" id="article" name="article" required>
+                        <select id="article" name="article">
+                            <option value="">Select Article/Item</option>
+                        </select>
+                        <input type="text" id="articleOther" name="articleOther" placeholder="Type if Other" class="form-field-blocked" style="display:none; margin-top:4px;">
                     </div>
                     <div class="form-group">
                         <label for="description">Description:</label>
-                        <input type="text" id="description" name="description" required>
+                        <input type="text" id="description" name="description">
                     </div>
                     <div class="form-group">
                         <label for="oldProperty">Old Property N Assigned:</label>
@@ -114,11 +117,14 @@
                     </div>
                     <div class="form-group">
                         <label for="location">Location/Whereabout:</label>
-                        <input type="text" id="location" name="location" value="MULTIMEDIA AND SPEECH LAB">
+                        <select id="location" name="location">
+                            <option value="MULTIMEDIA AND SPEECH LAB">MULTIMEDIA AND SPEECH LAB</option>
+                            <option value="COMPUTER LABORATORY">COMPUTER LABORATORY</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="condition">Condition:</label>
-                        <select id="condition" name="condition" required>
+                        <select id="condition" name="condition">
                             <option value="">Select Condition</option>
                             <option value="Serviceable">Serviceable</option>
                             <option value="Unserviceable">Unserviceable</option>

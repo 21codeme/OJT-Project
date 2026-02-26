@@ -1,0 +1,24 @@
+{
+  "name": "lab-inventory",
+  "version": "1.0.0",
+  "description": "A web-based inventory management system for Occidental Mindoro State College - Multimedia and Speech Laboratory. This application allows you to import Excel inventory files, view them in a user-friendly interface, and export them back to Excel with the same layout.",
+  "main": "config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "extract-articles": "node scripts/extract-article-items.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/21codeme/OJT-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/21codeme/OJT-Project/issues"
+  },
+  "homepage": "https://github.com/21codeme/OJT-Project#readme",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
