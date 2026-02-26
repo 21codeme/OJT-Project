@@ -776,7 +776,7 @@
         syncTimeout = setTimeout(function() {
             syncTimeout = null;
             if (getActiveSheet()) syncEntriesForSheet(activeSheetId);
-        }, 800);
+        }, 300);
     }
 
     async function loadFromSupabase() {
@@ -821,7 +821,6 @@
     }
 
     function init() {
-        renderScheduleGrid();
         var exportBtn = document.getElementById('exportExcelBtn');
         if (exportBtn) exportBtn.addEventListener('click', exportToExcel);
 
@@ -877,11 +876,12 @@
                 }
             });
         });
-        renderSheetTabs();
-
-        setTimeout(function() {
-            if (checkSupabaseConnection()) loadFromSupabase();
-        }, 500);
+        if (checkSupabaseConnection()) {
+            loadFromSupabase();
+        } else {
+            renderSheetTabs();
+            renderScheduleGrid();
+        }
 
         window.addEventListener('beforeunload', function() {
             if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
@@ -939,6 +939,9 @@
                 ? (codeCourse + ' ' + codeYear + '-' + codeSection + ' ' + codeCount + ' Student')
                 : (codeCourse || '');
             setEntry(day, timeSlot, type, instructor, course, code);
+            if (checkSupabaseConnection() && getActiveSheet()) {
+                setTimeout(function() { syncEntriesForSheet(activeSheetId); }, 150);
+            }
             renderScheduleGrid();
             hideForm();
         }
