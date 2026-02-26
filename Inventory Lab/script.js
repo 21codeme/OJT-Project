@@ -1064,7 +1064,8 @@ function switchToSheet(sheetId) {
     document.querySelectorAll('.sheet-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    document.querySelector(`[data-sheet-id="${sheetId}"]`).classList.add('active');
+    const activeTab = document.querySelector(`[data-sheet-id="${sheetId}"]`);
+    if (activeTab) activeTab.classList.add('active');
     
     // Load sheet data
     const sheet = sheets[sheetId];
@@ -1276,16 +1277,14 @@ async function syncToSupabase() {
                 if (firstCell) {
                     const input = firstCell.querySelector('input');
                     const pcName = input ? input.value : firstCell.textContent.trim();
-                    if (pcName) {
-                        itemsToInsert.push({
-                            sheet_id: currentSheetId,
-                            sheet_name: sheet.name,
-                            row_index: rowIndex,
-                            article: pcName,
-                            is_pc_header: true,
-                            is_highlighted: false
-                        });
-                    }
+                    itemsToInsert.push({
+                        sheet_id: currentSheetId,
+                        sheet_name: sheet.name,
+                        row_index: rowIndex,
+                        article: pcName || '',
+                        is_pc_header: true,
+                        is_highlighted: false
+                    });
                 }
             } else {
                 const cells = Array.from(row.querySelectorAll('td.editable'));
@@ -1311,40 +1310,36 @@ async function syncToSupabase() {
                     sectionUnitValue = vals[UNIT_VALUE_COL] || '';
                     sectionUser = vals[USER_COL] || '';
                 }
-                const article = rowData[0] || '';
-                const description = rowData[1] || '';
-                if (article || description) {
-                    const pictureCell = row.querySelector('.picture-cell');
-                    if (pictureCell) {
-                        const img = pictureCell.querySelector('img');
-                        if (img && img.src) {
-                            const src = String(img.src);
-                            if (!src.startsWith('data:')) {
-                                sectionPictureUrl = src;
-                            } else if (src.length <= 800000) {
-                                sectionPictureUrl = src; // Compressed images fit; up to ~800KB for Supabase
-                            }
+                const pictureCell = row.querySelector('.picture-cell');
+                if (pictureCell) {
+                    const img = pictureCell.querySelector('img');
+                    if (img && img.src) {
+                        const src = String(img.src);
+                        if (!src.startsWith('data:')) {
+                            sectionPictureUrl = src;
+                        } else if (src.length <= 800000) {
+                            sectionPictureUrl = src; // Compressed images fit; up to ~800KB for Supabase
                         }
                     }
-                    itemsToInsert.push({
-                        sheet_id: currentSheetId,
-                        sheet_name: sheet.name,
-                        row_index: rowIndex,
-                        article: article,
-                        description: description,
-                        old_property_n_assigned: rowData[2] || '',
-                        unit_of_meas: rowData[3] || '',
-                        unit_value: rowData[4] || '',
-                        quantity: rowData[5] || '',
-                        location: rowData[6] || '',
-                        condition: rowData[7] || '',
-                        remarks: rowData[8] || '',
-                        user: rowData[9] || '',
-                        picture_url: sectionPictureUrl,
-                        is_pc_header: false,
-                        is_highlighted: row.classList.contains('highlighted-row')
-                    });
                 }
+                itemsToInsert.push({
+                    sheet_id: currentSheetId,
+                    sheet_name: sheet.name,
+                    row_index: rowIndex,
+                    article: rowData[0] || '',
+                    description: rowData[1] || '',
+                    old_property_n_assigned: rowData[2] || '',
+                    unit_of_meas: rowData[3] || '',
+                    unit_value: rowData[4] || '',
+                    quantity: rowData[5] || '',
+                    location: rowData[6] || '',
+                    condition: rowData[7] || '',
+                    remarks: rowData[8] || '',
+                    user: rowData[9] || '',
+                    picture_url: sectionPictureUrl,
+                    is_pc_header: false,
+                    is_highlighted: row.classList.contains('highlighted-row')
+                });
             }
         });
         
@@ -1511,6 +1506,9 @@ async function loadFromSupabase() {
             }
         }
         
+        // Update sheet tabs first so tab elements exist before switching
+        updateSheetTabs();
+        
         // Switch to first sheet if available
         const firstSheetId = Object.keys(sheets)[0];
         if (firstSheetId) {
@@ -1535,9 +1533,6 @@ async function loadFromSupabase() {
         } else {
             console.log('⚠️ No sheets found to display');
         }
-        
-        // Update sheet tabs
-        updateSheetTabs();
         
         console.log(`✅ Data loaded from Supabase successfully: ${Object.keys(sheets).length} sheet(s) loaded`);
         
