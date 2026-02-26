@@ -68,9 +68,9 @@
 
     function getMaxRowsForEntry(entry) {
         var hours = getEntryDurationHours(entry);
-        if (hours <= 1.5) return 1;
-        if (hours <= 3) return 2;
-        return 3;
+        if (hours <= 1) return 1;
+        if (hours <= 2) return 2;
+        return Math.min(3, Math.ceil(hours)); // 3 hours = 3 rows, 9:00-12:00 merged
     }
 
     function getSegmentsForDay(day, entries) {
@@ -206,6 +206,7 @@
         tbody.innerHTML = '';
         var daySegments = DAYS.map(function(day) { return getSegmentsForDay(day); });
         var skipLeft = DAYS.map(function() { return 0; });
+        var skipTimeLeft = DAYS.map(function() { return 0; });
         for (var rowIndex = 0; rowIndex < ROW_SLOTS.length; rowIndex++) {
             var row = ROW_SLOTS[rowIndex];
             var timeLabel = row.label;
@@ -270,12 +271,22 @@
                         }
                         tr.appendChild(contentTd);
                     }
-                    var timeTd = document.createElement('td');
-                    timeTd.className = 'cell-time';
-                    var timeInfo = getSegmentAtRow(daySegments[colIndex], rowIndex);
-                    if (timeInfo && timeInfo.segment.type === 'entry') {
-                        timeTd.textContent = timeLabel;
-                        if (timeInfo.isFirst) {
+                    var timeTd = null;
+                    if (skipTimeLeft[colIndex] > 0) {
+                        skipTimeLeft[colIndex]--;
+                    } else {
+                        timeTd = document.createElement('td');
+                        timeTd.className = 'cell-time';
+                        var timeInfo = getSegmentAtRow(daySegments[colIndex], rowIndex);
+                        if (timeInfo && timeInfo.segment.type === 'entry') {
+                            if (timeInfo.isFirst && timeInfo.segment.rowspan > 1) {
+                                timeTd.setAttribute('rowspan', String(timeInfo.segment.rowspan));
+                                timeTd.textContent = timeInfo.segment.entry.timeSlot || timeLabel;
+                                skipTimeLeft[colIndex] = timeInfo.segment.rowspan - 1;
+                            } else {
+                                timeTd.textContent = timeInfo.isFirst ? (timeInfo.segment.entry.timeSlot || timeLabel) : timeLabel;
+                            }
+                            if (timeInfo.isFirst) {
                             var entry = timeInfo.segment.entry;
                             var timeEditBtn = document.createElement('button');
                             timeEditBtn.type = 'button';
@@ -296,11 +307,12 @@
                                 }
                             });
                             timeTd.appendChild(timeEditBtn);
+                            }
+                        } else {
+                            timeTd.textContent = '';
                         }
-                    } else {
-                        timeTd.textContent = '';
+                        tr.appendChild(timeTd);
                     }
-                    tr.appendChild(timeTd);
                 });
             }
             tbody.appendChild(tr);
