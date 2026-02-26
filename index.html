@@ -124,17 +124,41 @@
             color: #1a1a1a;
             font-size: 1.2rem;
         }
-        .password-box input[type="password"] {
+        .password-wrap {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .password-box .password-wrap input {
             width: 100%;
-            padding: 12px 14px;
+            padding: 12px 44px 12px 14px;
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 1rem;
-            margin-bottom: 16px;
         }
-        .password-box input:focus {
+        .password-box .password-wrap input:focus {
             outline: none;
             border-color: #2a5298;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .password-toggle:hover {
+            color: #2a5298;
+        }
+        .password-toggle svg {
+            width: 22px;
+            height: 22px;
         }
         .password-box .error {
             color: #c00;
@@ -185,7 +209,13 @@
         <div class="password-box">
             <h3>Enter password</h3>
             <p class="error" id="passwordError">Incorrect password.</p>
-            <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+            <div class="password-wrap">
+                <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+                <button type="button" class="password-toggle" id="passwordToggle" title="Show password" aria-label="Show password">
+                    <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eyeOffIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
             <div class="actions">
                 <button type="button" class="btn-cancel" id="passwordCancel">Cancel</button>
                 <button type="button" class="btn-submit" id="passwordSubmit">Submit</button>
@@ -224,7 +254,8 @@
         }
         passwordCancel.addEventListener('click', closePasswordModal);
         passwordSubmit.addEventListener('click', function() {
-            if (passwordInput.value === REQUIRED_PASSWORD) {
+            var entered = passwordInput.value.trim();
+            if (entered === REQUIRED_PASSWORD && pendingHref) {
                 closePasswordModal();
                 window.location.href = pendingHref;
             } else {
@@ -235,6 +266,24 @@
         passwordInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') passwordSubmit.click();
             if (e.key === 'Escape') closePasswordModal();
+        });
+        document.getElementById('passwordToggle').addEventListener('click', function() {
+            const input = passwordInput;
+            const eye = document.getElementById('eyeIcon');
+            const eyeOff = document.getElementById('eyeOffIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                eye.style.display = 'none';
+                eyeOff.style.display = 'block';
+                this.setAttribute('title', 'Hide password');
+                this.setAttribute('aria-label', 'Hide password');
+            } else {
+                input.type = 'password';
+                eye.style.display = 'block';
+                eyeOff.style.display = 'none';
+                this.setAttribute('title', 'Show password');
+                this.setAttribute('aria-label', 'Show password');
+            }
         });
 
         const images = [
