@@ -1612,6 +1612,7 @@ async function syncToSupabase() {
         
         console.log(`📋 Found ${rows.length} row(s) in table`);
         
+        let lastPCHeaderName = null;
         rows.forEach((row, rowIndex) => {
             if (row.classList.contains('pc-header-row')) {
                 sectionUnitMeas = '';
@@ -1621,12 +1622,15 @@ async function syncToSupabase() {
                 const firstCell = row.querySelector('td.pc-name-cell') || row.querySelector('td[colspan="11"]');
                 if (firstCell) {
                     const input = firstCell.querySelector('input');
-                    const pcName = input ? input.value.trim() : firstCell.textContent.trim();
+                    const pcName = (input ? input.value.trim() : firstCell.textContent.trim()) || '';
+                    // Huwag mag-save ng magkasunod na duplicate PC header (e.g. dalawang "PC 1")
+                    if (pcName && pcName === lastPCHeaderName) return;
+                    lastPCHeaderName = pcName;
                     itemsToInsert.push({
                         sheet_id: currentSheetId,
                         sheet_name: sheet.name,
                         row_index: rowIndex,
-                        article: pcName || '',
+                        article: pcName,
                         is_pc_header: true,
                         is_highlighted: false
                     });
@@ -1854,6 +1858,32 @@ async function loadFromSupabase() {
                     console.log(`  [${index}] Item: ${item.article || '(empty)'} - ${item.description || '(empty)'}`);
                 }
             });
+            
+            // Remove consecutive duplicate PC headers (e.g. [PC 1, PC 1] -> [PC 1]) so table hindi magulo
+            const deduped = [];
+            const dedupedHighlight = [];
+            const dedupedPictures = [];
+            for (let i = 0; i < rowData.length; i++) {
+                const r = rowData[i];
+                const isPC = r && r.length === 1 && (r[0] || '').toString().trim() !== '';
+                const prev = deduped.length > 0 ? deduped[deduped.length - 1] : null;
+                const prevIsPC = prev && prev.length === 1;
+                if (isPC && prevIsPC && (r[0] || '').toString().trim() === (prev[0] || '').toString().trim()) {
+                    continue; // skip duplicate consecutive PC header
+                }
+                deduped.push(r);
+                dedupedHighlight.push(highlightStates[i]);
+                dedupedPictures.push(pictureUrls[i]);
+            }
+            if (deduped.length !== rowData.length) {
+                console.log(`  🧹 Removed ${rowData.length - deduped.length} duplicate PC header(s)`);
+                rowData.length = 0;
+                rowData.push(...deduped);
+                highlightStates.length = 0;
+                highlightStates.push(...dedupedHighlight);
+                pictureUrls.length = 0;
+                pictureUrls.push(...dedupedPictures);
+            }
             
             console.log(`✅ Converted ${rowData.length} row(s) for sheet "${sheetData.name}"`);
             
