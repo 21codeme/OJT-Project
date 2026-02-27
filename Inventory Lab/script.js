@@ -789,20 +789,29 @@ function dataURLtoBlob(dataUrl) {
 }
 
 // Upload data URL to Supabase Storage; return public URL so PC Location link can show picture
+var _storageBucketChecked = false;
+var _storageBucketMissing = false;
 async function uploadDataUrlToStorage(dataUrl, sheetId, rowIndex) {
     if (!window.supabaseClient || !dataUrl || !dataUrl.startsWith('data:image/')) return null;
+    if (_storageBucketMissing) return null;
     try {
         const blob = dataURLtoBlob(dataUrl);
         const path = `${(sheetId || 'sheet-1')}/${rowIndex}/${Date.now()}.jpg`;
         const { error } = await window.supabaseClient.storage.from('inventory-pictures').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
         if (error) {
-            console.warn('Storage upload failed:', error.message);
+            _storageBucketChecked = true;
+            if (error.message && (error.message.includes('Bucket not found') || error.message.includes('not found'))) {
+                _storageBucketMissing = true;
+                console.warn('Storage bucket "inventory-pictures" not found. Create it in Supabase: Dashboard → Storage → New bucket → name: inventory-pictures, Public: ON. Then picture will show in PC Location link.');
+            } else {
+                console.warn('Storage upload failed:', error.message);
+            }
             return null;
         }
         const { data: { publicUrl } } = window.supabaseClient.storage.from('inventory-pictures').getPublicUrl(path);
         return publicUrl;
     } catch (e) {
-        console.warn('Storage upload error:', e);
+        if (!_storageBucketChecked) console.warn('Storage upload error:', e);
         return null;
     }
 }
@@ -1462,6 +1471,7 @@ function saveCurrentSheetData(skipSync) {
                 sheetData.push(rowData);
                 highlightStates.push(row.classList.contains('highlighted-row'));
                 const pictureCell = row.querySelector('.picture-cell');
+                sectionPictureUrl = null;
                 if (pictureCell) {
                     const img = pictureCell.querySelector('img');
                     if (img && img.src) sectionPictureUrl = img.src;
@@ -1641,6 +1651,7 @@ async function syncToSupabase() {
                     sectionUnitValue = vals[UNIT_VALUE_COL] || '';
                     sectionUser = vals[USER_COL] || '';
                 }
+                sectionPictureUrl = null;
                 const pictureCell = row.querySelector('.picture-cell');
                 if (pictureCell) {
                     const img = pictureCell.querySelector('img');
@@ -1649,7 +1660,7 @@ async function syncToSupabase() {
                         if (!src.startsWith('data:')) {
                             sectionPictureUrl = src;
                         } else if (src.length <= 800000) {
-                            sectionPictureUrl = src; // Compressed images fit; up to ~800KB for Supabase
+                            sectionPictureUrl = src;
                         }
                     }
                 }
