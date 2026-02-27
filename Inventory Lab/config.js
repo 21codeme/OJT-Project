@@ -2,12 +2,6 @@
 // Replace these with your actual Supabase project credentials
 // You can find these in your Supabase project settings: Settings > API
 
-// Google Drive: OAuth client na may Client ID na ito — DAPAT doon naka-add ang Vercel URLs sa Google Console.
-const GOOGLE_DRIVE_CLIENT_ID = '805452953533-7bkdc4fii38bndmbphq6oskp7m6co7ee.apps.googleusercontent.com';
-// Redirect URI para sa Vercel — exact na ito ang dapat naka-save sa Google Console (Authorized redirect URIs).
-// Sa Authorized JavaScript origins idagdag: https://ojt-project-laboratory.vercel.app (walang slash sa dulo).
-const GOOGLE_DRIVE_REDIRECT_URI = 'https://ojt-project-laboratory.vercel.app/oauth-callback.html';
-
 const SUPABASE_CONFIG = {
     url: 'https://bferfkrkejwccvfsigze.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmZXJma3JrZWp3Y2N2ZnNpZ3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1NTUsImV4cCI6MjA4NTg0OTU1NX0.4nc1SgH-lXD4GvZ6XSbfzyCp-Swf6Mon-O3dA_mEpXE'
