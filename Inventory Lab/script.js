@@ -168,7 +168,6 @@ function mergeUnitColumnsInTable() {
         const unitMeasTd = firstRow.querySelector(`td.editable[data-column="${UNIT_MEAS_COL}"]`);
         const unitValueTd = firstRow.querySelector(`td.editable[data-column="${UNIT_VALUE_COL}"]`);
         const userTd = firstRow.querySelector(`td.editable[data-column="${USER_COL}"]`);
-        const pictureTd = firstRow.querySelector('td.picture-cell');
         if (!unitMeasTd || !unitValueTd) continue;
         const n = indices.length;
         unitMeasTd.rowSpan = n;
@@ -177,16 +176,11 @@ function mergeUnitColumnsInTable() {
             userTd.rowSpan = n;
             userTd.classList.add('col-no-bg');
         }
-        if (pictureTd) {
-            pictureTd.rowSpan = n;
-            pictureTd.classList.add('col-no-bg');
-        }
+        // Picture column: hindi na merged — bawat row may sariling picture cell, pwede mag-upload per row
         unitMeasTd.classList.add('col-no-bg');
         unitValueTd.classList.add('col-no-bg');
         for (let j = 1; j < n; j++) {
             const row = rows[indices[j]];
-            const picTd = row.querySelector('td.picture-cell');
-            if (picTd) picTd.remove();
             [USER_COL, UNIT_VALUE_COL, UNIT_MEAS_COL].forEach(col => {
                 const td = row.querySelector(`td.editable[data-column="${col}"]`);
                 if (td) td.remove();
@@ -2095,8 +2089,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             let exportSectionStart = null;
             let sectionPictureUrl = null;
             let sectionFirstRowData = null;
-            let sectionName = ''; // PC 1, PC 2, etc. for PC location form
-            const exportSections = [];   // { start, end, pictureUrl, rowData, sectionName }
+            let sectionName = '';
+            const exportSections = [];   // E, F, K merge per section
+            const dataRowsForPicture = []; // bawat row: { worksheetRow, rowIndex, rowData, sectionName } para sa Picture column (hindi na merged)
             
             sheet.data.forEach((rowData, rowIndex) => {
                 // Skip empty rows
@@ -2146,11 +2141,9 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     const isFirstRowOfSection = (exportSectionStart === null);
                     if (exportSectionStart === null) exportSectionStart = currentRow;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
-                    const pictureDataUrl = sheet.pictureUrls && sheet.pictureUrls[rowIndex];
-                    if (isFirstRowOfSection) {
-                        if (pictureDataUrl) sectionPictureUrl = pictureDataUrl;
-                        sectionFirstRowData = rowData.slice(0, 10); // Article, Description, ... User for viewer
-                    }
+                    if (isFirstRowOfSection && (sheet.pictureUrls && sheet.pictureUrls[rowIndex])) sectionPictureUrl = sheet.pictureUrls[rowIndex];
+                    if (isFirstRowOfSection) sectionFirstRowData = rowData.slice(0, 10);
+                    dataRowsForPicture.push({ worksheetRow: currentRow, rowIndex, rowData: rowData.slice(0, 10), sectionName });
                     const exportRow = [
                         '',                 // A (no item number column)
                         toStr(rowData[0]),  // B Article/It
@@ -2200,61 +2193,52 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     worksheet.mergeCells(s.start, 5, s.end, 5);  // E Unit of meas
                     worksheet.mergeCells(s.start, 6, s.end, 6);  // F Unit Value
                     worksheet.mergeCells(s.start, 11, s.end, 11); // K User
-                    worksheet.mergeCells(s.start, 12, s.end, 12); // L Picture
+                    // L Picture: hindi na merged — bawat row may sariling picture
                 }
             });
-            // Convert only blob: URLs to data URLs (keep https: for viewer link)
-            for (const s of exportSections) {
-                if (s.pictureUrl && String(s.pictureUrl).startsWith('blob:')) {
-                    s.pictureUrl = await urlToDataUrl(s.pictureUrl);
-                }
-            }
-            // Link sa Picture cell → PC Location form (picture sa taas, details sa baba); lalabas lang ang form kapag pinindot ang link
             const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
             const pcLocationFormUrl = baseUrl + '../pc location/view.html';
-            const pictureCol = 12; // L column (1-based)
+            const pictureCol = 12;
             const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
-            exportSections.forEach(s => {
-                if (s.end < s.start || !s.rowData) return;
-                const picUrl = s.pictureUrl ? String(s.pictureUrl).trim() : '';
-                const isHttps = picUrl.startsWith('http://') || picUrl.startsWith('https://');
+            // Bawat row: link at optional embed sa Picture column (per row)
+            for (const r of dataRowsForPicture) {
+                let picUrl = (sheet.pictureUrls && sheet.pictureUrls[r.rowIndex]) ? String(sheet.pictureUrls[r.rowIndex]).trim() : '';
+                if (picUrl && picUrl.startsWith('blob:')) picUrl = await urlToDataUrl(picUrl);
                 const params = new URLSearchParams({
-                    pcSection: toStr(s.sectionName),
-                    location: toStr(s.rowData[6]),
-                    units: toStr(s.rowData[5]),
-                    condition: toStr(s.rowData[7]),
-                    remarks: toStr(s.rowData[8]),
-                    building: toStr(s.rowData[1]),
-                    room: toStr(s.rowData[6])
+                    pcSection: toStr(r.sectionName),
+                    location: toStr(r.rowData[6]),
+                    units: toStr(r.rowData[5]),
+                    condition: toStr(r.rowData[7]),
+                    remarks: toStr(r.rowData[8]),
+                    building: toStr(r.rowData[1]),
+                    room: toStr(r.rowData[6])
                 });
-                if (isHttps) params.set('image', picUrl);
+                if (picUrl && (picUrl.startsWith('http://') || picUrl.startsWith('https://'))) params.set('image', picUrl);
                 const linkUrl = pcLocationFormUrl + '?' + params.toString();
-                const cell = worksheet.getRow(s.start).getCell(pictureCol);
+                const cell = worksheet.getRow(r.worksheetRow).getCell(pictureCol);
                 cell.value = { text: linkUrl, hyperlink: linkUrl };
                 cell.font = { size: 9, color: { argb: 'FF0066CC' }, underline: true };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-            });
-            // Kung may data URL, i-embed pa rin ang thumbnail sa cell (link nandyan na sa cell)
-            exportSections.forEach(s => {
-                if (s.end < s.start) return;
-                const picUrl = s.pictureUrl ? String(s.pictureUrl).trim() : '';
-                if (!picUrl || !picUrl.startsWith('data:image/')) return;
-                try {
-                    const match = picUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-                    if (!match) return;
-                    const ext = match[1].toLowerCase() === 'jpeg' ? 'jpeg' : match[1].toLowerCase();
-                    const base64 = match[2];
-                    const imageId = workbook.addImage({ base64: base64, extension: ext === 'jpg' ? 'jpeg' : ext });
-                    const col0 = pictureCol - 1;
-                    worksheet.addImage(imageId, {
-                        tl: { col: col0 + 0.05, row: (s.start - 1) + 0.05 },
-                        br: { col: col0 + 0.95, row: (s.end - 1) + 0.95 },
-                        editAs: 'oneCell'
-                    });
-                } catch (imgErr) {
-                    console.warn('Could not embed picture in Excel:', imgErr);
+                if (picUrl && picUrl.startsWith('data:image/')) {
+                    try {
+                        const match = picUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+                        if (match) {
+                            const ext = match[1].toLowerCase() === 'jpeg' ? 'jpeg' : match[1].toLowerCase();
+                            const base64 = match[2];
+                            const imageId = workbook.addImage({ base64: base64, extension: ext === 'jpg' ? 'jpeg' : ext });
+                            const col0 = pictureCol - 1;
+                            const row0 = r.worksheetRow - 1;
+                            worksheet.addImage(imageId, {
+                                tl: { col: col0 + 0.05, row: row0 + 0.05 },
+                                br: { col: col0 + 0.95, row: row0 + 0.95 },
+                                editAs: 'oneCell'
+                            });
+                        }
+                    } catch (imgErr) {
+                        console.warn('Could not embed picture in Excel:', imgErr);
+                    }
                 }
-            });
+            }
             
             // Column widths — mas maliit para magkasya sa isang long bond page
             const maxColumnWidths = [2, 10, 12, 12, 8, 9, 8, 12, 8, 10, 10, 10];
