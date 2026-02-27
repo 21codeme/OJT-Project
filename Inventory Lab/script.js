@@ -1613,8 +1613,10 @@ async function syncToSupabase() {
         console.log(`📋 Found ${rows.length} row(s) in table`);
         
         let lastPCHeaderName = null;
+        let lastDataRowKey = null; // para i-skip ang magkasunod na duplicate data row
         rows.forEach((row, rowIndex) => {
             if (row.classList.contains('pc-header-row')) {
+                lastDataRowKey = null;
                 sectionUnitMeas = '';
                 sectionUnitValue = '';
                 sectionUser = '';
@@ -1659,6 +1661,11 @@ async function syncToSupabase() {
                     sectionUnitValue = vals[UNIT_VALUE_COL] || '';
                     sectionUser = vals[USER_COL] || '';
                 }
+                // Huwag mag-save ng magkasunod na duplicate data row (same 10 columns)
+                const dataKey = (rowData.slice(0, 10) || []).map(v => (v || '').toString().trim()).join('\t');
+                if (dataKey && dataKey === lastDataRowKey) return;
+                lastDataRowKey = dataKey;
+                lastPCHeaderName = null;
                 sectionPictureUrl = null;
                 const pictureCell = row.querySelector('.picture-cell');
                 if (pictureCell) {
@@ -1859,10 +1866,17 @@ async function loadFromSupabase() {
                 }
             });
             
-            // Remove consecutive duplicate PC headers (e.g. [PC 1, PC 1] -> [PC 1]) so table hindi magulo
+            // Remove consecutive duplicate PC headers and duplicate data rows (so table hindi magulo)
             const deduped = [];
             const dedupedHighlight = [];
             const dedupedPictures = [];
+            function rowEqual(a, b) {
+                if (!a || !b || a.length !== b.length) return false;
+                for (let k = 0; k < a.length; k++) {
+                    if ((a[k] || '').toString().trim() !== (b[k] || '').toString().trim()) return false;
+                }
+                return true;
+            }
             for (let i = 0; i < rowData.length; i++) {
                 const r = rowData[i];
                 const isPC = r && r.length === 1 && (r[0] || '').toString().trim() !== '';
@@ -1871,12 +1885,16 @@ async function loadFromSupabase() {
                 if (isPC && prevIsPC && (r[0] || '').toString().trim() === (prev[0] || '').toString().trim()) {
                     continue; // skip duplicate consecutive PC header
                 }
+                // Skip consecutive duplicate data row (same 10 columns)
+                if (r && r.length >= 10 && prev && prev.length >= 10 && rowEqual(r, prev)) {
+                    continue;
+                }
                 deduped.push(r);
                 dedupedHighlight.push(highlightStates[i]);
                 dedupedPictures.push(pictureUrls[i]);
             }
             if (deduped.length !== rowData.length) {
-                console.log(`  🧹 Removed ${rowData.length - deduped.length} duplicate PC header(s)`);
+                console.log(`  🧹 Removed ${rowData.length - deduped.length} duplicate row(s)`);
                 rowData.length = 0;
                 rowData.push(...deduped);
                 highlightStates.length = 0;
