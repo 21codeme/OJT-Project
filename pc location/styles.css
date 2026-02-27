@@ -6,7 +6,8 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 24px;
-    background: #f5f5f5;
+    background: url("../1. DRONE 2024/DJI_0595-2.jpg") center/cover no-repeat fixed;
+    min-height: 100vh;
     color: #333;
 }
 
@@ -35,7 +36,7 @@ body {
 .card {
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     overflow: hidden;
 }
 
@@ -58,6 +59,25 @@ body {
     color: #888;
     padding: 48px 24px;
     font-size: 1rem;
+}
+
+.pc-section-badge {
+    padding: 14px 24px;
+    background: #e8f4fc;
+    border-bottom: 1px solid #cce5f2;
+    text-align: center;
+}
+
+.pc-section-label {
+    font-size: 0.9rem;
+    color: #555;
+    margin-right: 8px;
+}
+
+.pc-section-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #0066cc;
 }
 
 .details-section {

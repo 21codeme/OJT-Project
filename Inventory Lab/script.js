@@ -2206,12 +2206,16 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 if (picUrl && picUrl.startsWith('blob:')) picUrl = await urlToDataUrl(picUrl);
                 const params = new URLSearchParams({
                     pcSection: toStr(r.sectionName),
+                    article: toStr(r.rowData[0]),
+                    description: toStr(r.rowData[1]),
+                    oldProperty: toStr(r.rowData[2]),
+                    unitMeas: toStr(r.rowData[3]),
+                    unitValue: toStr(r.rowData[4]),
+                    qty: toStr(r.rowData[5]),
                     location: toStr(r.rowData[6]),
-                    units: toStr(r.rowData[5]),
                     condition: toStr(r.rowData[7]),
                     remarks: toStr(r.rowData[8]),
-                    building: toStr(r.rowData[1]),
-                    room: toStr(r.rowData[6])
+                    user: toStr(r.rowData[9])
                 });
                 if (picUrl && (picUrl.startsWith('http://') || picUrl.startsWith('https://'))) params.set('image', picUrl);
                 const linkUrl = pcLocationFormUrl + '?' + params.toString();

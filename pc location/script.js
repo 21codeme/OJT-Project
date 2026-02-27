@@ -14,13 +14,16 @@
     }
     var fields = [
         { id: 'pcSection', param: 'pcSection' },
-        { id: 'building', param: 'building' },
-        { id: 'room', param: 'room' },
+        { id: 'article', param: 'article' },
+        { id: 'description', param: 'description' },
+        { id: 'oldProperty', param: 'oldProperty' },
+        { id: 'unitMeas', param: 'unitMeas' },
+        { id: 'unitValue', param: 'unitValue' },
+        { id: 'qty', param: 'qty' },
         { id: 'location', param: 'location' },
-        { id: 'units', param: 'units' },
         { id: 'condition', param: 'condition' },
         { id: 'remarks', param: 'remarks' },
-        { id: 'updated', param: 'updated' }
+        { id: 'user', param: 'user' }
     ];
     fields.forEach(function(f) {
         var el = document.getElementById(f.id);
