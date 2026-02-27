@@ -12,7 +12,10 @@
         <div class="card">
             <div class="picture-section">
                 <img id="locationImage" src="" alt="Item" style="display: none;">
-                <div id="noImage" class="no-image">No image</div>
+                <div id="noImage" class="no-image">
+                    <span>No image</span>
+                    <p class="no-image-hint">Para lumabas ang picture: <strong>i-Save muna sa Inventory</strong> (para ma-upload ang picture sa Supabase), tapos <strong>mag-export ulit ng Excel</strong>. I-open ang link mula sa Excel file (column Picture). Kung wala pa: i-run ang <code>database/storage-policies.sql</code> sa Supabase at siguraduhing Public ang bucket &quot;inventory-pictures&quot;.</p>
+                </div>
             </div>
             <div class="pc-section-badge">
                 <span class="pc-section-label">Under PC Section:</span>

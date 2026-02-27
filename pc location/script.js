@@ -1,16 +1,30 @@
 (function() {
     var params = new URLSearchParams(window.location.search);
-    var imageUrl = params.get('image');
+    var imageUrl = params.get('image') || params.get('img');
+    // Support image in hash (long URLs: Excel may truncate query; hash keeps it)
+    var hash = window.location.hash.slice(1);
+    if (!imageUrl && hash) {
+        var hashParams = new URLSearchParams(hash);
+        imageUrl = hashParams.get('image') || hashParams.get('img');
+    }
+    if (imageUrl) {
+        imageUrl = imageUrl.trim();
+        try {
+            if (imageUrl.indexOf('%') !== -1) imageUrl = decodeURIComponent(imageUrl);
+        } catch (e) {}
+    }
     var imgEl = document.getElementById('locationImage');
     var noImgEl = document.getElementById('noImage');
-    if (imageUrl) {
+    if (imgEl && noImgEl && imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:image/'))) {
         imgEl.src = imageUrl;
         imgEl.style.display = 'inline-block';
+        noImgEl.style.display = 'none';
         imgEl.onerror = function() {
             imgEl.style.display = 'none';
-            noImgEl.textContent = 'Image could not be loaded.';
+            noImgEl.style.display = 'block';
+            noImgEl.innerHTML = '<span>Image could not be loaded.</span>' +
+                '<p class="no-image-hint">Siguraduhin: (1) Na-open ang link mula sa Excel (Picture column). (2) Bucket &quot;inventory-pictures&quot; ay Public sa Supabase. (3) Na-Save sa Inventory bago i-export ang Excel.</p>';
         };
-        noImgEl.style.display = 'none';
     }
     var fields = [
         { id: 'pcSection', param: 'pcSection' },

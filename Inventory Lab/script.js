@@ -2273,6 +2273,13 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             for (const r of dataRowsForPicture) {
                 let picUrl = (sheet.pictureUrls && sheet.pictureUrls[r.rowIndex]) ? String(sheet.pictureUrls[r.rowIndex]).trim() : '';
                 if (picUrl && picUrl.startsWith('blob:')) picUrl = await urlToDataUrl(picUrl);
+                // Upload data URL to Storage during export so PC Location link gets https URL and picture shows
+                if (picUrl && picUrl.startsWith('data:image/')) {
+                    try {
+                        const publicUrl = await uploadDataUrlToStorage(picUrl, currentSheetId, r.rowIndex);
+                        if (publicUrl) picUrl = publicUrl;
+                    } catch (e) { console.warn('Export: could not upload picture for link', e); }
+                }
                 const params = new URLSearchParams({
                     pcSection: toStr(r.sectionName),
                     article: toStr(r.rowData[0]),
