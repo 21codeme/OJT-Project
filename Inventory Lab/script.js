@@ -1539,10 +1539,10 @@ async function syncToSupabase() {
                 sectionUnitValue = '';
                 sectionUser = '';
                 sectionPictureUrl = null;
-                const firstCell = row.querySelector('td');
+                const firstCell = row.querySelector('td.pc-name-cell') || row.querySelector('td[colspan="11"]');
                 if (firstCell) {
                     const input = firstCell.querySelector('input');
-                    const pcName = input ? input.value : firstCell.textContent.trim();
+                    const pcName = input ? input.value.trim() : firstCell.textContent.trim();
                     itemsToInsert.push({
                         sheet_id: currentSheetId,
                         sheet_name: sheet.name,
