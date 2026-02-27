@@ -44,15 +44,51 @@ document.addEventListener('DOMContentLoaded', async function() {
     }, 200);
 });
 
-// Save bago mag-close/refresh para hindi mawala ang data
+const BACKUP_KEY = 'inventory_lab_backup';
+
+function saveBackupToLocalStorage() {
+    try {
+        const backup = {
+            sheets: sheets,
+            currentSheetId: currentSheetId,
+            sheetCounter: sheetCounter,
+            savedAt: Date.now()
+        };
+        localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            try {
+                const slim = { sheets: {}, currentSheetId, sheetCounter, savedAt: Date.now() };
+                Object.keys(sheets).forEach(sid => {
+                    const s = sheets[sid];
+                    slim.sheets[sid] = { id: s.id, name: s.name, data: s.data, hasData: s.hasData, highlightStates: s.highlightStates || [], pictureUrls: [] };
+                });
+                localStorage.setItem(BACKUP_KEY, JSON.stringify(slim));
+            } catch (e2) { }
+        }
+    }
+}
+
+function loadBackupFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem(BACKUP_KEY);
+        if (!raw) return null;
+        const backup = JSON.parse(raw);
+        if (!backup || !backup.sheets) return null;
+        return backup;
+    } catch (e) { return null; }
+}
+
+// Save bago mag-close/refresh — localStorage muna (sync, instant), tapos Supabase (async, best-effort)
 function flushSaveBeforeUnload() {
-    saveCurrentSheetData();
+    saveCurrentSheetData(true);
+    saveBackupToLocalStorage();
     if (syncTimeout) {
         clearTimeout(syncTimeout);
         syncTimeout = null;
     }
     if (checkSupabaseConnection() && !isSyncing) {
-        syncToSupabase(); // fire sync; page might close before it finishes, but we try
+        syncToSupabase();
     }
 }
 window.addEventListener('beforeunload', function() {
@@ -1412,20 +1448,21 @@ function saveCurrentSheetData(skipSync) {
     sheets[currentSheetId].highlightStates = highlightStates;
     sheets[currentSheetId].pictureUrls = pictureUrls;
     
+    // Laging i-save sa localStorage agad — kahit mag-refresh hindi mawawala
+    saveBackupToLocalStorage();
+    
     // Don't sync if we're loading from Supabase or caller asked to skip (e.g. when preserving table during load)
     if (skipSync || isLoadingFromSupabase) {
         if (isLoadingFromSupabase) console.log('⏸️ Skipping sync during load from Supabase');
         return;
     }
-    // Debounce sync so one save = one sync (no duplicate records) — mas mabilis para hindi mawala sa refresh
+    // Debounce sync — mas mabilis (100ms) para hindi mawala sa refresh
     if (checkSupabaseConnection()) {
-        if (syncTimeout) {
-            clearTimeout(syncTimeout);
-        }
+        if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
             syncTimeout = null;
             syncToSupabase();
-        }, 250);
+        }, 100);
     }
 }
 
@@ -1775,26 +1812,37 @@ async function loadFromSupabase() {
         // Update sheet tabs first so tab elements exist before switching
         updateSheetTabs();
         
-        // Switch to first sheet if available
+        // Kung walang data mula Supabase, gamitin localStorage backup — hindi dapat mawala ang data kahit mag-refresh
+        if (!hasAnyData()) {
+            const backup = loadBackupFromLocalStorage();
+            const backupRows = backup && backup.sheets ? Object.values(backup.sheets).reduce((n, s) => n + (s.data ? s.data.length : 0), 0) : 0;
+            if (backupRows > 0) {
+                console.log(`📂 Supabase empty, restoring ${backupRows} row(s) from localStorage backup`);
+                sheets = backup.sheets || {};
+                currentSheetId = backup.currentSheetId || 'sheet-1';
+                sheetCounter = backup.sheetCounter || 1;
+                updateSheetTabs();
+            }
+        }
+        
         const firstSheetId = Object.keys(sheets)[0];
         if (firstSheetId) {
             currentSheetId = firstSheetId;
             const sheet = sheets[firstSheetId];
-            // If user added rows during load, keep table content (avoid overwriting with older DB data)
+            // If user added rows during load, keep table content
             const tbody = document.getElementById('tableBody');
             const tableRowCount = tbody ? tbody.querySelectorAll('tr:not(.empty-row)').length : 0;
-            if (tableRowCount > 0 && sheet.data.length < tableRowCount) {
+            if (tableRowCount > 0 && sheet.data && sheet.data.length < tableRowCount) {
                 saveCurrentSheetData(true);
             }
             console.log(`📋 Switching to sheet "${sheet.name}" with ${sheet.data ? sheet.data.length : 0} row(s)`);
-            console.log(`📋 Sheet data before switch:`, JSON.stringify(sheet.data));
             
             switchToSheet(firstSheetId);
         } else {
             console.log('⚠️ No sheets found to display');
         }
         
-        console.log(`✅ Data loaded from Supabase successfully: ${Object.keys(sheets).length} sheet(s) loaded`);
+        console.log(`✅ Data loaded: ${Object.keys(sheets).length} sheet(s)`);
         
         // Log summary of loaded data
         Object.values(sheets).forEach(sheet => {
