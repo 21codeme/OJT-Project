@@ -2482,14 +2482,19 @@ function buildGoogleOAuthUrl() {
     const clientId = typeof GOOGLE_DRIVE_CLIENT_ID !== 'undefined' && GOOGLE_DRIVE_CLIENT_ID ? GOOGLE_DRIVE_CLIENT_ID : '';
     if (!clientId) return null;
     const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email');
-    // Use fixed redirect URI (no space) so Google accepts it; oauth-callback.html is in repo root
-    const redirectUri = (typeof GOOGLE_DRIVE_REDIRECT_URI !== 'undefined' && GOOGLE_DRIVE_REDIRECT_URI)
-        ? GOOGLE_DRIVE_REDIRECT_URI
+    const origin = window.location.origin;
+    if (!origin || origin === 'null' || origin === 'file://') return null;
+    // Build redirect URI from current host: Vercel = origin/oauth-callback.html; GitHub Pages = origin/repo/oauth-callback.html
+    let redirectUri = (typeof GOOGLE_DRIVE_REDIRECT_URI !== 'undefined' && GOOGLE_DRIVE_REDIRECT_URI && String(GOOGLE_DRIVE_REDIRECT_URI).trim())
+        ? String(GOOGLE_DRIVE_REDIRECT_URI).trim()
         : (function() {
-            const origin = window.location.origin;
-            if (!origin || origin === 'null' || origin === 'file://') return null;
-            return origin + window.location.pathname.replace(/[^/]*$/, '') + 'oauth-callback.html';
+            if (origin.indexOf('github.io') !== -1) {
+                const first = window.location.pathname.split('/').filter(Boolean)[0];
+                return first ? origin + '/' + first + '/oauth-callback.html' : origin + '/oauth-callback.html';
+            }
+            return origin + '/oauth-callback.html';
         })();
+    if (redirectUri && redirectUri.endsWith('/')) redirectUri = redirectUri.slice(0, -1);
     if (!redirectUri) return null;
     return 'https://accounts.google.com/o/oauth2/v2/auth?client_id=' + encodeURIComponent(clientId) +
         '&redirect_uri=' + encodeURIComponent(redirectUri) +

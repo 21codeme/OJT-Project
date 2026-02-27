@@ -44,16 +44,49 @@ Sundin ang mga hakbang na ito para gumana ang **Connect Google Drive** at **Uplo
 2. Click **+ Create Credentials** → **OAuth client ID**.
 3. **Application type:** **Web application**.
 4. **Name:** hal. "Lab Inventory Web".
-5. Sa **Authorized redirect URIs** click **+ ADD URI** at ilagay **eksaktong** URL na **WALANG SPACE** (Google ayaw sa `%20`):
+5. Sa **Authorized JavaScript origins** click **+ ADD URI** at idagdag **lahat** ng host kung saan mo binuksan ang app:
+   - **Kung Vercel:** `https://<iyong-app>.vercel.app` (hal. `https://ojt-project.vercel.app`)
+   - **Kung GitHub Pages:** `https://21codeme.github.io`
+   Walang trailing slash, walang path.
 
-   **Gamitin ang callback sa repo root (walang "Inventory%20Lab" sa path):**
-   ```
-   https://21codeme.github.io/OJT-Project/oauth-callback.html
-   ```
-   Palitan ang `21codeme` at `OJT-Project` kung iba ang username at repo name. May file na `oauth-callback.html` sa **root** ng project para sa URL na ito.
+6. Sa **Authorized redirect URIs** click **+ ADD URI** at idagdag **lahat** ng callback URL:
+   - **Kung Vercel:** `https://<iyong-app>.vercel.app/oauth-callback.html`
+   - **Kung GitHub Pages:** `https://21codeme.github.io/OJT-Project/oauth-callback.html`
+   Dapat **exact match**. Ang app ay awtomatikong gumagamit ng tamang redirect depende sa kung saan naka-open (Vercel o GitHub).
 
-6. Click **Create**.
-7. Lalabas ang **Client ID** at **Client secret**. **I-copy ang Client ID** (hindi kailangan ang secret para sa flow na ginagamit ng app).
+7. Click **Create**.
+8. Lalabas ang **Client ID** at **Client secret**. **I-copy ang Client ID** (hindi kailangan ang secret para sa flow na ginagamit ng app).
+
+---
+
+## 4b. Idagdag ang Vercel URLs (kung naka-Vercel ang app)
+
+Kung naka-deploy ang app sa **Vercel**, kailangan idagdag ang Vercel URLs sa OAuth client:
+
+1. **Alamin ang Vercel URL mo**  
+   Buksan ang app sa Vercel at tingnan ang address bar. Hal.: `https://lab-inventory-abc123.vercel.app` o `https://ojt-project.vercel.app`. Yan ang **origin** mo (walang path, walang trailing slash).
+
+2. Pumunta sa **Google Cloud Console** → **APIs & Services** → **Credentials**.
+
+3. Sa **OAuth 2.0 Client IDs**, hanapin ang **"Lab Inventory Web"** at i-click ang **icon na lapis (Edit)** sa kanan.
+
+4. **Authorized JavaScript origins**
+   - I-click **+ ADD URI**.
+   - Ilagay: `https://<iyong-vercel-app>.vercel.app`  
+     Hal.: `https://ojt-project.vercel.app`  
+     Dapat **exact** — walang `/` sa dulo, walang path.
+
+5. **Authorized redirect URIs**
+   - I-click **+ ADD URI**.
+   - Ilagay: `https://<iyong-vercel-app>.vercel.app/oauth-callback.html`  
+     Hal.: `https://ojt-project.vercel.app/oauth-callback.html`  
+     Dapat **exact** — may `/oauth-callback.html` sa dulo.
+
+6. I-click **SAVE** sa baba ng page.
+
+7. Maghintay ng 1–2 minuto, tapos subukan ulit ang **Connect Google Drive** sa app na naka-open sa **Vercel URL** mo.
+
+Pwedeng naka-add na rin ang GitHub Pages URLs; okay lang na pareho naka-list kung gagamitin mo both.
 
 ---
 

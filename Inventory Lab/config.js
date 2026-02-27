@@ -2,14 +2,13 @@
 // Replace these with your actual Supabase project credentials
 // You can find these in your Supabase project settings: Settings > API
 
-// Google Drive (optional): (1) Enable "Google Drive API". (2) Create OAuth 2.0 Client ID (Web application).
-// (3) Authorized redirect URI: GAMITIN ANG URL NA WALANG SPACE (Google ayaw sa %20). Ilagay eksaktong:
-//     https://21codeme.github.io/OJT-Project/oauth-callback.html
-//     (palitan 21codeme at OJT-Project kung iba ang username/repo.)
-// (4) Paste Client ID below. App must be served over HTTPS (e.g. GitHub Pages).
+// Google Drive: (1) Enable "Google Drive API". (2) Create OAuth 2.0 Client ID (Web application).
+// (3) Sa Google Console idagdag BOTH: Authorized redirect URIs = <Vercel URL>/oauth-callback.html at <GitHub URL>/OJT-Project/oauth-callback.html;
+//     Authorized JavaScript origins = <Vercel origin> at https://21codeme.github.io
+// (4) Paste Client ID below. Redirect URI ay awtomatiko mula sa kung saan naka-open ang app (Vercel o GitHub Pages).
 const GOOGLE_DRIVE_CLIENT_ID = '805452953533-7bkdc4fii38bndmbphq6oskp7m6co7ee.apps.googleusercontent.com';
-// Redirect URI na walang space (nasa repo root ang oauth-callback.html). Dapat match sa Google Console.
-const GOOGLE_DRIVE_REDIRECT_URI = 'https://21codeme.github.io/OJT-Project/oauth-callback.html';
+// Opsyonal: i-set lang kung gusto mong i-force ang isang redirect URI. Kung blank, gagamit ang current host (Vercel o GitHub).
+const GOOGLE_DRIVE_REDIRECT_URI = '';
 
 const SUPABASE_CONFIG = {
     url: 'https://bferfkrkejwccvfsigze.supabase.co',
