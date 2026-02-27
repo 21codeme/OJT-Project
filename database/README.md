@@ -28,6 +28,12 @@ This folder contains all database-related files for the Lab Inventory Management
    - Open the application
    - Check browser console for "Supabase connected successfully"
 
+5. **Storage bucket (para lumabas ang picture sa PC Location link)**
+   - Sa Supabase Dashboard: Storage → New bucket
+   - Name: `inventory-pictures`
+   - Public bucket: **ON** (para ma-load ang image sa PC Location view)
+   - Create bucket. Pag na-save na ang inventory at may picture, i-u-upload dito at magiging https URL ang picture para lumabas sa Excel link.
+
 ## Database Schema
 
 ### Tables

@@ -777,6 +777,36 @@ addItemForm.addEventListener('submit', function(e) {
     }
 });
 
+// Convert data URL to Blob for Storage upload
+function dataURLtoBlob(dataUrl) {
+    const arr = dataUrl.split(',');
+    const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new Blob([u8arr], { type: mime });
+}
+
+// Upload data URL to Supabase Storage; return public URL so PC Location link can show picture
+async function uploadDataUrlToStorage(dataUrl, sheetId, rowIndex) {
+    if (!window.supabaseClient || !dataUrl || !dataUrl.startsWith('data:image/')) return null;
+    try {
+        const blob = dataURLtoBlob(dataUrl);
+        const path = `${(sheetId || 'sheet-1')}/${rowIndex}/${Date.now()}.jpg`;
+        const { error } = await window.supabaseClient.storage.from('inventory-pictures').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+        if (error) {
+            console.warn('Storage upload failed:', error.message);
+            return null;
+        }
+        const { data: { publicUrl } } = window.supabaseClient.storage.from('inventory-pictures').getPublicUrl(path);
+        return publicUrl;
+    } catch (e) {
+        console.warn('Storage upload error:', e);
+        return null;
+    }
+}
+
 // Compress image so it saves to Supabase and appears in Excel (max 800px, JPEG 0.8)
 function compressImage(dataUrl) {
     return new Promise(function(resolve) {
@@ -1644,6 +1674,19 @@ async function syncToSupabase() {
             }
         });
         
+        // Upload data URL pictures to Storage so we get https URL — para lumabas ang picture sa PC Location link
+        const rowIndexToPublicUrl = {};
+        for (let i = 0; i < itemsToInsert.length; i++) {
+            const item = itemsToInsert[i];
+            if (item.picture_url && String(item.picture_url).startsWith('data:image/') && !item.is_pc_header) {
+                const publicUrl = await uploadDataUrlToStorage(item.picture_url, currentSheetId, item.row_index);
+                if (publicUrl) {
+                    item.picture_url = publicUrl;
+                    rowIndexToPublicUrl[item.row_index] = publicUrl;
+                }
+            }
+        }
+        
         console.log(`📦 Prepared ${itemsToInsert.length} item(s) to insert`);
         
         // Insert all items (with retry for Failed to fetch)
@@ -1668,7 +1711,18 @@ async function syncToSupabase() {
             } else {
                 const insertedData = insertResult.data;
                 console.log(`✅ Successfully saved ${itemsToInsert.length} item(s) to Supabase`);
-                console.log('Inserted data:', insertedData);
+                // I-update ang DOM at pictureUrls sa rows na na-upload ang picture — para lumabas ang image sa PC Location link
+                const pictureUrls = sheets[currentSheetId].pictureUrls || [];
+                for (const [idx, publicUrl] of Object.entries(rowIndexToPublicUrl)) {
+                    const i = parseInt(idx, 10);
+                    if (pictureUrls[i] !== undefined) pictureUrls[i] = publicUrl;
+                    const row = rows[i];
+                    if (row) {
+                        const pictureCell = row.querySelector('.picture-cell img');
+                        if (pictureCell) pictureCell.src = publicUrl;
+                    }
+                }
+                sheets[currentSheetId].pictureUrls = pictureUrls;
             }
         } else {
             console.log('⚠️ No items to sync to Supabase (all rows are empty)');
