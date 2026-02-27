@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Details</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .picture-section {
+            background: #fafafa;
+            padding: 24px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .picture-section img {
+            max-width: 100%;
+            max-height: 420px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .picture-section .no-image {
+            color: #888;
+            padding: 48px 24px;
+            font-size: 1rem;
+        }
+        .details-section {
+            padding: 24px;
+        }
+        .details-section h2 {
+            margin: 0 0 16px 0;
+            font-size: 1.25rem;
+            color: #1a1a1a;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 8px;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-table th,
+        .details-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .details-table th {
+            font-weight: 600;
+            color: #555;
+            width: 38%;
+        }
+        .details-table td {
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="picture-section">
+            <img id="itemImage" src="" alt="Item" style="display: none;">
+            <div id="noImage" class="no-image">No image</div>
+        </div>
+        <div class="details-section">
+            <h2>Item Details</h2>
+            <table class="details-table">
+                <tr><th>Article / Item</th><td id="article">—</td></tr>
+                <tr><th>Description</th><td id="description">—</td></tr>
+                <tr><th>Old Property No. Assigned</th><td id="oldProperty">—</td></tr>
+                <tr><th>Unit of measure</th><td id="unitMeas">—</td></tr>
+                <tr><th>Unit Value</th><td id="unitValue">—</td></tr>
+                <tr><th>Quantity per Physical count</th><td id="qty">—</td></tr>
+                <tr><th>Location / Whereabout</th><td id="location">—</td></tr>
+                <tr><th>Condition</th><td id="condition">—</td></tr>
+                <tr><th>Remarks</th><td id="remarks">—</td></tr>
+                <tr><th>User</th><td id="user">—</td></tr>
+            </table>
+        </div>
+    </div>
+    <script>
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var imageUrl = params.get('image');
+            var imgEl = document.getElementById('itemImage');
+            var noImgEl = document.getElementById('noImage');
+            if (imageUrl) {
+                imgEl.src = imageUrl;
+                imgEl.style.display = 'inline-block';
+                imgEl.onerror = function() {
+                    imgEl.style.display = 'none';
+                    noImgEl.textContent = 'Image could not be loaded.';
+                };
+                noImgEl.style.display = 'none';
+            }
+            var fields = [
+                { id: 'article', param: 'article' },
+                { id: 'description', param: 'description' },
+                { id: 'oldProperty', param: 'oldProperty' },
+                { id: 'unitMeas', param: 'unitMeas' },
+                { id: 'unitValue', param: 'unitValue' },
+                { id: 'qty', param: 'qty' },
+                { id: 'location', param: 'location' },
+                { id: 'condition', param: 'condition' },
+                { id: 'remarks', param: 'remarks' },
+                { id: 'user', param: 'user' }
+            ];
+            fields.forEach(function(f) {
+                var el = document.getElementById(f.id);
+                var val = params.get(f.param);
+                if (el) el.textContent = (val != null && val !== '') ? decodeURIComponent(val) : '—';
+            });
+        })();
+    </script>
+</body>
+</html>

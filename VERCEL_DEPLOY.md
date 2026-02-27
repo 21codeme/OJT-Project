@@ -39,6 +39,12 @@ Your project is already ready for Vercel! It's a static site (HTML/CSS/JS) so no
    - Vercel will provide a URL like: `https://ojt-project.vercel.app`
    - Your site is now live!
 
+7. **Excel links (PC Location) — walang security warning**
+   - Buksan ang app mula sa **Vercel URL** (hal. `https://your-project.vercel.app`)
+   - Pumasok sa **Inventory** → mag-export to Excel doon
+   - Ang links sa Excel ay magiging **https** (hindi `file://`), kaya kapag pinindot sa Excel **hindi na lalabas** ang "Microsoft Excel Security Notice"
+   - Kung binuksan ang app mula sa file (Downloads/folder), ang links ay `file://` at may warning pa rin
+
 ### Option B: Deploy via Vercel CLI
 
 1. **Install Vercel CLI**
@@ -89,6 +95,7 @@ Your project is already ready for Vercel! It's a static site (HTML/CSS/JS) so no
 - Images in `images/` folder are accessible
 - Excel import/export works (client-side)
 - All features work as expected
+- **Excel “PC Location” links**: kung nag-export ka mula sa Vercel URL (https://…), ang link sa cell ay https at hindi na magpapakita ng Excel security warning kapag pinindot
 
 ### ⚠️ Things to Remember:
 - **Supabase Config**: Make sure `config.js` has your credentials

@@ -1954,6 +1954,24 @@ function updateDataFromTable() {
     saveCurrentSheetData();
 }
 
+// Convert blob: or https: image URL to data URL for Excel embed
+function urlToDataUrl(url) {
+    if (!url || typeof url !== 'string') return Promise.resolve(null);
+    if (url.startsWith('data:image/')) return Promise.resolve(url);
+    return fetch(url)
+        .then(res => res.blob())
+        .then(blob => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        }))
+        .catch(err => {
+            console.warn('Could not convert image URL to data URL:', err);
+            return null;
+        });
+}
+
 // Export to Excel with ExcelJS (supports images and styling)
 document.getElementById('exportBtn').addEventListener('click', async function() {
     updateDataFromTable();
@@ -2071,8 +2089,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             let currentRow = 8;
             let dataRowIndex = 0;
             let exportSectionStart = null;
-            let sectionPictureUrl = null; // Picture for current section (first row only)
-            const exportSections = [];   // { start, end, pictureUrl }
+            let sectionPictureUrl = null;
+            let sectionFirstRowData = null;
+            let sectionName = ''; // PC 1, PC 2, etc. for PC location form
+            const exportSections = [];   // { start, end, pictureUrl, rowData, sectionName }
             
             sheet.data.forEach((rowData, rowIndex) => {
                 // Skip empty rows
@@ -2096,11 +2116,13 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 
                 if (isPCHeader) {
                     if (exportSectionStart !== null) {
-                        exportSections.push({ start: exportSectionStart, end: currentRow - 1, pictureUrl: sectionPictureUrl || null });
+                        exportSections.push({ start: exportSectionStart, end: currentRow - 1, pictureUrl: sectionPictureUrl || null, rowData: sectionFirstRowData, sectionName: sectionName });
                         exportSectionStart = null;
                         sectionPictureUrl = null;
+                        sectionFirstRowData = null;
                     }
                     const pcNameOnly = firstCell;
+                    sectionName = pcNameOnly;
                     const pcRowValues = ['', '', pcNameOnly, '', '', '', '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
                     const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
@@ -2121,7 +2143,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     if (exportSectionStart === null) exportSectionStart = currentRow;
                     const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
                     const pictureDataUrl = sheet.pictureUrls && sheet.pictureUrls[rowIndex];
-                    if (isFirstRowOfSection && pictureDataUrl) sectionPictureUrl = pictureDataUrl;
+                    if (isFirstRowOfSection) {
+                        if (pictureDataUrl) sectionPictureUrl = pictureDataUrl;
+                        sectionFirstRowData = rowData.slice(0, 10); // Article, Description, ... User for viewer
+                    }
                     const exportRow = [
                         '',                 // A (no item number column)
                         toStr(rowData[0]),  // B Article/It
@@ -2164,7 +2189,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             });
             
             if (exportSectionStart !== null) {
-                exportSections.push({ start: exportSectionStart, end: currentRow - 1, pictureUrl: sectionPictureUrl || null });
+                exportSections.push({ start: exportSectionStart, end: currentRow - 1, pictureUrl: sectionPictureUrl || null, rowData: sectionFirstRowData, sectionName: sectionName });
             }
             exportSections.forEach(s => {
                 if (s.end >= s.start) {
@@ -2174,20 +2199,52 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     worksheet.mergeCells(s.start, 12, s.end, 12); // L Picture
                 }
             });
-            // One image per section: centered in merged L, fit to column (same as reference)
-            const pictureCol = 11; // L
+            // Convert only blob: URLs to data URLs (keep https: for viewer link)
+            for (const s of exportSections) {
+                if (s.pictureUrl && String(s.pictureUrl).startsWith('blob:')) {
+                    s.pictureUrl = await urlToDataUrl(s.pictureUrl);
+                }
+            }
+            // Link sa Picture cell → PC Location form (picture sa taas, details sa baba); lalabas lang ang form kapag pinindot ang link
+            const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+            const pcLocationFormUrl = baseUrl + '../pc location/view.html';
+            const pictureCol = 12; // L column (1-based)
+            const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
             exportSections.forEach(s => {
-                if (s.end < s.start || !s.pictureUrl || !String(s.pictureUrl).startsWith('data:image/')) return;
+                if (s.end < s.start || !s.rowData) return;
+                const picUrl = s.pictureUrl ? String(s.pictureUrl).trim() : '';
+                const isHttps = picUrl.startsWith('http://') || picUrl.startsWith('https://');
+                const params = new URLSearchParams({
+                    pcSection: toStr(s.sectionName),
+                    location: toStr(s.rowData[6]),
+                    units: toStr(s.rowData[5]),
+                    condition: toStr(s.rowData[7]),
+                    remarks: toStr(s.rowData[8]),
+                    building: toStr(s.rowData[1]),
+                    room: toStr(s.rowData[6])
+                });
+                if (isHttps) params.set('image', picUrl);
+                const linkUrl = pcLocationFormUrl + '?' + params.toString();
+                const cell = worksheet.getRow(s.start).getCell(pictureCol);
+                cell.value = { text: linkUrl, hyperlink: linkUrl };
+                cell.font = { size: 9, color: { argb: 'FF0066CC' }, underline: true };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            });
+            // Kung may data URL, i-embed pa rin ang thumbnail sa cell (link nandyan na sa cell)
+            exportSections.forEach(s => {
+                if (s.end < s.start) return;
+                const picUrl = s.pictureUrl ? String(s.pictureUrl).trim() : '';
+                if (!picUrl || !picUrl.startsWith('data:image/')) return;
                 try {
-                    const match = String(s.pictureUrl).match(/^data:image\/(\w+);base64,(.+)$/);
+                    const match = picUrl.match(/^data:image\/(\w+);base64,(.+)$/);
                     if (!match) return;
                     const ext = match[1].toLowerCase() === 'jpeg' ? 'jpeg' : match[1].toLowerCase();
                     const base64 = match[2];
                     const imageId = workbook.addImage({ base64: base64, extension: ext === 'jpg' ? 'jpeg' : ext });
-                    // Fit image in merged L (s.start..s.end), centered with margin; 1-based row -> 0-based for addImage
+                    const col0 = pictureCol - 1;
                     worksheet.addImage(imageId, {
-                        tl: { col: pictureCol + 0.05, row: (s.start - 1) + 0.05 },
-                        br: { col: pictureCol + 0.95, row: (s.end - 1) + 0.95 },
+                        tl: { col: col0 + 0.05, row: (s.start - 1) + 0.05 },
+                        br: { col: col0 + 0.95, row: (s.end - 1) + 0.95 },
                         editAs: 'oneCell'
                     });
                 } catch (imgErr) {
