@@ -2438,3 +2438,220 @@ document.getElementById('clearBtn').addEventListener('click', function() {
         document.getElementById('clearBtn').disabled = true;
     }
 });
+
+// ——— Google Drive: folder name + Connect + Upload PC forms ———
+const DRIVE_STORAGE_KEY = 'inventory_drive_folder';
+const DRIVE_TOKEN_KEY = 'inventory_drive_token';
+
+function getDriveFolderName() {
+    const el = document.getElementById('driveFolderName');
+    return (el && el.value && el.value.trim()) ? el.value.trim() : (localStorage.getItem(DRIVE_STORAGE_KEY) || 'Lab Inventory PC Forms');
+}
+
+function setDriveFolderName(name) {
+    if (name) localStorage.setItem(DRIVE_STORAGE_KEY, name);
+    const el = document.getElementById('driveFolderName');
+    if (el && !el.value) el.value = name || '';
+}
+
+function getDriveToken() {
+    try {
+        return sessionStorage.getItem(DRIVE_TOKEN_KEY);
+    } catch (e) { return null; }
+}
+
+function setDriveToken(token) {
+    try {
+        if (token) sessionStorage.setItem(DRIVE_TOKEN_KEY, token);
+        else sessionStorage.removeItem(DRIVE_TOKEN_KEY);
+    } catch (e) {}
+}
+
+function updateDriveUI() {
+    const token = getDriveToken();
+    const statusEl = document.getElementById('driveStatus');
+    const uploadBtn = document.getElementById('uploadToDriveBtn');
+    if (statusEl) statusEl.textContent = token ? 'Connected' : 'Not connected';
+    if (statusEl) statusEl.className = 'drive-status' + (token ? ' connected' : '');
+    if (uploadBtn) {
+        uploadBtn.disabled = !token || !hasAnyData();
+    }
+}
+
+function buildGoogleOAuthUrl() {
+    const clientId = typeof GOOGLE_DRIVE_CLIENT_ID !== 'undefined' && GOOGLE_DRIVE_CLIENT_ID ? GOOGLE_DRIVE_CLIENT_ID : '';
+    if (!clientId) return null;
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email');
+    // Use fixed redirect URI (no space) so Google accepts it; oauth-callback.html is in repo root
+    const redirectUri = (typeof GOOGLE_DRIVE_REDIRECT_URI !== 'undefined' && GOOGLE_DRIVE_REDIRECT_URI)
+        ? GOOGLE_DRIVE_REDIRECT_URI
+        : (function() {
+            const origin = window.location.origin;
+            if (!origin || origin === 'null' || origin === 'file://') return null;
+            return origin + window.location.pathname.replace(/[^/]*$/, '') + 'oauth-callback.html';
+        })();
+    if (!redirectUri) return null;
+    return 'https://accounts.google.com/o/oauth2/v2/auth?client_id=' + encodeURIComponent(clientId) +
+        '&redirect_uri=' + encodeURIComponent(redirectUri) +
+        '&response_type=token&scope=' + scope + '&prompt=consent';
+}
+
+document.getElementById('driveFolderName').addEventListener('input', function() {
+    const v = this.value.trim();
+    if (v) localStorage.setItem(DRIVE_STORAGE_KEY, v);
+});
+
+document.getElementById('connectDriveBtn').addEventListener('click', function() {
+    const url = buildGoogleOAuthUrl();
+    if (!url) {
+        alert('Google Drive: lagay muna ang GOOGLE_DRIVE_CLIENT_ID sa config.js. Kunin sa Google Cloud Console → Credentials → OAuth 2.0 Client ID. Dapat naka-host ang app sa HTTPS (e.g. GitHub Pages) para gumana ang Connect.');
+        return;
+    }
+    const w = window.open(url, 'google_oauth', 'width=500,height=600');
+    function onMessage(ev) {
+        if (ev.data && ev.data.type === 'google_drive_oauth') {
+            window.removeEventListener('message', onMessage);
+            if (w && !w.closed) w.close();
+            if (ev.data.error) {
+                alert('Google Drive: ' + (ev.data.error_description || ev.data.error));
+                return;
+            }
+            if (ev.data.access_token) {
+                setDriveToken(ev.data.access_token);
+                setDriveFolderName(getDriveFolderName());
+                updateDriveUI();
+                alert('Connected to Google Drive. Pwede mo nang i-click ang "Upload PC forms to Drive".');
+            }
+        }
+    }
+    window.addEventListener('message', onMessage);
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    setDriveFolderName(localStorage.getItem(DRIVE_STORAGE_KEY) || '');
+    updateDriveUI();
+});
+setInterval(updateDriveUI, 2000);
+
+function driveApiCreateFolder(accessToken, name, parentId) {
+    const url = 'https://www.googleapis.com/drive/v3/files';
+    const body = JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder', parents: parentId ? [parentId] : undefined });
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: body
+    }).then(r => r.json()).then(data => data.id ? data : Promise.reject(new Error(data.error && data.error.message || 'Create folder failed')));
+}
+
+function driveApiUploadFile(accessToken, name, mimeType, content, parentId) {
+    const boundary = '-------boundary' + Date.now();
+    const meta = JSON.stringify({ name: name, parents: parentId ? [parentId] : undefined });
+    const body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + boundary + '\r\nContent-Type: ' + mimeType + '\r\n\r\n' + content + '\r\n--' + boundary + '--';
+    return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
+        body: body
+    }).then(r => r.json()).then(data => data.id ? data : Promise.reject(new Error(data.error && data.error.message || 'Upload failed')));
+}
+
+function generatePCFormHTML(rowData, sectionName, pictureUrl) {
+    const toStr = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '—');
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const [article, desc, oldProp, unitMeas, unitVal, qty, location, condition, remarks, user] = (rowData || []).slice(0, 10).map(toStr);
+    const imgHtml = (pictureUrl && (pictureUrl.startsWith('http') || pictureUrl.startsWith('data:image/')))
+        ? '<img src="' + esc(pictureUrl) + '" alt="Item" style="max-width:100%;max-height:420px;object-fit:contain;border-radius:8px;border:1px solid #ddd;">'
+        : '<div style="color:#888;padding:48px 24px;">No image</div>';
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>PC Location — ' + esc(article) + '</title><style>' +
+        '*{box-sizing:border-box} body{font-family:\'Segoe UI\',sans-serif;margin:0;padding:24px;background:#f5f5f5;color:#333}' +
+        '.container{max-width:720px;margin:0 auto}.card{background:#fff;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.2);overflow:hidden}' +
+        '.picture-section{background:#fafafa;padding:24px;text-align:center;border-bottom:1px solid #eee}' +
+        '.pc-section-badge{padding:14px 24px;background:#e8f4fc;border-bottom:1px solid #cce5f2;text-align:center}.pc-section-value{font-weight:700;color:#0066cc}' +
+        '.details-section{padding:24px}.details-section h2{margin:0 0 16px;font-size:1.25rem;border-bottom:2px solid #0066cc;padding-bottom:8px}' +
+        'table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #eee} th{font-weight:600;color:#555;width:38%} td{color:#222}' +
+        '</style></head><body><div class="container"><div class="card"><div class="picture-section">' + imgHtml +
+        '</div><div class="pc-section-badge"><span>Under PC Section: </span><span class="pc-section-value">' + esc(sectionName) + '</span></div>' +
+        '<div class="details-section"><h2>Item Details</h2><table><tr><th>Article / Item</th><td>' + esc(article) + '</td></tr>' +
+        '<tr><th>Description</th><td>' + esc(desc) + '</td></tr><tr><th>Old Property N Assigned</th><td>' + esc(oldProp) + '</td></tr>' +
+        '<tr><th>Unit of meas</th><td>' + esc(unitMeas) + '</td></tr><tr><th>Unit Value</th><td>' + esc(unitVal) + '</td></tr>' +
+        '<tr><th>Quantity per Physical count</th><td>' + esc(qty) + '</td></tr><tr><th>Location / Whereabout</th><td>' + esc(location) + '</td></tr>' +
+        '<tr><th>Condition</th><td>' + esc(condition) + '</td></tr><tr><th>Remarks</th><td>' + esc(remarks) + '</td></tr><tr><th>User</th><td>' + esc(user) + '</td></tr></table></div></div></div></body></html>';
+}
+
+function collectPCItemsBySheet() {
+    updateDataFromTable();
+    const result = [];
+    const toStr = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '');
+    Object.values(sheets).forEach(sheet => {
+        if (!sheet.hasData || !sheet.data || sheet.data.length === 0) return;
+        let sectionName = '';
+        let sectionItems = [];
+        sheet.data.forEach((rowData, rowIndex) => {
+            if (!rowData || rowData.length === 0) return;
+            const firstCell = rowData[0] ? rowData[0].toString().trim() : '';
+            const firstUpper = (firstCell || '').toUpperCase();
+            const isPCHeader = firstCell && (rowData.length === 1 || firstUpper === 'SERVER' || firstUpper === 'PC' || /^PC\s*\d*$/.test(firstUpper) || /^PC\s+USED\s+BY/i.test(firstCell) || firstUpper.startsWith('PC '));
+            if (isPCHeader) {
+                if (sectionItems.length > 0) {
+                    result.push({ sheetName: sheet.name, sectionName: sectionName, items: sectionItems });
+                    sectionItems = [];
+                }
+                sectionName = firstCell;
+            } else if (rowData.length >= 10) {
+                const pictureUrl = (sheet.pictureUrls && sheet.pictureUrls[rowIndex]) ? String(sheet.pictureUrls[rowIndex]).trim() : '';
+                sectionItems.push({ rowData: rowData.slice(0, 10), pictureUrl: pictureUrl || '' });
+            }
+        });
+        if (sectionItems.length > 0) result.push({ sheetName: sheet.name, sectionName: sectionName, items: sectionItems });
+    });
+    return result;
+}
+
+document.getElementById('uploadToDriveBtn').addEventListener('click', async function() {
+    const token = getDriveToken();
+    if (!token) {
+        alert('Connect Google Drive muna (Connect Google Drive button).');
+        return;
+    }
+    if (!hasAnyData()) {
+        alert('Walang data na i-upload. Mag-add muna ng items o mag-import ng Excel.');
+        return;
+    }
+    const folderName = getDriveFolderName();
+    if (!folderName) {
+        alert('Lagay ang folder name para sa Google Drive.');
+        return;
+    }
+    const uploadBtn = document.getElementById('uploadToDriveBtn');
+    const statusEl = document.getElementById('saveStatus');
+    const origText = uploadBtn ? uploadBtn.textContent : '';
+    if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading...'; }
+    if (statusEl) { statusEl.textContent = 'Uploading to Drive...'; statusEl.className = 'save-status saving'; }
+    try {
+        const rootId = await driveApiCreateFolder(token, folderName, null);
+        const groups = collectPCItemsBySheet();
+        const sheetFolderIds = {};
+        let created = 0;
+        for (const g of groups) {
+            const sheetName = g.sheetName || 'Sheet';
+            if (!sheetFolderIds[sheetName]) {
+                sheetFolderIds[sheetName] = await driveApiCreateFolder(token, sheetName, rootId);
+            }
+            const sectionFolderId = await driveApiCreateFolder(token, g.sectionName || 'Other', sheetFolderIds[sheetName]);
+            for (let i = 0; i < g.items.length; i++) {
+                const it = g.items[i];
+                const article = (it.rowData[0] && String(it.rowData[0]).trim()) ? String(it.rowData[0]).trim() : 'Item';
+                const safeName = (article.replace(/[/\\?*:"]/g, '-').slice(0, 80) || 'item') + (i + 1) + '.html';
+                const html = generatePCFormHTML(it.rowData, g.sectionName, it.pictureUrl);
+                await driveApiUploadFile(token, safeName, 'text/html', html, sectionFolderId);
+                created++;
+            }
+        }
+        if (statusEl) { statusEl.textContent = 'Uploaded to Drive'; statusEl.className = 'save-status saved'; }
+        alert('Na-upload na sa Google Drive: ' + created + ' form(s) sa folder "' + folderName + '". Check Drive mo.');
+    } catch (err) {
+        if (statusEl) { statusEl.textContent = 'Drive upload failed'; statusEl.className = 'save-status error'; }
+        alert('Drive upload error: ' + (err.message || err));
+    } finally {
+        if (uploadBtn) { uploadBtn.textContent = origText; uploadBtn.disabled = !token || !hasAnyData(); }
+    }
+});

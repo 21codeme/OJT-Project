@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Drive — Connecting...</title>
+    <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}</style>
+</head>
+<body>
+    <p id="msg">Connecting to Google Drive...</p>
+    <script>
+        (function() {
+            var hash = window.location.hash || '';
+            var params = new URLSearchParams(hash.slice(1));
+            var accessToken = params.get('access_token');
+            var error = params.get('error');
+            var msg = document.getElementById('msg');
+            if (window.opener) {
+                if (error) {
+                    window.opener.postMessage({ type: 'google_drive_oauth', error: error, error_description: params.get('error_description') || error }, '*');
+                } else if (accessToken) {
+                    window.opener.postMessage({ type: 'google_drive_oauth', access_token: accessToken }, '*');
+                } else {
+                    window.opener.postMessage({ type: 'google_drive_oauth', error: 'no_token' }, '*');
+                }
+                window.close();
+            } else {
+                msg.textContent = error ? ('Error: ' + error) : (accessToken ? 'Connected. You can close this window.' : 'No token received.');
+            }
+        })();
+    </script>
+</body>
+</html>

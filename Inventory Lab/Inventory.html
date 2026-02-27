@@ -35,6 +35,13 @@
                 <button id="clearBtn" class="clear-btn" disabled>🗑️ Clear Data</button>
                 <span id="saveStatus" class="save-status" aria-live="polite"></span>
             </div>
+            <div class="drive-section">
+                <label for="driveFolderName">Google Drive folder name:</label>
+                <input type="text" id="driveFolderName" placeholder="e.g. Lab Inventory PC Forms" maxlength="200">
+                <button type="button" id="connectDriveBtn" class="drive-connect-btn">🔗 Connect Google Drive</button>
+                <span id="driveStatus" class="drive-status">Not connected</span>
+                <button type="button" id="uploadToDriveBtn" class="drive-upload-btn" disabled>📤 Upload PC forms to Drive</button>
+            </div>
         </div>
 
         <!-- Sheet Tabs -->

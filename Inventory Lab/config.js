@@ -2,6 +2,15 @@
 // Replace these with your actual Supabase project credentials
 // You can find these in your Supabase project settings: Settings > API
 
+// Google Drive (optional): (1) Enable "Google Drive API". (2) Create OAuth 2.0 Client ID (Web application).
+// (3) Authorized redirect URI: GAMITIN ANG URL NA WALANG SPACE (Google ayaw sa %20). Ilagay eksaktong:
+//     https://21codeme.github.io/OJT-Project/oauth-callback.html
+//     (palitan 21codeme at OJT-Project kung iba ang username/repo.)
+// (4) Paste Client ID below. App must be served over HTTPS (e.g. GitHub Pages).
+const GOOGLE_DRIVE_CLIENT_ID = '805452953533-7bkdc4fii38bndmbphq6oskp7m6co7ee.apps.googleusercontent.com';
+// Redirect URI na walang space (nasa repo root ang oauth-callback.html). Dapat match sa Google Console.
+const GOOGLE_DRIVE_REDIRECT_URI = 'https://21codeme.github.io/OJT-Project/oauth-callback.html';
+
 const SUPABASE_CONFIG = {
     url: 'https://bferfkrkejwccvfsigze.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmZXJma3JrZWp3Y2N2ZnNpZ3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1NTUsImV4cCI6MjA4NTg0OTU1NX0.4nc1SgH-lXD4GvZ6XSbfzyCp-Swf6Mon-O3dA_mEpXE'
