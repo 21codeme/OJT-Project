@@ -2060,7 +2060,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             for (let c = 1; c <= 12; c++) {
                 const cell = headerRow.getCell(c);
                 cell.value = headerLabels[c - 1];
-                cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+                cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF495057' } };
                 cell.border = blackBorder;
@@ -2110,7 +2110,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         c.fill = grayFill;
                         c.border = blackBorder;
                         if (col >= 3 && col <= 12) {
-                            c.alignment = { horizontal: 'center', vertical: 'middle' };
+                            c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                             c.font = { bold: true, size: 12 };
                         }
                     }
@@ -2137,7 +2137,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         ''                 // L Picture (no text; image added after merge)
                     ];
                     const dataRow = worksheet.addRow(exportRow);
-                    dataRow.height = 20;   // Same as header rows; picture spans merged L
+                    dataRow.height = 30;   // Sapat para sa wrapped text — walang putol
                     
                     const conditionValue = (toStr(rowData[7]) || '').trim(); // Condition
                     // Kulay: Unserviceable = red, Borrowed = yellow lang; lahat ng iba (Serviceable, etc.) = puti
@@ -2154,6 +2154,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                         const cell = dataRow.getCell(col);
                         cell.border = blackBorder;
                         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                        if (cell.value) cell.font = { size: 9 };
                         cell.fill = (col === 5 || col === 6 || col === 11 || col === 12) ? whiteFill : cellFill; // E,F,K,L walang kulay
                     }
                     
@@ -2194,8 +2195,8 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 }
             });
             
-            // Auto-fit column widths (12 columns: A empty, B–L data)
-            const maxColumnWidths = [3, 12, 30, 20, 12, 15, 25, 25, 12, 20, 25, 20];
+            // Column widths — mas maliit para magkasya sa isang long bond page
+            const maxColumnWidths = [2, 10, 12, 12, 8, 9, 8, 12, 8, 10, 10, 10];
             const columnHeaders = ['', 'Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 
                                    'Unit Value', 'Quantity per Physical count', 'Location/Whereabout', 
                                    'Condition', 'Remarks', 'User', 'Picture'];
@@ -2203,12 +2204,14 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             worksheet.eachRow((row, rowNumber) => {
                 row.eachCell((cell, colNumber) => {
                     if (colNumber <= 12) {
+                        const idx = colNumber - 1;
                         const cellValue = cell.value ? cell.value.toString() : '';
                         const cellLength = cellValue.length;
-                        const headerLen = (columnHeaders[colNumber - 1] || '').length;
-                        const estimatedWidth = Math.max(cellLength * 1.2, headerLen * 1.2);
-                        if (estimatedWidth > maxColumnWidths[colNumber - 1]) {
-                            maxColumnWidths[colNumber - 1] = Math.min(estimatedWidth, 50);
+                        const headerLen = (columnHeaders[idx] || '').length;
+                        let cap = (colNumber === 7) ? 8 : 14;
+                        const estimatedWidth = Math.min(Math.max(cellLength * 1.2, headerLen * 1.2), cap);
+                        if (estimatedWidth > maxColumnWidths[idx]) {
+                            maxColumnWidths[idx] = Math.min(estimatedWidth, cap);
                         }
                     }
                 });
@@ -2227,31 +2230,24 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             worksheet.getRow(6).height = 15;
             worksheet.getRow(7).height = 20; // Column headers
             
-            // Configure page setup for long bond paper and fit to one page
+            // Configure page setup — long bond, scale 75% para magkasya sa isang page
             worksheet.pageSetup = {
-                paperSize: 9, // A4 (closest standard size, user can change to long bond in Excel)
-                orientation: 'landscape', // Landscape for better fit of wide table
-                fitToPage: true,
-                fitToWidth: 1, // Fit all columns to 1 page width
-                fitToHeight: 1, // Fit all rows to 1 page height
+                paperSize: 14, // Folio = Long bond (8.5" x 13")
+                orientation: 'landscape',
+                fitToPage: false,
+                scale: 75,
                 margins: {
-                    left: 0.3,
-                    right: 0.3,
-                    top: 0.5,
-                    bottom: 0.5,
-                    header: 0.3,
-                    footer: 0.3
+                    left: 0.25,
+                    right: 0.25,
+                    top: 0.4,
+                    bottom: 0.4,
+                    header: 0.2,
+                    footer: 0.2
                 },
-                scale: 100, // 100% scale
-                horizontalCentered: true, // Center horizontally
+                horizontalCentered: true,
                 verticalCentered: false
             };
             
-            // Note: For long bond paper (8.5" x 13"), user can:
-            // 1. Open Excel file
-            // 2. Go to Page Layout > Size > More Paper Sizes
-            // 3. Select "Custom" and set width: 8.5", height: 13"
-            // The fitToPage settings above will ensure everything fits on one page
         }
         
         // Generate filename with current date

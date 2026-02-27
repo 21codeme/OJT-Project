@@ -712,11 +712,10 @@
 
         ws.pageSetup = {
             orientation: 'landscape',
-            paperSize: 5,
-            fitToPage: true,
-            fitToWidth: 1,
-            fitToHeight: 1,
-            margins: { left: 0.25, right: 0.25, top: 0.3, bottom: 0.3, header: 0.15, footer: 0.15 },
+            paperSize: 14, // Folio = Long bond (8.5" x 13")
+            fitToPage: false,
+            scale: 75,
+            margins: { left: 0.25, right: 0.25, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
             horizontalCentered: true,
             verticalCentered: false,
             printArea: 'A1:L' + row

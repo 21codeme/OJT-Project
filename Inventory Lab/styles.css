@@ -387,6 +387,47 @@ table {
     font-size: 13px;
     background: white;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    table-layout: fixed;
+}
+
+/* Column widths: sakto lang, hindi lumampas sa kabilang column */
+#inventoryTable th:nth-child(2),
+#inventoryTable td:nth-child(2) {
+    min-width: 90px;
+    width: 9%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    text-align: center;
+}
+#inventoryTable th:nth-child(3),
+#inventoryTable td:nth-child(3) {
+    min-width: 100px;
+    width: 10%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    text-align: center;
+}
+#inventoryTable th:nth-child(7),
+#inventoryTable td:nth-child(7) {
+    min-width: 55px;
+    max-width: 75px;
+    width: 65px;
+    overflow: hidden;
+    white-space: normal;
+}
+#inventoryTable th:nth-child(8),
+#inventoryTable td:nth-child(8) {
+    min-width: 120px;
+    width: 11%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    text-align: center;
+}
+#inventoryTable th:nth-child(8) {
+    white-space: normal;
 }
 
 /* Header sumasabay sa scroll para walang overlap sa row (Highlight/Delete) */
@@ -403,6 +444,13 @@ thead th {
     border: 1px solid #dee2e6;
     white-space: nowrap;
     font-size: 12px;
+}
+/* Long headers — allow wrap para hindi lumampas sa kabilang column */
+#inventoryTable thead th:nth-child(4),
+#inventoryTable thead th:nth-child(7),
+#inventoryTable thead th:nth-child(8) {
+    white-space: normal;
+    line-height: 1.2;
 }
 
 tbody td {
