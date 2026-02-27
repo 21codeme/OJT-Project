@@ -134,7 +134,7 @@ Pwedeng naka-add na rin ang GitHub Pages URLs; okay lang na pareho naka-list kun
 
 | Problema | Gawin |
 |----------|--------|
-| "Redirect URI mismatch" | Tiyaking **eksakto** ang redirect URI sa Google Console (may `Inventory%20Lab/oauth-callback.html`, tama ang domain at path). |
+| **Error 400: redirect_uri_mismatch** | (1) Tiyakin na na-edit mo ang OAuth client na may **Client ID** na nakalagay sa `config.js` (805452953533-...). Sa Google Console, sa **project dropdown sa taas**, piliin ang project kung saan naka-create ang client na yan. (2) Sa client na yan, **Authorized redirect URIs** dapat may eksaktong `https://ojt-project-laboratory.vercel.app/oauth-callback.html`. (3) **Authorized JavaScript origins** dapat may `https://ojt-project-laboratory.vercel.app` (walang slash sa dulo). (4) I-Save at maghintay 5 minuto. |
 | "Connect" walang nangyayari / alert na lagay Client ID | Naka-lagay na ba ang `GOOGLE_DRIVE_CLIENT_ID` sa `config.js`? Naka-HTTPS ba ang page (hindi file://)? |
 | Popup na-block ng browser | I-allow ang popup para sa site na ginagamit mo. |
 | Token expired | Mag-reconnect (click ulit **Connect Google Drive**); normal na mag-expire ang token pagkatapos ng ilang oras. |

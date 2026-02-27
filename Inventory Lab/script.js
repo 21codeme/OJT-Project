@@ -2479,10 +2479,10 @@ function updateDriveUI() {
 }
 
 function getGoogleDriveRedirectUri() {
-    const origin = window.location.origin;
-    if (!origin || origin === 'null' || origin === 'file://') return null;
     if (typeof GOOGLE_DRIVE_REDIRECT_URI !== 'undefined' && GOOGLE_DRIVE_REDIRECT_URI && String(GOOGLE_DRIVE_REDIRECT_URI).trim())
         return String(GOOGLE_DRIVE_REDIRECT_URI).trim().replace(/\/+$/, '');
+    const origin = window.location.origin;
+    if (!origin || origin === 'null' || origin === 'file://') return null;
     if (origin.indexOf('github.io') !== -1) {
         const first = window.location.pathname.split('/').filter(Boolean)[0];
         return first ? origin + '/' + first + '/oauth-callback.html' : origin + '/oauth-callback.html';
