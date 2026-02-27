@@ -29,10 +29,11 @@ This folder contains all database-related files for the Lab Inventory Management
    - Check browser console for "Supabase connected successfully"
 
 5. **Storage bucket (para lumabas ang picture sa PC Location link)**
-   - Sa Supabase Dashboard: Storage → New bucket
+   - Sa Supabase Dashboard: **Storage** → **New bucket**
    - Name: `inventory-pictures`
-   - Public bucket: **ON** (para ma-load ang image sa PC Location view)
-   - Create bucket. Pag na-save na ang inventory at may picture, i-u-upload dito at magiging https URL ang picture para lumabas sa Excel link.
+   - Public bucket: **ON**
+   - Create bucket.
+   - Pag may error na **"new row violates row-level security policy"**, i-run sa **SQL Editor** ang file na **`database/storage-policies.sql`** para payagan ang upload at read sa bucket na iyon.
 
 ## Database Schema
 

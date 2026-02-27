@@ -800,11 +800,15 @@ async function uploadDataUrlToStorage(dataUrl, sheetId, rowIndex) {
         const { error } = await window.supabaseClient.storage.from('inventory-pictures').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
         if (error) {
             _storageBucketChecked = true;
-            if (error.message && (error.message.includes('Bucket not found') || error.message.includes('not found'))) {
+            const msg = error.message || '';
+            if (msg.includes('Bucket not found') || msg.includes('not found')) {
                 _storageBucketMissing = true;
-                console.warn('Storage bucket "inventory-pictures" not found. Create it in Supabase: Dashboard → Storage → New bucket → name: inventory-pictures, Public: ON. Then picture will show in PC Location link.');
+                console.warn('Storage bucket "inventory-pictures" not found. Create it in Supabase: Dashboard → Storage → New bucket → name: inventory-pictures, Public: ON.');
+            } else if (msg.includes('row-level security') || msg.includes('violates')) {
+                _storageBucketMissing = true;
+                console.warn('Storage RLS: Run database/storage-policies.sql in Supabase SQL Editor to allow uploads to inventory-pictures. See database/README.md.');
             } else {
-                console.warn('Storage upload failed:', error.message);
+                console.warn('Storage upload failed:', msg);
             }
             return null;
         }
