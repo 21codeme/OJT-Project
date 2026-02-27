@@ -134,7 +134,7 @@
     }
 
     function getCourseColorClass(entry) {
-        if (entry.type === 'VACANT' || entry.type === 'BREAK' || entry.type === 'VACANT/LAB MAINTENANCE') return 'cell-bg-green';
+        if (entry.type === 'VACANT' || entry.type === 'BREAK' || entry.type === 'LUNCH BREAK' || entry.type === 'VACANT/LAB MAINTENANCE') return 'cell-bg-green';
         var code = (entry.code || '').trim();
         var first = code.split(/\s+/)[0] || '';
         if (first === 'BSAIS' || first === 'BSOA') return 'cell-bg-pink';
@@ -145,7 +145,7 @@
     }
 
     function getCourseColorArgb(cell) {
-        if (cell.type === 'VACANT' || cell.type === 'BREAK' || cell.type === 'VACANT/LAB MAINTENANCE') return 'FFD4EDDA';
+        if (cell.type === 'VACANT' || cell.type === 'BREAK' || cell.type === 'LUNCH BREAK' || cell.type === 'VACANT/LAB MAINTENANCE') return 'FFD4EDDA';
         var code = (cell.code || '').trim();
         var first = code.split(/\s+/)[0] || '';
         if (first === 'BSAIS' || first === 'BSOA') return 'FFF8CACA';
@@ -231,9 +231,10 @@
                             contentTd.dataset.timeslot = entry.timeSlot;
                             if (info.segment.rowspan > 1) contentTd.setAttribute('rowspan', String(info.segment.rowspan));
                             if (entry.type) {
-                                var isVacantWithDetails = (entry.type === 'VACANT' || entry.type === 'VACANT/LAB MAINTENANCE') &&
-                                    (entry.instructor || entry.course || (entry.code && entry.code.trim()));
-                                if (isVacantWithDetails) {
+                                var specialTypes = ['VACANT', 'VACANT/LAB MAINTENANCE', 'BREAK', 'LUNCH BREAK'];
+                                var hasDetails = (entry.instructor && entry.instructor.trim()) || (entry.course && entry.course.trim()) || (entry.code && entry.code.trim());
+                                var isSpecialTypeWithDetails = specialTypes.indexOf(entry.type) >= 0 && hasDetails;
+                                if (isSpecialTypeWithDetails) {
                                     contentTd.classList.add('cell-class');
                                     var colorClass = getCourseColorClass(entry);
                                     if (colorClass) contentTd.classList.add(colorClass);
@@ -358,9 +359,10 @@
                     row.push({ type: 'LUNCH BREAK' });
                 } else if (info && info.segment.type === 'entry') {
                     var entry = info.segment.entry;
-                    var vacantWithDetails = (entry.type === 'VACANT' || entry.type === 'VACANT/LAB MAINTENANCE') &&
-                        (entry.instructor || entry.course || (entry.code && entry.code.trim()));
-                    if (entry.type && !vacantWithDetails) row.push({ type: entry.type });
+                    var specialTypes = ['VACANT', 'VACANT/LAB MAINTENANCE', 'BREAK', 'LUNCH BREAK'];
+                    var hasDetails = (entry.instructor && entry.instructor.trim()) || (entry.course && entry.course.trim()) || (entry.code && entry.code.trim());
+                    var specialWithDetails = entry.type && specialTypes.indexOf(entry.type) >= 0 && hasDetails;
+                    if (entry.type && !specialWithDetails) row.push({ type: entry.type });
                     else row.push({ type: entry.type || null, instructor: entry.instructor || '', course: entry.course || '', code: entry.code || '' });
                 } else {
                     row.push({ type: '', instructor: '', course: '', code: '' });
@@ -520,14 +522,17 @@
                 const contentCell = ws.getCell(row, contentCol);
                 contentCell.border = thinBorder;
                 contentCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-                if (cell.type && !(cell.instructor || cell.course || (cell.code && cell.code.trim()))) {
+                var specialTypes = ['VACANT', 'VACANT/LAB MAINTENANCE', 'BREAK', 'LUNCH BREAK'];
+                var cellHasDetails = (cell.instructor && cell.instructor.trim()) || (cell.course && cell.course.trim()) || (cell.code && cell.code.trim());
+                var specialWithDetails = cell.type && specialTypes.indexOf(cell.type) >= 0 && cellHasDetails;
+                if (cell.type && !specialWithDetails) {
                     contentCell.value = cell.type;
                     contentCell.font = { size: 9 };
                     if (cell.type === 'VACANT' || cell.type === 'VACANT/LAB MAINTENANCE') contentCell.fill = greenFill;
                     else contentCell.fill = yellowFill;
                 } else {
                     var parts = [];
-                    if (cell.type === 'VACANT' || cell.type === 'VACANT/LAB MAINTENANCE') {
+                    if (cell.type && specialTypes.indexOf(cell.type) >= 0) {
                         parts.push({ font: { bold: true, size: 9 }, text: cell.type + '\n' });
                     }
                     if (cell.instructor) { parts.push({ font: { bold: true, size: 9 }, text: cell.instructor + '\n' }); }

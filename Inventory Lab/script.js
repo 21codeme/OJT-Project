@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('addItemBtn').disabled = false;
     document.getElementById('addPCBtn').disabled = false;
     
+    setupRowAddListeners();
+    
     // Check Supabase connection after a short delay to ensure config.js is loaded
     setTimeout(async () => {
         // Try to initialize Supabase if not already done
@@ -268,7 +270,7 @@ function createActionCell() {
                 // Check if table is now empty
                 const tbody = document.getElementById('tableBody');
                 if (tbody.children.length === 0) {
-                    tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
                     setCurrentSheetData([], false);
                     document.getElementById('exportBtn').disabled = !hasAnyData();
                     document.getElementById('clearBtn').disabled = true;
@@ -285,8 +287,232 @@ function createActionCell() {
     return td;
 }
 
+// Pending insert from row-add dropdown: { refRow, position } — used when Add Item form submits
+let pendingRowInsert = null;
+
+// Create add-cell with + button (shows when row is clicked). Click + → Above/Below → Add Item / Add PC Section.
+function createAddCell(tr) {
+    const td = document.createElement('td');
+    td.classList.add('row-add-cell');
+    const plusBtn = document.createElement('button');
+    plusBtn.type = 'button';
+    plusBtn.className = 'row-add-btn';
+    plusBtn.innerHTML = '+';
+    plusBtn.title = 'Add above or below';
+    plusBtn.setAttribute('aria-label', 'Add row above or below');
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'row-add-dropdown';
+    
+    // Level 1: Above / Below
+    const aboveOpt = document.createElement('button');
+    aboveOpt.type = 'button';
+    aboveOpt.textContent = 'Above';
+    aboveOpt.className = 'row-add-option';
+    const belowOpt = document.createElement('button');
+    belowOpt.type = 'button';
+    belowOpt.textContent = 'Below';
+    belowOpt.className = 'row-add-option';
+    
+    // Level 2: Add Item / Add PC Section (reuse same container)
+    const addItemOpt = document.createElement('button');
+    addItemOpt.type = 'button';
+    addItemOpt.textContent = 'Add Item';
+    addItemOpt.className = 'row-add-option row-add-sub';
+    addItemOpt.style.display = 'none';
+    const addPCOpt = document.createElement('button');
+    addPCOpt.type = 'button';
+    addPCOpt.textContent = 'Add PC Section';
+    addPCOpt.className = 'row-add-option row-add-sub';
+    addPCOpt.style.display = 'none';
+    
+    function showFirstLevel() {
+        aboveOpt.style.display = 'block';
+        belowOpt.style.display = 'block';
+        addItemOpt.style.display = 'none';
+        addPCOpt.style.display = 'none';
+    }
+    function showSecondLevel(position) {
+        aboveOpt.style.display = 'none';
+        belowOpt.style.display = 'none';
+        addItemOpt.style.display = 'block';
+        addPCOpt.style.display = 'block';
+        addItemOpt.dataset.position = position;
+        addPCOpt.dataset.position = position;
+    }
+    
+    plusBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.row-add-dropdown.show').forEach(d => {
+            d.classList.remove('show');
+            // Reset to first level (Above/Below): first 2 options visible, last 2 hidden
+            const opts = d.querySelectorAll('.row-add-option');
+            opts.forEach((o, i) => { o.style.display = i < 2 ? 'block' : 'none'; });
+        });
+        showFirstLevel();
+        dropdown.classList.toggle('show');
+        if (dropdown.classList.contains('show')) {
+            const rect = plusBtn.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 4) + 'px';
+            dropdown.style.left = rect.left + 'px';
+        }
+    });
+    
+    aboveOpt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showSecondLevel('above');
+    });
+    belowOpt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showSecondLevel('below');
+    });
+    
+    addItemOpt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.classList.remove('show');
+        pendingRowInsert = { refRow: tr, position: addItemOpt.dataset.position || 'below' };
+        const modal = document.getElementById('addItemModal');
+        if (modal) {
+            modal.classList.add('show');
+            const articleEl = document.getElementById('article');
+            if (articleEl) articleEl.focus();
+        }
+    });
+    addPCOpt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.classList.remove('show');
+        const pos = addPCOpt.dataset.position || 'below';
+        addPCSectionAt(tr, pos);
+    });
+    
+    dropdown.appendChild(aboveOpt);
+    dropdown.appendChild(belowOpt);
+    dropdown.appendChild(addItemOpt);
+    dropdown.appendChild(addPCOpt);
+    td.appendChild(plusBtn);
+    td.appendChild(dropdown);
+    return td;
+}
+
+// Row click: show + for that row
+function setupRowAddListeners() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    tbody.addEventListener('click', function(e) {
+        const tr = e.target.closest('tr');
+        if (!tr || tr.classList.contains('empty-row')) return;
+        if (e.target.closest('button')) return; // Don't select when clicking buttons
+        document.querySelectorAll('#tableBody tr.row-selected').forEach(r => r.classList.remove('row-selected'));
+        tr.classList.add('row-selected');
+    });
+}
+
+// Add empty item row at position (above or below refRow)
+function addItemRowAt(refRow, position) {
+    const tbody = document.getElementById('tableBody');
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) emptyRow.remove();
+    
+    const tr = document.createElement('tr');
+    for (let j = 0; j < 10; j++) {
+        const td = createEditableCell('', false, j, tr);
+        tr.appendChild(td);
+    }
+    const pictureCell = createPictureCell(null);
+    tr.appendChild(pictureCell);
+    const actionCell = createActionCell();
+    tr.appendChild(actionCell);
+    
+    const addCell = createAddCell(tr);
+    tr.insertBefore(addCell, tr.firstChild);
+    
+    if (position === 'above') {
+        tbody.insertBefore(tr, refRow);
+    } else {
+        tbody.insertBefore(tr, refRow.nextElementSibling);
+    }
+    mergeUnitColumnsInTable();
+    setCurrentSheetData(getCurrentSheet().data, true);
+    document.getElementById('exportBtn').disabled = false;
+    document.getElementById('clearBtn').disabled = false;
+    updateDataFromTable();
+    const firstInput = tr.querySelector('td input');
+    if (firstInput) firstInput.focus();
+}
+
+// Add PC section row above or below refRow
+function addPCSectionAt(refRow, position) {
+    const pcName = prompt('Enter PC Section Name (e.g., "PC USED BY: JOVEN T. CRUZ" or "SERVER"):');
+    if (pcName === null) return;
+    
+    const tbody = document.getElementById('tableBody');
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) emptyRow.remove();
+    
+    const tr = document.createElement('tr');
+    tr.classList.add('pc-header-row');
+    const addCell = createAddCell(tr);
+    tr.appendChild(addCell);
+    
+    const td = document.createElement('td');
+    td.colSpan = 11;
+    td.className = 'pc-name-cell';
+    td.style.fontWeight = 'bold';
+    td.style.fontSize = '14px';
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'space-between';
+    wrapper.style.gap = '10px';
+    wrapper.style.width = '100%';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = pcName;
+    input.placeholder = 'PC name (e.g. PC 1, PC USED BY: NAME)';
+    input.style.flex = '1';
+    input.style.textAlign = 'center';
+    input.style.fontWeight = 'bold';
+    input.style.fontSize = '14px';
+    input.style.border = 'none';
+    input.style.background = 'transparent';
+    input.addEventListener('blur', () => updateDataFromTable());
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') input.blur(); });
+    const deleteSectionBtn = document.createElement('button');
+    deleteSectionBtn.type = 'button';
+    deleteSectionBtn.textContent = 'Delete section';
+    deleteSectionBtn.className = 'delete-btn';
+    deleteSectionBtn.style.flexShrink = '0';
+    deleteSectionBtn.addEventListener('click', function() {
+        if (confirm('Delete this PC section and all items under it?')) {
+            tr.remove();
+            mergeUnitColumnsInTable();
+            updateDataFromTable();
+            if (tbody.querySelectorAll('tr:not(.empty-row)').length === 0) {
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                setCurrentSheetData([], false);
+                document.getElementById('clearBtn').disabled = true;
+            }
+        }
+    });
+    wrapper.appendChild(input);
+    wrapper.appendChild(deleteSectionBtn);
+    td.appendChild(wrapper);
+    tr.appendChild(td);
+    tr.appendChild(document.createElement('td'));
+    
+    if (position === 'above') {
+        tbody.insertBefore(tr, refRow);
+    } else {
+        tbody.insertBefore(tr, refRow.nextElementSibling);
+    }
+    mergeUnitColumnsInTable();
+    updateDataFromTable();
+    document.getElementById('exportBtn').disabled = false;
+    document.getElementById('clearBtn').disabled = false;
+}
+
 // Add new item row
-function addItemRow(isPCHeader = false) {
+function addItemRow(isPCHeader = false, insertAfterRow = null) {
     const tbody = document.getElementById('tableBody');
     
     // Remove empty message if present
@@ -299,6 +525,9 @@ function addItemRow(isPCHeader = false) {
     if (isPCHeader) {
         tr.classList.add('pc-header-row');
     }
+    // Add cell (for + button when row is clicked)
+    const addCell = createAddCell(tr);
+    tr.appendChild(addCell);
     // Create 10 editable cells
     for (let j = 0; j < 10; j++) {
         let defaultValue = '';
@@ -316,7 +545,11 @@ function addItemRow(isPCHeader = false) {
     const actionCell = createActionCell();
     tr.appendChild(actionCell);
     
-    tbody.appendChild(tr);
+    if (insertAfterRow) {
+        tbody.insertBefore(tr, insertAfterRow.nextElementSibling);
+    } else {
+        tbody.appendChild(tr);
+    }
     if (!isPCHeader) mergeUnitColumnsInTable();
     setCurrentSheetData(getCurrentSheet().data, true);
     document.getElementById('exportBtn').disabled = false;
@@ -429,6 +662,7 @@ pictureInput.addEventListener('change', function(e) {
 
 // Close modal
 function closeModalFunc() {
+    pendingRowInsert = null;
     modal.classList.remove('show');
     addItemForm.reset();
     const articleOther = document.getElementById('articleOther');
@@ -491,7 +725,10 @@ addItemForm.addEventListener('submit', function(e) {
     // Add item to table (only once)
     try {
         isAddingItem = true;
-        addItemFromForm(formData);
+        const insertRef = pendingRowInsert ? pendingRowInsert.refRow : null;
+        const position = pendingRowInsert ? pendingRowInsert.position : null;
+        addItemFromForm(formData, insertRef, position);
+        pendingRowInsert = null;
         
         // Close modal and reset form
         closeModalFunc();
@@ -658,8 +895,8 @@ function showImageModal(imageSrc) {
     imageModal.classList.add('show');
 }
 
-// Add item from form data
-function addItemFromForm(formData) {
+// Add item from form data (optional insertRef + position for row-add dropdown)
+function addItemFromForm(formData, insertRef, position) {
     const tbody = document.getElementById('tableBody');
     
     // Remove empty message if present
@@ -669,6 +906,8 @@ function addItemFromForm(formData) {
     }
     
     const tr = document.createElement('tr');
+    const addCell = createAddCell(tr);
+    tr.appendChild(addCell);
     
     // Create cells with form data
     const cells = [
@@ -700,7 +939,15 @@ function addItemFromForm(formData) {
     const actionCell = createActionCell();
     tr.appendChild(actionCell);
     
-    tbody.appendChild(tr);
+    if (insertRef && (position === 'above' || position === 'below')) {
+        if (position === 'above') {
+            tbody.insertBefore(tr, insertRef);
+        } else {
+            tbody.insertBefore(tr, insertRef.nextElementSibling);
+        }
+    } else {
+        tbody.appendChild(tr);
+    }
     mergeUnitColumnsInTable();
     document.getElementById('exportBtn').disabled = false;
     document.getElementById('clearBtn').disabled = false;
@@ -720,9 +967,12 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         
         const tr = document.createElement('tr');
         tr.classList.add('pc-header-row');
+        const addCell = createAddCell(tr);
+        tr.appendChild(addCell);
         // Isang merged cell mula Article/It hanggang Picture (11 columns), kulay gray
         const td = document.createElement('td');
         td.colSpan = 11;
+        td.className = 'pc-name-cell';
         td.style.fontWeight = 'bold';
         td.style.fontSize = '14px';
         
@@ -736,6 +986,7 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         const input = document.createElement('input');
         input.type = 'text';
         input.value = pcName;
+        input.placeholder = 'PC name (e.g. PC 1, PC USED BY: NAME)';
         input.style.flex = '1';
         input.style.textAlign = 'center';
         input.style.fontWeight = 'bold';
@@ -761,7 +1012,7 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
                 updateDataFromTable();
                 const remaining = tbody.querySelectorAll('tr:not(.empty-row)').length;
                 if (remaining === 0) {
-                    tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
                     setCurrentSheetData([], false);
                     document.getElementById('clearBtn').disabled = true;
                 }
@@ -790,7 +1041,7 @@ function displayData(data) {
     console.log(`🖥️ Displaying data: ${data ? data.length : 0} row(s)`);
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data found in the Excel file.</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data found in the Excel file.</td></tr>';
         console.log('⚠️ No data to display');
         return;
     }
@@ -824,7 +1075,7 @@ function displayData(data) {
             continue; // Skip header row as it's already in thead
         }
         // Check if this is a PC header row (first meaningful cell may be in row[2] for exported PC row)
-        const firstCell = (row.find(c => c != null && String(c).trim() !== '') || row[0] || '').toString().trim();
+        let firstCell = (row.find(c => c != null && String(c).trim() !== '') || row[0] || '').toString().trim();
         const isPCHeader = firstCell && (
             row.length === 1 || // Single cell = PC header
             firstCell.toUpperCase().includes('PC USED BY') ||
@@ -832,13 +1083,20 @@ function displayData(data) {
             firstCell.toUpperCase().startsWith('PC ') ||
             firstCell.toUpperCase() === 'PC'
         );
+        // Kung na-save dati ang text ng dropdown (+AboveBelowAdd Item...) gamitin default at gawing editable
+        if (isPCHeader && /above|below|add\s*item|add\s*pc\s*section/i.test(firstCell)) {
+            firstCell = 'PC Section';
+        }
         
         const tr = document.createElement('tr');
         if (isPCHeader) {
             tr.classList.add('pc-header-row');
-            // Isang merged cell mula Article/It hanggang Picture (11 columns), kulay gray
+            const addCell = createAddCell(tr);
+            tr.appendChild(addCell);
+            // Isang merged cell mula Article/It hanggang Picture (11 columns), kulay gray — may class para sigurado sa save
             const td = document.createElement('td');
             td.colSpan = 11;
+            td.className = 'pc-name-cell';
             td.style.fontWeight = 'bold';
             td.style.fontSize = '14px';
             
@@ -852,6 +1110,7 @@ function displayData(data) {
             const input = document.createElement('input');
             input.type = 'text';
             input.value = firstCell;
+            input.placeholder = 'PC name (e.g. PC 1, PC USED BY: NAME)';
             input.style.flex = '1';
             input.style.textAlign = 'center';
             input.style.fontWeight = 'bold';
@@ -877,7 +1136,7 @@ function displayData(data) {
                     mergeUnitColumnsInTable();
                     updateDataFromTable();
                     if (tbody.querySelectorAll('tr:not(.empty-row)').length === 0) {
-                        tbody.innerHTML = '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+                        tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
                         setCurrentSheetData([], false);
                         document.getElementById('clearBtn').disabled = true;
                     }
@@ -895,6 +1154,8 @@ function displayData(data) {
             if (Array.isArray(row) && row.length === 11 && /^\d+$/.test(String(row[0] || '').trim())) {
                 dataRow = row.slice(1);
             }
+            const addCell = createAddCell(tr);
+            tr.appendChild(addCell);
             // Create 10 editable cells for regular rows
             for (let j = 0; j < 10; j++) {
                 const cellValue = dataRow[j] !== undefined && dataRow[j] !== null ? dataRow[j].toString() : '';
@@ -993,11 +1254,16 @@ function setupSheetTabMenu(tab, sheetId) {
 }
 
 document.addEventListener('click', function() {
-    document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => {
-        d.classList.remove('show');
-        d.removeAttribute('style');
+        document.querySelectorAll('.sheet-tab-dropdown.show').forEach(d => {
+            d.classList.remove('show');
+            d.removeAttribute('style');
+        });
+        document.querySelectorAll('.row-add-dropdown.show').forEach(d => {
+            d.classList.remove('show');
+            const opts = d.querySelectorAll('.row-add-option');
+            opts.forEach((o, i) => { o.style.display = i < 2 ? 'block' : 'none'; });
+        });
     });
-});
 
 // Sheet Management Functions
 function createNewSheet(name = null, data = null) {
@@ -1102,10 +1368,10 @@ function saveCurrentSheetData(skipSync) {
             sectionUnitValue = '';
             sectionUser = '';
             sectionPictureUrl = null;
-            const firstCell = row.querySelector('td');
+            const firstCell = row.querySelector('td.pc-name-cell') || row.querySelector('td[colspan="11"]');
             if (firstCell) {
                 const input = firstCell.querySelector('input');
-                const pcName = input ? input.value : firstCell.textContent.trim();
+                const pcName = input ? input.value.trim() : firstCell.textContent.trim();
                 sheetData.push([pcName]);
                 highlightStates.push(false);
                 pictureUrls.push(null);
@@ -1998,7 +2264,7 @@ document.getElementById('clearBtn').addEventListener('click', function() {
     if (confirm(`Are you sure you want to clear all data in "${currentSheet.name}"?`)) {
         setCurrentSheetData([], false);
         document.getElementById('tableBody').innerHTML = 
-            '<tr class="empty-row"><td colspan="12" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
+            '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
         document.getElementById('exportBtn').disabled = !hasAnyData();
         document.getElementById('clearBtn').disabled = true;
     }
