@@ -677,15 +677,19 @@ pictureInput.addEventListener('change', function(e) {
     if (file) {
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                selectedImageData = e.target.result; // Base64 data
-                picturePreview.innerHTML = `<img src="${selectedImageData}" alt="Preview">`;
-                picturePreview.classList.remove('empty');
+            reader.onload = function(ev) {
+                const dataUrl = ev.target.result;
+                compressImage(dataUrl).then(function(compressed) {
+                    selectedImageData = compressed;
+                    picturePreview.innerHTML = '<img src="' + selectedImageData + '" alt="Preview">';
+                    picturePreview.classList.remove('empty');
+                });
             };
             reader.readAsDataURL(file);
         } else {
             alert('Please select an image file.');
             pictureInput.value = '';
+            selectedImageData = null;
             picturePreview.innerHTML = '<span class="empty">No image selected</span>';
             picturePreview.classList.add('empty');
         }
@@ -743,7 +747,7 @@ addItemForm.addEventListener('submit', function(e) {
     const description = document.getElementById('description').value.trim();
     const condition = document.getElementById('condition').value.trim();
     
-    // Get form values (saving allowed even with blanks)
+    // Get form values (saving allowed even with blanks); picture from form upload, nagsesave sa row
     const formData = {
         article: article.toUpperCase(),
         description: description.toUpperCase(),
@@ -755,7 +759,7 @@ addItemForm.addEventListener('submit', function(e) {
         condition: condition,
         remarks: document.getElementById('remarks').value.trim(),
         user: document.getElementById('user').value.trim(),
-        picture: null  // Picture: upload in table column only (form field disabled)
+        picture: selectedImageData || null
     };
     
     // Add item to table (only once)
