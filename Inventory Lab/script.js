@@ -2478,24 +2478,24 @@ function updateDriveUI() {
     }
 }
 
+function getGoogleDriveRedirectUri() {
+    const origin = window.location.origin;
+    if (!origin || origin === 'null' || origin === 'file://') return null;
+    if (typeof GOOGLE_DRIVE_REDIRECT_URI !== 'undefined' && GOOGLE_DRIVE_REDIRECT_URI && String(GOOGLE_DRIVE_REDIRECT_URI).trim())
+        return String(GOOGLE_DRIVE_REDIRECT_URI).trim().replace(/\/+$/, '');
+    if (origin.indexOf('github.io') !== -1) {
+        const first = window.location.pathname.split('/').filter(Boolean)[0];
+        return first ? origin + '/' + first + '/oauth-callback.html' : origin + '/oauth-callback.html';
+    }
+    return origin + '/oauth-callback.html';
+}
+
 function buildGoogleOAuthUrl() {
     const clientId = typeof GOOGLE_DRIVE_CLIENT_ID !== 'undefined' && GOOGLE_DRIVE_CLIENT_ID ? GOOGLE_DRIVE_CLIENT_ID : '';
     if (!clientId) return null;
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email');
-    const origin = window.location.origin;
-    if (!origin || origin === 'null' || origin === 'file://') return null;
-    // Build redirect URI from current host: Vercel = origin/oauth-callback.html; GitHub Pages = origin/repo/oauth-callback.html
-    let redirectUri = (typeof GOOGLE_DRIVE_REDIRECT_URI !== 'undefined' && GOOGLE_DRIVE_REDIRECT_URI && String(GOOGLE_DRIVE_REDIRECT_URI).trim())
-        ? String(GOOGLE_DRIVE_REDIRECT_URI).trim()
-        : (function() {
-            if (origin.indexOf('github.io') !== -1) {
-                const first = window.location.pathname.split('/').filter(Boolean)[0];
-                return first ? origin + '/' + first + '/oauth-callback.html' : origin + '/oauth-callback.html';
-            }
-            return origin + '/oauth-callback.html';
-        })();
-    if (redirectUri && redirectUri.endsWith('/')) redirectUri = redirectUri.slice(0, -1);
+    const redirectUri = getGoogleDriveRedirectUri();
     if (!redirectUri) return null;
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email');
     return 'https://accounts.google.com/o/oauth2/v2/auth?client_id=' + encodeURIComponent(clientId) +
         '&redirect_uri=' + encodeURIComponent(redirectUri) +
         '&response_type=token&scope=' + scope + '&prompt=consent';
@@ -2508,17 +2508,25 @@ document.getElementById('driveFolderName').addEventListener('input', function() 
 
 document.getElementById('connectDriveBtn').addEventListener('click', function() {
     const url = buildGoogleOAuthUrl();
+    const redirectUri = getGoogleDriveRedirectUri();
     if (!url) {
-        alert('Google Drive: lagay muna ang GOOGLE_DRIVE_CLIENT_ID sa config.js. Kunin sa Google Cloud Console → Credentials → OAuth 2.0 Client ID. Dapat naka-host ang app sa HTTPS (e.g. GitHub Pages) para gumana ang Connect.');
+        alert('Google Drive: lagay muna ang GOOGLE_DRIVE_CLIENT_ID sa config.js. Kunin sa Google Cloud Console → Credentials → OAuth 2.0 Client ID. Dapat naka-host ang app sa HTTPS (e.g. Vercel, GitHub Pages).');
         return;
     }
+    // Kung lalabas ang redirect_uri_mismatch, kailangan idagdag sa Google Console ang exact URL na ito
+    console.log('Google Drive redirect URI (idagdag sa Google Console kung may mismatch):', redirectUri);
+    console.log('JavaScript origin (idagdag sa Authorized JavaScript origins):', window.location.origin);
     const w = window.open(url, 'google_oauth', 'width=500,height=600');
     function onMessage(ev) {
         if (ev.data && ev.data.type === 'google_drive_oauth') {
             window.removeEventListener('message', onMessage);
             if (w && !w.closed) w.close();
             if (ev.data.error) {
-                alert('Google Drive: ' + (ev.data.error_description || ev.data.error));
+                var msg = 'Google Drive: ' + (ev.data.error_description || ev.data.error);
+                if ((ev.data.error + '').indexOf('redirect_uri_mismatch') !== -1 && redirectUri) {
+                    msg += '\n\nIdagdag sa Google Console (Credentials → Lab Inventory Web → Edit) sa Authorized redirect URIs ang URL na ito (exact copy):\n' + redirectUri + '\n\nAt sa Authorized JavaScript origins idagdag: ' + window.location.origin;
+                }
+                alert(msg);
                 return;
             }
             if (ev.data.access_token) {
