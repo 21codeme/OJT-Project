@@ -2394,7 +2394,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     dataRowsForPicture.push({ worksheetRow: currentRow, rowIndex, rowData: rowData.slice(0, 10), sectionName });
                     const exportRow = [
                         '',                 // A (no item number column)
-                        toStr(rowData[0]),  // B Article/It
+                        toStr(toTitleCase(rowData[0])),  // B Article/It — Title Case
                         toStr(rowData[1]),  // C Description
                         toStr(rowData[2]),  // D Old Property N Assigned
                         toStr(rowData[3]),  // E Unit of meas
@@ -2461,7 +2461,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 }
                 const params = new URLSearchParams({
                     pcSection: toStr(r.sectionName),
-                    article: toStr(r.rowData[0]),
+                    article: toStr(toTitleCase(r.rowData[0])),
                     description: toStr(r.rowData[1]),
                     oldProperty: toStr(r.rowData[2]),
                     unitMeas: toStr(r.rowData[3]),
