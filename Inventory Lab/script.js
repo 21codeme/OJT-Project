@@ -212,6 +212,8 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
     // Unit Value: strip existing ₱ so we don't double the prefix; stored value is number/text only
     if (cellIndex === UNIT_VALUE_COL) {
         input.value = (value || '').toString().replace(/^₱\s*/i, '').trim();
+    } else if (cellIndex === 0) {
+        input.value = toTitleCase(value || '');
     } else {
         input.value = value || '';
     }
@@ -219,15 +221,30 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
     if (cellIndex === UNIT_VALUE_COL) input.placeholder = '5,000.00';
     if (cellIndex === USER_COL) input.placeholder = 'e.g., MR TO ANGELINA C. PAQUIBOT';
     
-    // Auto uppercase for Article/It (index 0) and Description (index 1)
-    const isAutoUppercase = cellIndex === 0 || cellIndex === 1;
+    // Article/It (index 0): auto Title Case (capital each word)
+    const isAutoTitleCase = cellIndex === 0;
+    // Description (index 1): auto uppercase
+    const isAutoUppercase = cellIndex === 1;
+    if (isAutoTitleCase) {
+        input.addEventListener('input', function() {
+            const cursorPos = this.selectionStart;
+            this.value = toTitleCase(this.value);
+            this.setSelectionRange(cursorPos, cursorPos);
+        });
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedText = toTitleCase((e.clipboardData || window.clipboardData).getData('text'));
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + pastedText + this.value.substring(end);
+            this.setSelectionRange(start + pastedText.length, start + pastedText.length);
+        });
+    }
     if (isAutoUppercase) {
         input.style.textTransform = 'uppercase';
         input.addEventListener('input', function() {
-            // Convert to uppercase in real-time
             const cursorPos = this.selectionStart;
             this.value = this.value.toUpperCase();
-            // Restore cursor position
             this.setSelectionRange(cursorPos, cursorPos);
         });
         input.addEventListener('paste', function(e) {
@@ -236,17 +253,13 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
             const start = this.selectionStart;
             const end = this.selectionEnd;
             this.value = this.value.substring(0, start) + pastedText + this.value.substring(end);
-            // Restore cursor position
-            const newPos = start + pastedText.length;
-            this.setSelectionRange(newPos, newPos);
+            this.setSelectionRange(start + pastedText.length, start + pastedText.length);
         });
     }
     
     input.addEventListener('blur', function() {
-        // Ensure uppercase on blur for Article/It and Description
-        if (isAutoUppercase) {
-            this.value = this.value.toUpperCase();
-        }
+        if (isAutoTitleCase) this.value = toTitleCase(this.value);
+        if (isAutoUppercase) this.value = this.value.toUpperCase();
         updateDataFromTable();
         // If this is the condition cell (index 7), update row color
         if (cellIndex === 7 && row) {
@@ -626,6 +639,11 @@ const cancelBtn = document.getElementById('cancelAddBtn');
 // Article/Item list from INVENTORY-AS-OF-AUGUST-2026.xlsx (unique column values) - used when articles.json not loaded (e.g. file://)
 const ARTICLE_ITEMS_FALLBACK = ["ACCESS POINT","AIRCON","AMPLIFIER","AUDIO","AVR","CEILING/ORBIT FAN","Celing fan","Computer set","Computer Table","Cubicle","Headset","KEVLER UM-200SDual Wireless Mic W/ Receiver","Keyboard","Monitor","Mouse","NETWORK","ORBITAL FAN","PRINTER","Router","SERVER","SMOKE DETECTOR","SOHO FD-4 Westminster 4-Drawer Lateral Filing Cabinet","SPARE","SPEAKER","SWITCH HUB","System Unit","UNSERVICEABLE SYSTEM UNIT","UPS","WEBCAM","Wireless Mic","WOOD AND STEEL TABLE"];
 
+function toTitleCase(str) {
+    if (!str || typeof str !== 'string') return str;
+    return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function loadArticleDropdown() {
     const articleSelect = document.getElementById('article');
     const articleOther = document.getElementById('articleOther');
@@ -636,7 +654,7 @@ function loadArticleDropdown() {
         items.forEach(val => {
             const opt = document.createElement('option');
             opt.value = val;
-            opt.textContent = val;
+            opt.textContent = toTitleCase(val);
             frag.appendChild(opt);
         });
         const otherOpt = document.createElement('option');
@@ -771,7 +789,7 @@ addItemForm.addEventListener('submit', function(e) {
     
     // Get form values (saving allowed even with blanks); picture from form upload, nagsesave sa row
     const formData = {
-        article: article.toUpperCase(),
+        article: toTitleCase(article),
         description: description.toUpperCase(),
         oldProperty: document.getElementById('oldProperty').value.trim(),
         unitOfMeas: document.getElementById('unitOfMeas').value.trim(),
