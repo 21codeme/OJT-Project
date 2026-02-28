@@ -587,6 +587,24 @@ tbody td input:focus {
     background-color: #f5c2c7 !important;
 }
 
+/* Unit Value: automatic peso sign prefix */
+.unit-value-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+}
+.unit-value-prefix {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: #212529;
+}
+.unit-value-wrapper input {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Unit of measure, Unit Value, User: puti lang; input visible para makapag-input */
 tbody td.col-no-bg {
     background-color: white !important;

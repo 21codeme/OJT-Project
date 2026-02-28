@@ -198,9 +198,14 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
     
     const input = document.createElement('input');
     input.type = 'text';
-    input.value = value || '';
+    // Unit Value: strip existing ₱ so we don't double the prefix; stored value is number/text only
+    if (cellIndex === UNIT_VALUE_COL) {
+        input.value = (value || '').toString().replace(/^₱\s*/i, '').trim();
+    } else {
+        input.value = value || '';
+    }
     if (cellIndex === UNIT_MEAS_COL) input.placeholder = 'e.g., pcs, set, unit';
-    if (cellIndex === UNIT_VALUE_COL) input.placeholder = 'e.g., ₱5,000.00';
+    if (cellIndex === UNIT_VALUE_COL) input.placeholder = '5,000.00';
     if (cellIndex === USER_COL) input.placeholder = 'e.g., MR TO ANGELINA C. PAQUIBOT';
     
     // Auto uppercase for Article/It (index 0) and Description (index 1)
@@ -243,7 +248,19 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
         }
     });
     
-    td.appendChild(input);
+    // Unit Value: show peso sign prefix automatically
+    if (cellIndex === UNIT_VALUE_COL) {
+        const wrapper = document.createElement('span');
+        wrapper.className = 'unit-value-wrapper';
+        const prefix = document.createElement('span');
+        prefix.className = 'unit-value-prefix';
+        prefix.textContent = '₱ ';
+        wrapper.appendChild(prefix);
+        wrapper.appendChild(input);
+        td.appendChild(wrapper);
+    } else {
+        td.appendChild(input);
+    }
     
     if (isPCHeader) {
         td.style.fontWeight = 'bold';
