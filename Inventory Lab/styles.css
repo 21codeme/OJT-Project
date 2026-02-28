@@ -21,6 +21,29 @@ body {
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 40px);
+    position: relative;
+}
+/* Toggle header button: fixed sa top-right */
+.toggle-header-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #6c757d;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.toggle-header-btn:hover {
+    background: #5a6268;
+}
+.container.header-hidden #headerSection {
+    display: none;
 }
 
 header {

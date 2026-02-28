@@ -5,6 +5,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                    'July', 'August', 'September', 'October', 'November', 'December'];
     const dateStr = `${months[now.getMonth()]} ${now.getFullYear()}`;
     document.getElementById('currentDate').textContent = dateStr;
+
+    // Toggle header (hide/show header + controls + sheet tabs) para table lang makita
+    const toggleHeaderBtn = document.getElementById('toggleHeaderBtn');
+    const container = document.querySelector('.container');
+    if (toggleHeaderBtn && container) {
+        toggleHeaderBtn.addEventListener('click', function() {
+            const hidden = container.classList.toggle('header-hidden');
+            toggleHeaderBtn.textContent = hidden ? 'Show header' : 'Hide header';
+            toggleHeaderBtn.title = hidden ? 'Show header' : 'Hide header';
+        });
+    }
     
     // Enable add buttons even when no data
     document.getElementById('addItemBtn').disabled = false;

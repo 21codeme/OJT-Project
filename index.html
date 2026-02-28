@@ -98,6 +98,22 @@
             background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
         }
 
+        .top-left-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 5;
+            pointer-events: auto;
+        }
+        .top-left-btn .btn {
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+        .top-left-btn .btn:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+        }
+
         .password-modal {
             display: none;
             position: fixed;
@@ -195,6 +211,9 @@
 <body>
     <div class="slideshow" id="slideshow"></div>
     <div class="overlay"></div>
+    <div class="top-left-btn">
+        <a href="Inventory%20Lab/Inventory.html?backup=1" class="btn" id="btnBackup" data-href="Inventory%20Lab/Inventory.html?backup=1">Backup</a>
+    </div>
     <div class="content">
         <img src="images/omsc.png" alt="OMSC Logo" class="header-logo">
         <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
@@ -240,6 +259,14 @@
             passwordInput.focus();
         });
         document.getElementById('btnSchedule').addEventListener('click', function(e) {
+            e.preventDefault();
+            pendingHref = this.getAttribute('data-href');
+            passwordError.classList.remove('show');
+            passwordInput.value = '';
+            modal.classList.add('show');
+            passwordInput.focus();
+        });
+        document.getElementById('btnBackup').addEventListener('click', function(e) {
             e.preventDefault();
             pendingHref = this.getAttribute('data-href');
             passwordError.classList.remove('show');
