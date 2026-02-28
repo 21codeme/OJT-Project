@@ -22,8 +22,7 @@
         imgEl.onerror = function() {
             imgEl.style.display = 'none';
             noImgEl.style.display = 'block';
-            noImgEl.innerHTML = '<span>Image could not be loaded.</span>' +
-                '<p class="no-image-hint">Siguraduhin: (1) Na-open ang link mula sa Excel (Picture column). (2) Bucket &quot;inventory-pictures&quot; ay Public sa Supabase. (3) Na-Save sa Inventory bago i-export ang Excel.</p>';
+            noImgEl.innerHTML = '<span>No image</span>';
         };
     }
     var fields = [
