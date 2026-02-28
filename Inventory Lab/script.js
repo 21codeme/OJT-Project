@@ -858,7 +858,7 @@ function createPictureCell(imageData = null) {
         img.src = imageData;
         img.alt = 'Item Picture';
         img.addEventListener('click', function() {
-            showImageModal(img.src);
+            showImageModal(img.src, td);
         });
         td.appendChild(img);
         
@@ -911,7 +911,7 @@ function createPictureCell(imageData = null) {
                             img.src = compressed;
                             img.alt = 'Item Picture';
                             img.addEventListener('click', function() {
-                                showImageModal(img.src);
+                                showImageModal(img.src, td);
                             });
                             td.appendChild(img);
                             
@@ -953,22 +953,107 @@ function createPictureCell(imageData = null) {
     return td;
 }
 
-// Show image in modal
-function showImageModal(imageSrc) {
+// Reset picture cell to "No image" + Upload button (same as empty state in createPictureCell)
+function setPictureCellEmpty(td) {
+    if (!td || !td.classList.contains('picture-cell')) return;
+    td.innerHTML = '';
+    const noImage = document.createElement('span');
+    noImage.className = 'no-image';
+    noImage.textContent = 'No image';
+    td.appendChild(noImage);
+    const uploadBtn = document.createElement('button');
+    uploadBtn.className = 'upload-picture-btn';
+    uploadBtn.textContent = '📷 Upload';
+    uploadBtn.addEventListener('click', function() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    compressImage(e.target.result).then(function(compressed) {
+                        td.innerHTML = '';
+                        const img = document.createElement('img');
+                        img.src = compressed;
+                        img.alt = 'Item Picture';
+                        img.addEventListener('click', function() {
+                            showImageModal(img.src, td);
+                        });
+                        td.appendChild(img);
+                        const changeBtn = document.createElement('button');
+                        changeBtn.className = 'upload-picture-btn';
+                        changeBtn.textContent = '📷 Change';
+                        changeBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const changeInput = document.createElement('input');
+                            changeInput.type = 'file';
+                            changeInput.accept = 'image/*';
+                            changeInput.addEventListener('change', function(e) {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader2 = new FileReader();
+                                    reader2.onload = function(e) {
+                                        compressImage(e.target.result).then(function(c) {
+                                            img.src = c;
+                                            updateDataFromTable();
+                                        });
+                                    };
+                                    reader2.readAsDataURL(file);
+                                }
+                            });
+                            changeInput.click();
+                        });
+                        td.appendChild(changeBtn);
+                        updateDataFromTable();
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        input.click();
+    });
+    td.appendChild(uploadBtn);
+}
+
+// Show image in modal; optional pictureCell = td.picture-cell — if provided, shows "Delete picture" button
+function showImageModal(imageSrc, pictureCell) {
     let imageModal = document.getElementById('imageModal');
     if (!imageModal) {
         imageModal = document.createElement('div');
         imageModal.id = 'imageModal';
         imageModal.className = 'image-modal';
+        const inner = document.createElement('div');
+        inner.className = 'image-modal-inner';
+        inner.addEventListener('click', function(e) { e.stopPropagation(); });
         const img = document.createElement('img');
-        imageModal.appendChild(img);
+        inner.appendChild(img);
+        const deletePicBtn = document.createElement('button');
+        deletePicBtn.type = 'button';
+        deletePicBtn.className = 'image-modal-delete-btn';
+        deletePicBtn.textContent = '🗑️ Delete picture';
+        inner.appendChild(deletePicBtn);
+        imageModal.appendChild(inner);
         document.body.appendChild(imageModal);
-        
         imageModal.addEventListener('click', function() {
             imageModal.classList.remove('show');
         });
     }
-    imageModal.querySelector('img').src = imageSrc;
+    const imgEl = imageModal.querySelector('img');
+    const deleteBtn = imageModal.querySelector('.image-modal-delete-btn');
+    imgEl.src = imageSrc;
+    if (pictureCell) {
+        deleteBtn.style.display = 'inline-block';
+        deleteBtn.onclick = function(e) {
+            e.stopPropagation();
+            setPictureCellEmpty(pictureCell);
+            updateDataFromTable();
+            imageModal.classList.remove('show');
+        };
+    } else {
+        deleteBtn.style.display = 'none';
+    }
     imageModal.classList.add('show');
 }
 
