@@ -525,9 +525,41 @@ tbody td input:focus {
     transform: scale(1.05);
 }
 
+/* Actions column: hindi lumampas sa column kapag maliit screen */
+#inventoryTable th:nth-child(13),
+#inventoryTable td:nth-child(13) {
+    min-width: 120px;
+    max-width: 180px;
+    overflow: hidden;
+}
 .actions-cell {
     text-align: center;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+}
+.actions-cell > div {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+}
+.actions-cell .highlight-btn,
+.actions-cell .delete-btn {
+    flex-shrink: 0;
+    padding: 5px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+@media (max-width: 992px) {
+    .actions-cell .highlight-btn,
+    .actions-cell .delete-btn {
+        padding: 4px 6px;
+        font-size: 10px;
+    }
 }
 
 .highlighted-row {
@@ -914,21 +946,31 @@ tr.row-selected .row-add-btn {
     font-style: italic;
 }
 
+/* Picture column: hindi lumampas sa cell kapag maliit screen */
+#inventoryTable th:nth-child(12),
+#inventoryTable td:nth-child(12) {
+    overflow: hidden;
+    min-width: 80px;
+}
 /* Picture cell in table */
 .picture-cell {
     text-align: center;
     padding: 8px !important;
-    min-width: 120px;
+    min-width: 80px;
+    overflow: hidden;
 }
 
 .picture-cell img {
-    max-width: 100px;
-    max-height: 100px;
+    max-width: 100%;
+    max-height: 72px;
+    width: auto;
+    height: auto;
     border-radius: 4px;
-    object-fit: cover;
+    object-fit: contain;
     cursor: pointer;
     transition: transform 0.2s;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    vertical-align: middle;
 }
 
 .picture-cell img:hover {
@@ -946,12 +988,14 @@ tr.row-selected .row-add-btn {
     background: #17a2b8;
     color: white;
     border: none;
-    padding: 6px 12px;
+    padding: 4px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     transition: all 0.2s;
+    max-width: 100%;
+    margin-top: 4px;
 }
 
 .picture-cell .upload-picture-btn:hover {
