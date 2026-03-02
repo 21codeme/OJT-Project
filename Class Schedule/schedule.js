@@ -29,7 +29,7 @@
         { label: '7:30 - 9:00 AM', start: 7*60+30, end: 9*60+0 },
         { label: '9:00 - 10:00 AM', start: 9*60+0, end: 10*60+0 },
         { label: '10:00 - 11:00 AM', start: 10*60+0, end: 11*60+0 },
-        { label: '11:00 - 12:15 AM', start: 11*60+0, end: 12*60+15 },
+        { label: '11:00 - 12:15 PM', start: 11*60+0, end: 12*60+15 },
         { label: '12:15 - 1:00 PM', start: 12*60+15, end: 13*60+0, lunch: true },
         { label: '1:00 - 2:30 PM', start: 13*60+0, end: 14*60+30 },
         { label: '2:30 - 3:00 PM', start: 14*60+30, end: 15*60+0 },
@@ -131,7 +131,7 @@
 
     function formatTimeSlotNoon(str) {
         if (!str || typeof str !== 'string') return str;
-        return str.replace(/\s*-\s*12:00\s+AM\b/gi, ' - 12:00 PM');
+        return str.replace(/\s*-\s*12:00\s+AM\b/gi, ' - 12:00 PM').replace(/\s*-\s*12:15\s+AM\b/gi, ' - 12:15 PM');
     }
 
     function entryOverlapsRow(entryStart, entryEnd, rowStart, rowEnd) {
