@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('importExcelInput').style.display = 'none';
         document.getElementById('clearBtn').style.display = 'none';
         document.getElementById('restoreBackupBtn').style.display = 'inline-flex';
+        var sigSection = document.querySelector('.signatures-inventory');
+        if (sigSection) sigSection.style.display = 'none';
+        var sumSection = document.querySelector('.inventory-summary-section');
+        if (sumSection) sumSection.style.display = 'none';
         (async function() {
             // Unahin ang localStorage snapshot — laging updated agad pag nag-save sa main page (add PC, add item, etc.)
             var snapshot = loadBackupSnapshot();
@@ -290,6 +294,98 @@ const DATA_COLUMN_ORDER = ['Article/It', 'Description', 'Old Property N Assigned
 const UNIT_MEAS_COL = 3;
 const UNIT_VALUE_COL = 4;
 const USER_COL = 9;
+const QUANTITY_COL = 5;
+
+// Summary by Article/Item: Item, Unit measure, Existing, Years (2026–2029), For Disposal, Remarks
+function computeSummaryData() {
+    const sheet = getCurrentSheet();
+    const data = (sheet && sheet.data) ? sheet.data : [];
+    const map = {};
+    data.forEach(function(row) {
+        if (!row || row.length < 10) return;
+        const articleRaw = (row[0] != null ? String(row[0]).trim() : '');
+        if (!articleRaw) return;
+        const item = toTitleCase(articleRaw);
+        const unitMeas = (row[UNIT_MEAS_COL] != null ? String(row[UNIT_MEAS_COL]).trim() : '') || '—';
+        const qty = parseInt(row[QUANTITY_COL], 10) || 0;
+        if (!map[item]) {
+            map[item] = { item: item, unitMeasure: unitMeas || '—', existing: 0, y2026: 0, y2027: 0, y2028: 0, y2029: 0, forDisposal: 0, remarks: '' };
+        }
+        map[item].existing += qty;
+        if ((unitMeas || '') !== '' && (map[item].unitMeasure === '—' || !map[item].unitMeasure)) map[item].unitMeasure = unitMeas;
+    });
+    return Object.keys(map).sort().map(function(k) { return map[k]; });
+}
+
+function renderSummaryTable() {
+    const tbody = document.getElementById('inventorySummaryBody');
+    if (!tbody) return;
+    saveSummaryExtra();
+    const rows = computeSummaryData();
+    const sheet = getCurrentSheet();
+    const summaryExtra = (sheet && sheet.summaryExtra) ? sheet.summaryExtra : {};
+    tbody.innerHTML = '';
+    if (rows.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="9" class="summary-empty">No data — add items or import Excel to see summary.</td>';
+        tbody.appendChild(tr);
+        return;
+    }
+    rows.forEach(function(r) {
+        const extra = summaryExtra[r.item] || {};
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-summary-item', r.item);
+        const y2026 = extra.y2026 != null ? extra.y2026 : '';
+        const y2027 = extra.y2027 != null ? extra.y2027 : '';
+        const y2028 = extra.y2028 != null ? extra.y2028 : '';
+        const y2029 = extra.y2029 != null ? extra.y2029 : '';
+        const forD = extra.forDisposal != null ? extra.forDisposal : '';
+        const rem = (extra.remarks != null ? extra.remarks : '') || '';
+        tr.innerHTML =
+            '<td>' + (r.item || '') + '</td>' +
+            '<td>' + (r.unitMeasure || '—') + '</td>' +
+            '<td>' + (r.existing || 0) + '</td>' +
+            '<td><input type="number" class="summary-year" data-year="2026" min="0" value="' + y2026 + '" placeholder="0"></td>' +
+            '<td><input type="number" class="summary-year" data-year="2027" min="0" value="' + y2027 + '" placeholder="0"></td>' +
+            '<td><input type="number" class="summary-year" data-year="2028" min="0" value="' + y2028 + '" placeholder="0"></td>' +
+            '<td><input type="number" class="summary-year" data-year="2029" min="0" value="' + y2029 + '" placeholder="0"></td>' +
+            '<td><input type="number" class="summary-disposal" min="0" value="' + forD + '" placeholder="0"></td>' +
+            '<td><input type="text" class="summary-remarks" value="' + (rem.replace(/"/g, '&quot;')) + '" placeholder="Remarks"></td>';
+        tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.summary-year, .summary-disposal, .summary-remarks').forEach(function(inp) {
+        inp.addEventListener('change', saveSummaryExtra);
+        inp.addEventListener('blur', saveSummaryExtra);
+    });
+}
+
+function saveSummaryExtra() {
+    const tbody = document.getElementById('inventorySummaryBody');
+    const sheet = getCurrentSheet();
+    if (!tbody || !sheet) return;
+    sheet.summaryExtra = sheet.summaryExtra || {};
+    var rows = tbody.querySelectorAll('tr[data-summary-item]');
+    if (rows.length === 0) return;
+    rows.forEach(function(tr) {
+        const item = tr.getAttribute('data-summary-item');
+        if (!item) return;
+        const y2026 = tr.querySelector('.summary-year[data-year="2026"]');
+        const y2027 = tr.querySelector('.summary-year[data-year="2027"]');
+        const y2028 = tr.querySelector('.summary-year[data-year="2028"]');
+        const y2029 = tr.querySelector('.summary-year[data-year="2029"]');
+        const disposal = tr.querySelector('.summary-disposal');
+        const remarks = tr.querySelector('.summary-remarks');
+        sheet.summaryExtra[item] = {
+            y2026: y2026 ? y2026.value : '',
+            y2027: y2027 ? y2027.value : '',
+            y2028: y2028 ? y2028.value : '',
+            y2029: y2029 ? y2029.value : '',
+            forDisposal: disposal ? disposal.value : '',
+            remarks: remarks ? remarks.value : ''
+        };
+    });
+    saveBackupToLocalStorage();
+}
 
 // Per PC section: merge Unit of meas, Unit Value, at User vertically; walang kulay ang columns na ito
 function mergeUnitColumnsInTable() {
@@ -1394,6 +1490,7 @@ function displayData(data, readOnlyForBackup) {
             : 'No data found in the Excel file.';
         tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">' + msg + '</td></tr>';
         console.log('⚠️ No data to display');
+        renderSummaryTable();
         return;
     }
     
@@ -1701,6 +1798,7 @@ function switchToSheet(sheetId) {
     // Update buttons
     document.getElementById('exportBtn').disabled = !hasAnyData();
     if (!isBackupMode) document.getElementById('clearBtn').disabled = !sheet.hasData;
+    renderSummaryTable();
 }
 
 function saveCurrentSheetData(skipSync) {
@@ -1766,6 +1864,7 @@ function saveCurrentSheetData(skipSync) {
     sheets[currentSheetId].highlightStates = highlightStates;
     sheets[currentSheetId].pictureUrls = pictureUrls;
     
+    renderSummaryTable();
     // Laging i-save sa localStorage agad — kahit mag-refresh hindi mawawala
     saveBackupToLocalStorage();
     
@@ -2626,31 +2725,31 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 console.warn('Could not load logo image:', logoError);
             }
             
-            // Title block: naka-center sa sheet (merge D–I, cols 4–9)
-            const titleStartCol = 4;
-            const titleEndCol = 9;
-            const row1 = worksheet.addRow(['', '', '', 'OCCIDENTAL MINDORO STATE COLLEGE']);
+            // Title block: walang unang empty column — naka-center (merge A–F, cols 1–6)
+            const titleStartCol = 1;
+            const titleEndCol = 6;
+            const row1 = worksheet.addRow(['OCCIDENTAL MINDORO STATE COLLEGE']);
             worksheet.mergeCells(1, titleStartCol, 1, titleEndCol);
             const c1 = worksheet.getRow(1).getCell(titleStartCol);
             c1.value = 'OCCIDENTAL MINDORO STATE COLLEGE';
             c1.font = { bold: true, size: 18 };
             c1.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row2 = worksheet.addRow(['', '', '', 'Multimedia and Speech Laboratory']);
+            const row2 = worksheet.addRow(['Multimedia and Speech Laboratory']);
             worksheet.mergeCells(2, titleStartCol, 2, titleEndCol);
             const c2 = worksheet.getRow(2).getCell(titleStartCol);
             c2.value = 'Multimedia and Speech Laboratory';
             c2.font = { bold: true, size: 14 };
             c2.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row3 = worksheet.addRow(['', '', '', 'ICT Equipment, Devices & Accessories']);
+            const row3 = worksheet.addRow(['ICT Equipment, Devices & Accessories']);
             worksheet.mergeCells(3, titleStartCol, 3, titleEndCol);
             const c3 = worksheet.getRow(3).getCell(titleStartCol);
             c3.value = 'ICT Equipment, Devices & Accessories';
             c3.font = { bold: true, size: 12 };
             c3.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row4 = worksheet.addRow(['', '', '', `AS OF ${currentDate}`]);
+            const row4 = worksheet.addRow([`AS OF ${currentDate}`]);
             worksheet.mergeCells(4, titleStartCol, 4, titleEndCol);
             const c4 = worksheet.getRow(4).getCell(titleStartCol);
             c4.value = `AS OF ${currentDate}`;
@@ -2662,26 +2761,25 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             worksheet.addRow([]);
             worksheet.addRow([]);
             
-            // Header row: row 7 (dahil 2 blank rows na)
+            // Header row: 11 columns (walang unang empty column)
             const headerLabels = [
-                '',  // A blank
-                'Article/It',           // B
-                'Description',          // C
-                'Old Property N Assigned', // D
-                'Unit of meas',         // E
-                'Unit Value',           // F
-                'Quantity per Physical count', // G
-                'Location/Whereabout',  // H
-                'Condition',            // I
-                'Remarks',              // J
-                'User',                 // K
-                'Picture'               // L
+                'Article/It',           // A
+                'Description',          // B
+                'Old Property N Assigned', // C
+                'Unit of meas',         // D
+                'Unit Value',           // E
+                'Quantity per Physical count', // F
+                'Location/Whereabout',  // G
+                'Condition',            // H
+                'Remarks',              // I
+                'User',                 // J
+                'Picture'               // K
             ];
             const headerRowNum = 7;
             const headerRow = worksheet.getRow(headerRowNum);
             headerRow.height = 22;
             const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
-            for (let c = 1; c <= 12; c++) {
+            for (let c = 1; c <= 11; c++) {
                 const cell = headerRow.getCell(c);
                 cell.value = headerLabels[c - 1];
                 cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
@@ -2730,21 +2828,21 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     }
                     const pcNameOnly = firstCell;
                     sectionName = pcNameOnly;
-                    const pcRowValues = ['', '', pcNameOnly, '', '', '', '', '', '', '', '', ''];
+                    const pcRowValues = [pcNameOnly, '', '', '', '', '', '', '', '', '', ''];
                     const pcRow = worksheet.addRow(pcRowValues);
                     const grayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
                     const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
-                    for (let col = 1; col <= 12; col++) {
+                    for (let col = 1; col <= 11; col++) {
                         const c = pcRow.getCell(col);
                         c.fill = grayFill;
                         c.border = blackBorder;
-                        if (col >= 3 && col <= 12) {
+                        if (col >= 1 && col <= 11) {
                             c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                             c.font = { bold: true, size: 12 };
                         }
                     }
-                    pcRow.getCell(3).value = pcNameOnly;
-                    worksheet.mergeCells(currentRow, 3, currentRow, 12);
+                    pcRow.getCell(1).value = pcNameOnly;
+                    worksheet.mergeCells(currentRow, 1, currentRow, 11);
                 } else if (rowData.length >= 10) {
                     const isFirstRowOfSection = (exportSectionStart === null);
                     if (exportSectionStart === null) exportSectionStart = currentRow;
@@ -2753,18 +2851,17 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     if (isFirstRowOfSection) sectionFirstRowData = rowData.slice(0, 10);
                     dataRowsForPicture.push({ worksheetRow: currentRow, rowIndex, rowData: rowData.slice(0, 10), sectionName });
                     const exportRow = [
-                        '',                 // A (no item number column)
-                        toStr(toTitleCase(rowData[0])),  // B Article/It — Title Case
-                        toStr(rowData[1]),  // C Description
-                        toStr(rowData[2]),  // D Old Property N Assigned
-                        toStr(rowData[3]),  // E Unit of meas
-                        toStr(rowData[4]),  // F Unit Value
-                        toStr(rowData[5]),  // G Quantity per Physical count
-                        toStr(rowData[6]),  // H Location/Whereabout
-                        toStr(rowData[7]),  // I Condition
-                        toStr(rowData[8]),  // J Remarks
-                        toStr(rowData[9]),  // K User
-                        ''                 // L Picture (no text; image added after merge)
+                        toStr(toTitleCase(rowData[0])),  // A Article/It — Title Case
+                        toStr(rowData[1]),  // B Description
+                        toStr(rowData[2]),  // C Old Property N Assigned
+                        toStr(rowData[3]),  // D Unit of meas
+                        toStr(rowData[4]),  // E Unit Value
+                        toStr(rowData[5]),  // F Quantity per Physical count
+                        toStr(rowData[6]),  // G Location/Whereabout
+                        toStr(rowData[7]),  // H Condition
+                        toStr(rowData[8]),  // I Remarks
+                        toStr(rowData[9]),  // J User
+                        ''                 // K Picture (link/image added after)
                     ];
                     const dataRow = worksheet.addRow(exportRow);
                     dataRow.height = 30;   // Sapat para sa wrapped text — walang putol
@@ -2780,12 +2877,12 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                     const cellFill = { type: 'pattern', pattern: 'solid', fgColor: fillColor };
                     const whiteFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
                     const blackBorder = { top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } } };
-                    for (let col = 1; col <= 12; col++) {
+                    for (let col = 1; col <= 11; col++) {
                         const cell = dataRow.getCell(col);
                         cell.border = blackBorder;
                         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                         if (cell.value) cell.font = { size: 9 };
-                        cell.fill = (col === 5 || col === 6 || col === 11 || col === 12) ? whiteFill : cellFill; // E,F,K,L walang kulay
+                        cell.fill = (col === 4 || col === 5 || col === 10 || col === 11) ? whiteFill : cellFill; // D,E,J,K walang kulay
                     }
                     
                     dataRowIndex++;
@@ -2798,15 +2895,15 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             }
             exportSections.forEach(s => {
                 if (s.end >= s.start) {
-                    worksheet.mergeCells(s.start, 5, s.end, 5);  // E Unit of meas
-                    worksheet.mergeCells(s.start, 6, s.end, 6);  // F Unit Value
-                    worksheet.mergeCells(s.start, 11, s.end, 11); // K User
-                    // L Picture: hindi na merged — bawat row may sariling picture
+                    worksheet.mergeCells(s.start, 4, s.end, 4);  // D Unit of meas
+                    worksheet.mergeCells(s.start, 5, s.end, 5);  // E Unit Value
+                    worksheet.mergeCells(s.start, 10, s.end, 10); // J User
+                    // K Picture: hindi na merged — bawat row may sariling picture
                 }
             });
             const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
             const pcLocationFormUrl = baseUrl + '../pc location/view.html';
-            const pictureCol = 12;
+            const pictureCol = 11;
             const toStr = (val) => (val != null && String(val).trim() !== '' ? String(val).trim() : '');
             // Bawat row: link at optional embed sa Picture column (per row)
             for (const r of dataRowsForPicture) {
@@ -2859,20 +2956,86 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 }
             }
             
-            // Column widths — mas maliit para magkasya sa isang long bond page
-            const maxColumnWidths = [2, 10, 12, 12, 8, 9, 8, 12, 8, 10, 10, 10];
-            const columnHeaders = ['', 'Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 
+            // Summary by Article/Item — sa baba ng data table (Item, Unit Measure, Existing, 2026–2029, For Disposal, Remarks)
+            saveSummaryExtra();
+            const summaryRows = computeSummaryData();
+            const summaryExtra = (sheet && sheet.summaryExtra) ? sheet.summaryExtra : {};
+            if (summaryRows.length > 0) {
+                worksheet.addRow([]);
+                const sumTitleRow = worksheet.addRow(['Summary by Article/Item']);
+                sumTitleRow.getCell(1).font = { bold: true, size: 10 };
+                worksheet.mergeCells(worksheet.rowCount, 1, worksheet.rowCount, 9);
+                const sumHeaderRow = worksheet.addRow(['Item Categories/Names', 'Unit Measure', 'Existing', '2026', '2027', '2028', '2029', 'For Disposal', 'Remarks']);
+                for (let c = 1; c <= 9; c++) sumHeaderRow.getCell(c).font = { bold: true };
+                summaryRows.forEach(function(r) {
+                    const ex = summaryExtra[r.item] || {};
+                    const row = worksheet.addRow([
+                        r.item || '',
+                        r.unitMeasure || '—',
+                        r.existing || 0,
+                        ex.y2026 != null && ex.y2026 !== '' ? ex.y2026 : 0,
+                        ex.y2027 != null && ex.y2027 !== '' ? ex.y2027 : 0,
+                        ex.y2028 != null && ex.y2028 !== '' ? ex.y2028 : 0,
+                        ex.y2029 != null && ex.y2029 !== '' ? ex.y2029 : 0,
+                        ex.forDisposal != null && ex.forDisposal !== '' ? ex.forDisposal : 0,
+                        ex.remarks != null ? ex.remarks : ''
+                    ]);
+                    for (let c = 1; c <= 9; c++) row.getCell(c).alignment = { horizontal: c === 3 || (c >= 4 && c <= 8) ? 'center' : 'left', vertical: 'middle' };
+                });
+            }
+            
+            // Prepared by / Noted by — sa baba ng table (name bold, role sa bagong linya, naka-center)
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            const sigRow = worksheet.rowCount;
+            const parseNameRole = (val) => {
+                if (!val || !String(val).trim()) return { name: '', role: '' };
+                const s = String(val).trim();
+                const i = s.indexOf(',');
+                if (i < 0) return { name: s, role: '' };
+                return { name: s.substring(0, i).trim(), role: s.substring(i + 1).trim() };
+            };
+            const preparedEl = document.getElementById('preparedBy');
+            const notedEl = document.getElementById('notedBy');
+            const prepared = parseNameRole(preparedEl ? preparedEl.value : '');
+            const noted = parseNameRole(notedEl ? notedEl.value : '');
+            const fontSig = 9;
+            worksheet.mergeCells(sigRow, 1, sigRow, 4);
+            const preparedCell = worksheet.getRow(sigRow).getCell(1);
+            preparedCell.value = {
+                richText: [
+                    { text: 'Prepared by:\n', font: { size: fontSig } },
+                    { text: (prepared.name || '') + (prepared.role ? '\n' : ''), font: { size: fontSig, bold: true } },
+                    { text: prepared.role || '', font: { size: fontSig } }
+                ]
+            };
+            preparedCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            worksheet.mergeCells(sigRow, 7, sigRow, 11);
+            const notedCell = worksheet.getRow(sigRow).getCell(7);
+            notedCell.value = {
+                richText: [
+                    { text: 'Noted by:\n', font: { size: fontSig } },
+                    { text: (noted.name || '') + (noted.role ? '\n' : ''), font: { size: fontSig, bold: true } },
+                    { text: noted.role || '', font: { size: fontSig } }
+                ]
+            };
+            notedCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            worksheet.getRow(sigRow).height = 36;
+            
+            // Column widths — 11 columns, mas compact para magkasya sa isang long bond
+            const maxColumnWidths = [10, 12, 12, 8, 9, 8, 12, 8, 10, 10, 10];
+            const columnHeaders = ['Article/It', 'Description', 'Old Property N Assigned', 'Unit of meas', 
                                    'Unit Value', 'Quantity per Physical count', 'Location/Whereabout', 
                                    'Condition', 'Remarks', 'User', 'Picture'];
             
             worksheet.eachRow((row, rowNumber) => {
                 row.eachCell((cell, colNumber) => {
-                    if (colNumber <= 12) {
+                    if (colNumber <= 11) {
                         const idx = colNumber - 1;
                         const cellValue = cell.value ? cell.value.toString() : '';
                         const cellLength = cellValue.length;
                         const headerLen = (columnHeaders[idx] || '').length;
-                        let cap = (colNumber === 7) ? 8 : 14;
+                        let cap = (colNumber === 6) ? 8 : 14;
                         const estimatedWidth = Math.min(Math.max(cellLength * 1.2, headerLen * 1.2), cap);
                         if (estimatedWidth > maxColumnWidths[idx]) {
                             maxColumnWidths[idx] = Math.min(estimatedWidth, cap);
@@ -2894,17 +3057,18 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             worksheet.getRow(6).height = 15;
             worksheet.getRow(7).height = 20; // Column headers
             
-            // Configure page setup — long bond, scale 75% para magkasya sa isang page
+            // Page setup — long bond landscape, fit sa isang bond paper
             worksheet.pageSetup = {
-                paperSize: 14, // Folio = Long bond (8.5" x 13")
+                paperSize: 14, // Long bond (8.5" x 13")
                 orientation: 'landscape',
-                fitToPage: false,
-                scale: 75,
+                fitToPage: true,
+                fitToWidth: 1,
+                fitToHeight: 1,
                 margins: {
                     left: 0.25,
                     right: 0.25,
-                    top: 0.4,
-                    bottom: 0.4,
+                    top: 0.35,
+                    bottom: 0.35,
                     header: 0.2,
                     footer: 0.2
                 },

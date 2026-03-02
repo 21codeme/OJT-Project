@@ -7,6 +7,7 @@
     <link rel="icon" href="../images/omsc.png" type="image/png" sizes="any">
     <link rel="stylesheet" href="schedule.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../config.js"></script>
 </head>
@@ -48,6 +49,8 @@
                         <button type="button" class="sheet-option-btn" data-sheet="MULTIMEDIA AND SPEECH LABORATORY">MULTIMEDIA AND SPEECH LABORATORY</button>
                     </div>
                 </div>
+                <button type="button" id="importExcelBtn" class="btn-import">📤 Import Excel</button>
+                <input type="file" id="importExcelInput" accept=".xlsx,.xls" style="display: none;">
                 <button type="button" id="exportExcelBtn" class="btn-export">📥 Export to Excel</button>
                 <button type="button" id="restoreScheduleBtn" class="btn-restore" style="display: none;">🔄 Restore</button>
             </div>
@@ -158,18 +161,18 @@
                 <table class="data-table" id="legendTable">
                     <thead><tr><th>Dept/Category</th><th>Instructor(s)</th></tr></thead>
                     <tbody>
-                        <tr data-category="SCOA"><td><input value="SCOA"></td><td><input value="M. HERNANDEZ, M. GABAY"></td></tr>
-                        <tr data-category="CBAM"><td><input value="CBAM"></td><td><input value="P. BAGUINON, E. DE GUZMAN, P. CALARANAN, A. BALUYOT"></td></tr>
-                        <tr data-category="HM"><td><input value="HM"></td><td><input value="N/A"></td></tr>
-                        <tr data-category="CAST"><td><input value="CAST"></td><td><input value="A M. DELA CRUZ"></td></tr>
-                        <tr data-category="VACANT"><td><input value="VACANT"></td><td><input value=""></td></tr>
+                        <tr data-category="SCOA"><td class="legend-cat-cell"><input value="SCOA"><input type="color" class="legend-color-picker" data-category="SCOA" value="#ffe4c4" title="Piliin ang kulay"></td><td><input value="M. HERNANDEZ, M. GABAY"></td></tr>
+                        <tr data-category="CBAM"><td class="legend-cat-cell"><input value="CBAM"><input type="color" class="legend-color-picker" data-category="CBAM" value="#b8d4e8" title="Piliin ang kulay"></td><td><input value="P. BAGUINON, E. DE GUZMAN, P. CALARANAN, A. BALUYOT"></td></tr>
+                        <tr data-category="HM"><td class="legend-cat-cell"><input value="HM"><input type="color" class="legend-color-picker" data-category="HM" value="#fce4ec" title="Piliin ang kulay"></td><td><input value="N/A"></td></tr>
+                        <tr data-category="CAST"><td class="legend-cat-cell"><input value="CAST"><input type="color" class="legend-color-picker" data-category="CAST" value="#b8d4e8" title="Piliin ang kulay"></td><td><input value="A M. DELA CRUZ"></td></tr>
+                        <tr data-category="VACANT"><td class="legend-cat-cell"><input value="VACANT"><input type="color" class="legend-color-picker" data-category="VACANT" value="#d4edda" title="Piliin ang kulay"></td><td><input value=""></td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="table-block">
                 <h3>Number of Existing PC</h3>
                 <table class="data-table" id="pcTable">
-                    <thead><tr><th></th><th>Core</th><th>2022 &amp; Earlier</th><th>2023</th><th>2024</th><th>2025</th></tr></thead>
+                    <thead><tr><th></th><th>Core</th><th><input type="text" class="pc-year-header" value="2022 &amp; Earlier" title="Editable year column"></th><th><input type="text" class="pc-year-header" value="2023" title="Editable year column"></th><th><input type="text" class="pc-year-header" value="2024" title="Editable year column"></th><th><input type="text" class="pc-year-header" value="2025" title="Editable year column"></th></tr></thead>
                     <tbody>
                         <tr><td>Core i7</td><td><input type="text" placeholder=""></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
                         <tr><td>Core i5</td><td><input type="text" placeholder=""></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>

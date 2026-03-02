@@ -82,6 +82,37 @@
                 </tbody>
             </table>
         </div>
+        <div class="inventory-summary-section">
+            <h3 class="summary-title">Summary by Article/Item</h3>
+            <table class="data-table summary-table" id="inventorySummaryTable">
+                <thead>
+                    <tr>
+                        <th>Item Categories/Names</th>
+                        <th>Unit Measure</th>
+                        <th>Existing</th>
+                        <th>2026</th>
+                        <th>2027</th>
+                        <th>2028</th>
+                        <th>2029</th>
+                        <th>For Disposal</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody id="inventorySummaryBody">
+                    <tr><td colspan="9" class="summary-empty">No data — add items or import Excel to see summary.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="signatures-inventory">
+            <div class="sig-row-inv">
+                <label>Prepared by:</label>
+                <input type="text" id="preparedBy" placeholder="Name, Role" value="JOVEN T. CRUZ, Laboratory Custodian">
+            </div>
+            <div class="sig-row-inv">
+                <label>Noted by:</label>
+                <input type="text" id="notedBy" placeholder="Name, Role" value="JOSELITO D. AGUID, PhDs, LPT, CHRA, Director for Instruction, CAST / Immediate Supervisor">
+            </div>
+        </div>
     </div>
 
     <!-- Add Item Modal -->

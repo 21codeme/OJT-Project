@@ -548,6 +548,16 @@ body {
     background: #495057;
     color: #fff;
 }
+.data-table th input.pc-year-header {
+    background: transparent;
+    color: #fff;
+    border-color: rgba(255,255,255,0.4);
+    text-align: center;
+    font-weight: bold;
+}
+.data-table th input.pc-year-header::placeholder {
+    color: rgba(255,255,255,0.7);
+}
 .data-table tr.overall-row td {
     background: #fffacd;
 }
@@ -558,6 +568,26 @@ body {
     border-radius: 4px;
     font-size: 0.8rem;
 }
+.legend-cat-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.legend-cat-cell input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+.legend-cat-cell input.legend-color-picker {
+    width: 28px;
+    height: 28px;
+    padding: 2px;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.legend-cat-cell input.legend-color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+.legend-cat-cell input.legend-color-picker::-webkit-color-swatch { border: none; border-radius: 3px; }
 
 .signatures {
     margin-bottom: 20px;
@@ -601,6 +631,20 @@ body {
     box-shadow: 0 2px 8px rgba(30, 60, 114, 0.3);
 }
 .btn-export:hover {
+    filter: brightness(1.1);
+}
+.btn-import {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #c17f0a 0%, #e09b1e 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(193, 127, 10, 0.3);
+}
+.btn-import:hover {
     filter: brightness(1.1);
 }
 .btn-restore {

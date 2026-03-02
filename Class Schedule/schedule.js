@@ -8,6 +8,8 @@
     var isBackupMode = typeof window !== 'undefined' && window.location && window.location.search.indexOf('backup=1') !== -1;
     var BACKUP_SNAPSHOT_KEY = 'class_schedule_backup_snapshot';
     var RESTORE_PAYLOAD_KEY = 'class_schedule_restore_payload';
+    var categoryColors = { SCOA: '#ffe4c4', CBAM: '#b8d4e8', HM: '#fce4ec', CAST: '#b8d4e8', VACANT: '#d4edda' };
+    var categoryToCssClass = { SCOA: 'cell-bg-pink', CBAM: 'cell-bg-light-blue', HM: 'cell-bg-light-pink', CAST: 'cell-bg-blue', VACANT: 'cell-bg-green' };
 
     function checkSupabaseConnection() {
         return typeof window !== 'undefined' && window.supabaseClient != null;
@@ -136,26 +138,56 @@
         return null;
     }
 
+    function getCategoryFromCode(code) {
+        if (!code || !String(code).trim()) return null;
+        var first = String(code).trim().split(/\s+/)[0] || '';
+        if (first === 'BSAIS' || first === 'BSOA') return 'SCOA';
+        if (first === 'BSBA' || first === 'OM' || first === 'BPA') return 'CBAM';
+        if (first === 'HM') return 'HM';
+        if (first === 'BSDC') return 'CAST';
+        return null;
+    }
+
     function getCourseColorClass(entry) {
         if (entry.type === 'VACANT' || entry.type === 'BREAK' || entry.type === 'LUNCH BREAK' || entry.type === 'VACANT/LAB MAINTENANCE') return 'cell-bg-green';
-        var code = (entry.code || '').trim();
-        var first = code.split(/\s+/)[0] || '';
-        if (first === 'BSAIS' || first === 'BSOA') return 'cell-bg-pink';
-        if (first === 'BSBA' || first === 'OM' || first === 'BPA') return 'cell-bg-light-blue';
-        if (first === 'HM') return 'cell-bg-light-pink';
-        if (first === 'BSDC') return 'cell-bg-blue';
+        var cat = getCategoryFromCode(entry.code);
+        return cat && categoryToCssClass[cat] ? categoryToCssClass[cat] : '';
+    }
+
+    function hexToArgb(hex) {
+        if (!hex) return '';
+        var h = hex.replace(/^#/, '');
+        if (h.length === 6) return 'FF' + h.toUpperCase();
+        if (h.length === 8) return h.toUpperCase();
         return '';
     }
 
     function getCourseColorArgb(cell) {
-        if (cell.type === 'VACANT' || cell.type === 'BREAK' || cell.type === 'LUNCH BREAK' || cell.type === 'VACANT/LAB MAINTENANCE') return 'FFD4EDDA';
-        var code = (cell.code || '').trim();
-        var first = code.split(/\s+/)[0] || '';
-        if (first === 'BSAIS' || first === 'BSOA') return 'FFF8CACA';
-        if (first === 'BSBA' || first === 'OM' || first === 'BPA') return 'FFB8D4E8';
-        if (first === 'HM') return 'FFFCE4EC';
-        if (first === 'BSDC') return 'FF87B3D9';
-        return null;
+        if (cell.type === 'VACANT' || cell.type === 'BREAK' || cell.type === 'LUNCH BREAK' || cell.type === 'VACANT/LAB MAINTENANCE') {
+            var v = categoryColors.VACANT;
+            return v ? hexToArgb(v) : 'FFD4EDDA';
+        }
+        var cat = getCategoryFromCode(cell.code);
+        var hex = cat && categoryColors[cat] ? categoryColors[cat] : null;
+        return hex ? hexToArgb(hex) : null;
+    }
+
+    function applyCategoryColorsStyle() {
+        var sel = document.getElementById('legend-category-colors');
+        if (!sel) {
+            sel = document.createElement('style');
+            sel.id = 'legend-category-colors';
+            document.head.appendChild(sel);
+        }
+        var s = '';
+        ['SCOA', 'CBAM', 'HM', 'CAST', 'VACANT'].forEach(function(cat) {
+            var hex = categoryColors[cat] || '#fff';
+            var cls = categoryToCssClass[cat];
+            if (cls) s += '.schedule-grid .cell-slot.' + cls + ' { background: ' + hex + ' !important; }\n';
+            s += '#legendTable tbody tr[data-category="' + cat + '"] td { background: ' + hex + ' !important; }\n';
+            s += '#programsTable tbody tr[data-category="' + cat + '"] td { background: ' + hex + ' !important; }\n';
+        });
+        sel.textContent = s;
     }
 
     function getDisplayTimeSlots() {
@@ -398,6 +430,8 @@
         const ws = workbook.addWorksheet(sheet.name);
         var thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         var isComputerLab = (sheet.name === 'COMPUTER LABORATORY');
+        var fontMain = 8;
+        var fontHead = 9;
         const headerText = {
             line1: 'Republic of the Philippines',
             line2: 'OCCIDENTAL MINDORO STATE COLLEGE',
@@ -425,12 +459,12 @@
         const headerCell = ws.getCell(row, textStartCol);
         headerCell.value = {
             richText: [
-                { text: headerText.line1 + '\n', font: { size: 9 } },
-                { text: headerText.line2 + '\n', font: { size: 9, bold: true } },
-                { text: headerText.line3 + '\n', font: { size: 9, bold: true } },
-                { text: headerText.line4 + '\n', font: { size: 9 } },
-                { text: headerText.line5 + '\n', font: { size: 9 } },
-                { text: headerText.line6, font: { size: 9 } }
+                { text: headerText.line1 + '\n', font: { size: fontMain } },
+                { text: headerText.line2 + '\n', font: { size: fontMain, bold: true } },
+                { text: headerText.line3 + '\n', font: { size: fontMain, bold: true } },
+                { text: headerText.line4 + '\n', font: { size: fontMain } },
+                { text: headerText.line5 + '\n', font: { size: fontMain } },
+                { text: headerText.line6, font: { size: fontMain } }
             ]
         };
         headerCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -454,22 +488,22 @@
         }
 
         row += 7;
-        ws.getRow(row).height = 13;
+        ws.getRow(row).height = 18;
         ws.getCell(row, 1).value = headerText.lab;
-        ws.getCell(row, 1).font = { bold: true, size: 10, underline: true };
-        ws.getCell(row, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+        ws.getCell(row, 1).font = { bold: true, size: fontHead, underline: true };
+        ws.getCell(row, 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         ws.getCell(row, 1).border = thinBorder;
         ws.mergeCells(row, 1, row, 12);
         for (var bc = 2; bc <= 12; bc++) { ws.getCell(row, bc).border = thinBorder; }
         row++;
         ws.getRow(row).height = 12;
         ws.getCell(row, 1).value = headerText.semester;
-        ws.getCell(row, 1).font = isComputerLab ? { bold: true, size: 9 } : { size: 9 };
+        ws.getCell(row, 1).font = isComputerLab ? { bold: true, size: fontMain } : { size: fontMain };
         ws.getCell(row, 1).alignment = { horizontal: 'center', vertical: 'middle' };
         ws.getCell(row, 1).border = thinBorder;
         ws.mergeCells(row, 1, row, 12);
         for (var bc = 2; bc <= 12; bc++) { ws.getCell(row, bc).border = thinBorder; }
-        row += 2;
+        row += 1;
 
         const headerRow = row;
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -477,7 +511,7 @@
             ws.mergeCells(row, i * 2 + 1, row, i * 2 + 2);
             const c = ws.getCell(row, i * 2 + 1);
             c.value = d;
-            c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+            c.font = { bold: true, size: fontMain, color: { argb: 'FFFFFFFF' } };
             c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A90A4' } };
             c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             c.border = thinBorder;
@@ -487,12 +521,12 @@
         row++;
         dayNames.forEach(function(_, i) {
             ws.getCell(row, i * 2 + 1).value = 'Schedule';
-            ws.getCell(row, i * 2 + 1).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+            ws.getCell(row, i * 2 + 1).font = { bold: true, size: fontMain, color: { argb: 'FFFFFFFF' } };
             ws.getCell(row, i * 2 + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5A6C8A' } };
             ws.getCell(row, i * 2 + 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             ws.getCell(row, i * 2 + 1).border = thinBorder;
             ws.getCell(row, i * 2 + 2).value = 'Time';
-            ws.getCell(row, i * 2 + 2).font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+            ws.getCell(row, i * 2 + 2).font = { bold: true, size: fontMain, color: { argb: 'FFFFFFFF' } };
             ws.getCell(row, i * 2 + 2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5A6C8A' } };
             ws.getCell(row, i * 2 + 2).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             ws.getCell(row, i * 2 + 2).border = thinBorder;
@@ -516,7 +550,7 @@
                 lunchCell.fill = pureYellowFill;
                 lunchCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 lunchCell.border = thinBorder;
-                lunchCell.font = { bold: true, size: 9 };
+                lunchCell.font = { bold: true, size: fontMain };
                 ws.getRow(row).height = 18;
                 row++;
                 return;
@@ -526,34 +560,34 @@
                 const timeCol = c * 2 + 2;
                 const contentCell = ws.getCell(row, contentCol);
                 contentCell.border = thinBorder;
-                contentCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                contentCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 var specialTypes = ['VACANT', 'VACANT/LAB MAINTENANCE', 'BREAK', 'LUNCH BREAK'];
                 var cellHasDetails = (cell.instructor && cell.instructor.trim()) || (cell.course && cell.course.trim()) || (cell.code && cell.code.trim());
                 var specialWithDetails = cell.type && specialTypes.indexOf(cell.type) >= 0 && cellHasDetails;
                 if (cell.type && !specialWithDetails) {
                     contentCell.value = cell.type;
-                    contentCell.font = { size: 9 };
+                    contentCell.font = { size: fontMain };
                     if (cell.type === 'VACANT' || cell.type === 'VACANT/LAB MAINTENANCE') contentCell.fill = greenFill;
                     else contentCell.fill = yellowFill;
                 } else {
                     var parts = [];
                     if (cell.type && specialTypes.indexOf(cell.type) >= 0) {
-                        parts.push({ font: { bold: true, size: 9 }, text: cell.type + '\n' });
+                        parts.push({ font: { bold: true, size: fontMain }, text: cell.type + '\n' });
                     }
-                    if (cell.instructor) { parts.push({ font: { bold: true, size: 9 }, text: cell.instructor + '\n' }); }
-                    if (cell.course) { parts.push({ font: { size: 9 }, text: cell.course + '\n' }); }
-                    if (cell.code) { parts.push({ font: { bold: true, size: 9 }, text: cell.code }); }
+                    if (cell.instructor) { parts.push({ font: { bold: true, size: fontMain }, text: cell.instructor + '\n' }); }
+                    if (cell.course) { parts.push({ font: { size: fontMain }, text: cell.course + '\n' }); }
+                    if (cell.code) { parts.push({ font: { bold: true, size: fontMain }, text: cell.code }); }
                     if (parts.length) contentCell.value = { richText: parts }; else contentCell.value = cell.type || '';
                     var fillArgb = getCourseColorArgb(cell);
                     if (fillArgb) contentCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
                 }
                 const timeCell = ws.getCell(row, timeCol);
                 timeCell.value = timeLabels[r];
-                timeCell.font = { size: 9 };
+                timeCell.font = { size: fontMain };
                 timeCell.border = thinBorder;
-                timeCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                timeCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             });
-            ws.getRow(row).height = 20;
+            ws.getRow(row).height = 32;
             row++;
         });
         function getCellDisplayText(val) {
@@ -582,19 +616,22 @@
             if (row - 1 > runStart) ws.mergeCells(runStart, contentCol, row - 1, contentCol);
         }
 
-        row += 2;
+        row += 1;
         var bottomStartRow = row;
         var thin = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        var legendColors = { SCOA: 'FFFFE4C4', CBAM: 'FFB8D4E8', HM: 'FFFCE4EC', CAST: 'FFB8D4E8', VACANT: 'FFD4EDDA' };
-        var progColors = { SCOA: 'FFFFE4C4', CBAM: 'FFB8D4E8', HM: 'FFFCE4EC', CAST: 'FFB8D4E8' };
+        var legendColors = {};
+        ['SCOA', 'CBAM', 'HM', 'CAST', 'VACANT'].forEach(function(c) { legendColors[c] = hexToArgb(categoryColors[c] || '#fff'); });
+        var progColors = {};
+        ['SCOA', 'CBAM', 'HM', 'CAST'].forEach(function(c) { progColors[c] = hexToArgb(categoryColors[c] || '#fff'); });
 
         var legendTable = document.getElementById('legendTable');
         if (legendTable) {
             ws.getCell(row, 1).value = 'LEGEND';
-            ws.getCell(row, 1).font = { bold: true, size: 9 };
+            ws.getCell(row, 1).font = { bold: true, size: fontMain };
             ws.getCell(row, 1).border = thin;
             ws.getCell(row, 2).border = thin;
-            ws.getCell(row, 1).alignment = { horizontal: 'left', vertical: 'middle' };
+            ws.getCell(row, 3).border = thin;
+            ws.getCell(row, 1).alignment = { horizontal: 'center', vertical: 'middle' };
             row++;
             legendTable.querySelectorAll('tbody tr').forEach(function(tr) {
                 var cat = (tr.getAttribute('data-category') || '').toUpperCase();
@@ -604,23 +641,25 @@
                 var c2 = (cells[1] && cells[1].querySelector('input')) ? cells[1].querySelector('input').value : cells[1].textContent.trim();
                 ws.getCell(row, 1).value = c1;
                 ws.getCell(row, 1).border = thin;
-                ws.getCell(row, 1).font = { size: 9 };
-                ws.getCell(row, 1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                ws.getCell(row, 1).font = { size: fontMain };
+                ws.getCell(row, 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 if (fill.fgColor) ws.getCell(row, 1).fill = fill;
-                ws.getCell(row, 2).value = c2;
-                ws.getCell(row, 2).border = thin;
-                ws.getCell(row, 2).font = { size: 9 };
-                ws.getCell(row, 2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-                if (fill.fgColor) ws.getCell(row, 2).fill = fill;
-                ws.getRow(row).height = 16;
+                ws.mergeCells(row, 2, row, 3);
+                var nameCell = ws.getCell(row, 2);
+                nameCell.value = c2;
+                nameCell.border = thin;
+                nameCell.font = { size: 7 };
+                nameCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                ws.getCell(row, 3).border = thin;
+                ws.getRow(row).height = 24;
                 row++;
             });
         }
 
         row = bottomStartRow;
         ws.getCell(row, 4).value = 'Number of Existing PC';
-        ws.getCell(row, 4).font = { bold: true, size: 9 };
-        [4,5,6,7,8].forEach(function(col) { ws.getCell(row, col).border = thin; });
+        ws.getCell(row, 4).font = { bold: true, size: fontMain };
+        [4,5,6,7,8].forEach(function(col) { ws.getCell(row, col).border = thin; ws.getCell(row, col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; });
         row++;
         var pcTable = document.getElementById('pcTable');
         if (pcTable) {
@@ -628,8 +667,9 @@
             if (pcHead) {
                 pcHead.querySelectorAll('th').forEach(function(th, ci) {
                     var c = ws.getCell(row, 4 + ci);
-                    c.value = th.textContent.trim();
-                    c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+                    var inp = th.querySelector('input.pc-year-header');
+                    c.value = (inp ? inp.value : th.textContent || '').trim();
+                    c.font = { bold: true, size: fontMain, color: { argb: 'FFFFFFFF' } };
                     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF495057' } };
                     c.border = thin;
                     c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -646,8 +686,8 @@
                     var inp = td.querySelector('input');
                     cell.value = inp ? (inp.value || '') : td.textContent.trim();
                     cell.border = thin;
-                    cell.font = { size: 9 };
-                    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                    cell.font = { size: fontMain };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                     if (isOverall) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
                 }
                 ws.getRow(row).height = 16;
@@ -657,9 +697,11 @@
 
         row = bottomStartRow;
         ws.getCell(row, 10).value = 'COMPUTER PROGRAMS USED:';
-        ws.getCell(row, 10).font = { bold: true, size: 9 };
+        ws.getCell(row, 10).font = { bold: true, size: fontMain };
         ws.getCell(row, 10).border = thin;
         ws.getCell(row, 11).border = thin;
+        ws.getCell(row, 10).alignment = { horizontal: 'center', vertical: 'middle' };
+        ws.getCell(row, 11).alignment = { horizontal: 'center', vertical: 'middle' };
         row++;
         var progTable = document.getElementById('programsTable');
         if (progTable) {
@@ -668,7 +710,7 @@
                 progHead.querySelectorAll('th').forEach(function(th, ci) {
                     var c = ws.getCell(row, 10 + ci);
                     c.value = th.textContent.trim();
-                    c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+                    c.font = { bold: true, size: fontMain, color: { argb: 'FFFFFFFF' } };
                     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF495057' } };
                     c.border = thin;
                     c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -683,13 +725,13 @@
                 var c2 = (cells[1] && cells[1].querySelector('input')) ? cells[1].querySelector('input').value : cells[1].textContent.trim();
                 ws.getCell(row, 10).value = c1;
                 ws.getCell(row, 10).border = thin;
-                ws.getCell(row, 10).font = { size: 9 };
-                ws.getCell(row, 10).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                ws.getCell(row, 10).font = { size: fontMain };
+                ws.getCell(row, 10).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 if (fill.fgColor) ws.getCell(row, 10).fill = fill;
                 ws.getCell(row, 11).value = c2;
                 ws.getCell(row, 11).border = thin;
-                ws.getCell(row, 11).font = { size: 9 };
-                ws.getCell(row, 11).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                ws.getCell(row, 11).font = { size: fontMain };
+                ws.getCell(row, 11).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 if (fill.fgColor) ws.getCell(row, 11).fill = fill;
                 ws.getRow(row).height = 16;
                 row++;
@@ -699,29 +741,51 @@
         var lastTableRow = Math.max(legendTable ? bottomStartRow + 1 + (legendTable.querySelectorAll('tbody tr').length) : 0,
             pcTable ? bottomStartRow + 2 + (pcTable.querySelectorAll('tbody tr').length) : 0,
             progTable ? bottomStartRow + 2 + (progTable.querySelectorAll('tbody tr').length) : 0);
-        row = lastTableRow + 2;
+        row = lastTableRow + 1;
         var preparedEl = document.getElementById('preparedBy');
         var notedEl = document.getElementById('notedBy');
-        ws.getCell(row, 1).value = 'Prepared by: ' + (preparedEl ? preparedEl.value : '');
-        ws.getCell(row, 1).font = { size: 9 };
+        function parseNameRole(val) {
+            if (!val || !val.trim()) return { name: '', role: '' };
+            var s = val.trim();
+            var i = s.indexOf(',');
+            if (i < 0) return { name: s, role: '' };
+            return { name: s.substring(0, i).trim(), role: s.substring(i + 1).trim() };
+        }
+        var prepared = parseNameRole(preparedEl ? preparedEl.value : '');
+        var noted = parseNameRole(notedEl ? notedEl.value : '');
+        var preparedCell = ws.getCell(row, 1);
+        preparedCell.value = {
+            richText: [
+                { text: 'Prepared by:\n', font: { size: fontMain } },
+                { text: (prepared.name || '') + (prepared.role ? '\n' : ''), font: { size: fontMain, bold: true } },
+                { text: prepared.role || '', font: { size: fontMain } }
+            ]
+        };
+        preparedCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         ws.mergeCells(row, 1, row, 5);
-        ws.getCell(row, 1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-        ws.getCell(row, 9).value = 'Noted by: ' + (notedEl ? notedEl.value : '');
-        ws.getCell(row, 9).font = { size: 9 };
+        var notedCell = ws.getCell(row, 9);
+        notedCell.value = {
+            richText: [
+                { text: 'Noted by:\n', font: { size: fontMain } },
+                { text: (noted.name || '') + (noted.role ? '\n' : ''), font: { size: fontMain, bold: true } },
+                { text: noted.role || '', font: { size: fontMain } }
+            ]
+        };
+        notedCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         ws.mergeCells(row, 9, row, 12);
-        ws.getCell(row, 9).alignment = { horizontal: 'right', vertical: 'middle', wrapText: true };
+        ws.getRow(row).height = 36;
         row++;
 
-        const colWidths = [14, 9, 14, 9, 14, 9, 14, 9, 14, 9, 14, 9];
+        const colWidths = [24, 10, 24, 10, 24, 10, 24, 10, 24, 10, 24, 10];
         colWidths.forEach(function(w, i) { ws.getColumn(i + 1).width = w; });
 
         ws.pageSetup = {
             orientation: 'landscape',
-            paperSize: 14, // Folio = Long bond (8.5" x 13")
+            paperSize: 14, // Long bond (8.5" x 13") - isang bondpaper landscape
             fitToPage: true,
             fitToWidth: 1,
             fitToHeight: 1,
-            margins: { left: 0.15, right: 0.15, top: 0.2, bottom: 0.2, header: 0.1, footer: 0.1 },
+            margins: { left: 0.25, right: 0.25, top: 0.25, bottom: 0.25, header: 0.1, footer: 0.1 },
             horizontalCentered: true,
             verticalCentered: false,
             printArea: 'A1:L' + row
@@ -775,6 +839,24 @@
         });
     }
 
+    function getCellText(val) {
+        if (val == null || val === '') return '';
+        if (typeof val === 'string') return val.trim();
+        return String(val).trim();
+    }
+
+    function parseContentCell(val) {
+        var text = getCellText(val);
+        if (!text) return { type: '', instructor: '', course: '', code: '' };
+        if (text.toUpperCase() === 'LUNCH BREAK') return null;
+        var lines = text.split(/\r?\n/).map(function(s) { return s.trim(); }).filter(Boolean);
+        var type = lines[0] || '';
+        var instructor = lines[1] || '';
+        var course = lines[2] || '';
+        var code = lines[3] || '';
+        return { type: type, instructor: instructor, course: course, code: code };
+    }
+
     function exportToExcel() {
         if (typeof ExcelJS === 'undefined') {
             alert('ExcelJS is loading. Please wait and try again.');
@@ -799,12 +881,92 @@
         });
     }
 
+    function importFromExcel(file) {
+        if (typeof XLSX === 'undefined') {
+            alert('XLSX library is loading. Please wait and try again.');
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = async function(ev) {
+            try {
+                var data = new Uint8Array(ev.target.result);
+                var workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                var sheetName = workbook.SheetNames[0];
+                if (!sheetName) { alert('No sheet in Excel file.'); return; }
+                var ws = workbook.Sheets[sheetName];
+                var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                if (!rows || rows.length < 5) { alert('No data found in Excel.'); return; }
+                var headerRowIndex = -1;
+                for (var r = 0; r < Math.min(20, rows.length); r++) {
+                    var row = rows[r];
+                    if (!Array.isArray(row)) continue;
+                    var first = (row[0] != null ? String(row[0]) : '').toLowerCase();
+                    if (first.indexOf('monday') !== -1 || (row[1] != null && String(row[1]).toLowerCase().indexOf('tuesday') !== -1)) {
+                        headerRowIndex = r;
+                        break;
+                    }
+                }
+                if (headerRowIndex < 0) { alert('Could not find schedule header (Monday, Tuesday...) in Excel.'); return; }
+                var dataStartRow = headerRowIndex + 2;
+                var entries = [];
+                var lunchRowIndex = 4;
+                var slotIndex = 0;
+                for (var r = 0; r < 10; r++) {
+                    var excelRow = rows[dataStartRow + r];
+                    if (!excelRow || !Array.isArray(excelRow)) continue;
+                    var firstCell = getCellText(excelRow[0]);
+                    if (firstCell.toUpperCase().indexOf('LUNCH') !== -1) {
+                        slotIndex++;
+                        continue;
+                    }
+                    var timeLabel = r < ROW_SLOTS.length ? ROW_SLOTS[r].label : '';
+                    for (var dayIdx = 0; dayIdx < 6; dayIdx++) {
+                        var contentCol = dayIdx * 2;
+                        var timeCol = dayIdx * 2 + 1;
+                        var contentVal = excelRow[contentCol];
+                        var parsed = parseContentCell(contentVal);
+                        if (!parsed) continue;
+                        if (!parsed.type && !parsed.instructor && !parsed.course && !parsed.code) continue;
+                        var timeSlot = getCellText(excelRow[timeCol]) || timeLabel;
+                        entries.push({
+                            day: DAYS[dayIdx],
+                            timeSlot: timeSlot,
+                            type: parsed.type || '',
+                            instructor: parsed.instructor || '',
+                            course: parsed.course || '',
+                            code: parsed.code || ''
+                        });
+                    }
+                    slotIndex++;
+                }
+                var sheet = getActiveSheet();
+                if (!sheet) { alert('No active sheet.'); return; }
+                sheet.entries = entries;
+                renderScheduleGrid();
+                saveBackupSnapshot();
+                if (checkSupabaseConnection()) {
+                    try {
+                        await syncEntriesForSheet(activeSheetId);
+                        await syncBackupToSupabase();
+                    } catch (err) {
+                        console.warn('Import sync error', err);
+                    }
+                }
+                alert('Imported ' + entries.length + ' schedule entry/entries from Excel.');
+            } catch (err) {
+                console.error('Import Excel error', err);
+                alert('Could not read Excel file. Make sure it is a valid .xlsx or .xls from this app\'s Export.');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
     function syncEntriesForSheet(sheetId) {
-        if (!checkSupabaseConnection()) return;
+        if (!checkSupabaseConnection()) return Promise.resolve();
         var sheet = sheets.filter(function(s) { return s.id === sheetId; })[0];
-        if (!sheet) return;
+        if (!sheet) return Promise.resolve();
         var supabase = window.supabaseClient;
-        supabase.from('class_schedule_entries').delete().eq('sheet_id', sheetId).then(function() {
+        return supabase.from('class_schedule_entries').delete().eq('sheet_id', sheetId).then(function() {
             var rows = (sheet.entries || []).map(function(e) {
                 return { sheet_id: sheetId, day: e.day, time_slot: e.timeSlot || e.time_slot || '', type: e.type || '', instructor: e.instructor || '', course: e.course || '', code: e.code || '' };
             });
@@ -931,6 +1093,10 @@
         if (addSheetBtn) { addSheetBtn.style.display = 'none'; addSheetBtn.setAttribute('aria-hidden', 'true'); }
         if (addSheetMenu) addSheetMenu.hidden = true;
         if (addFormPanel) addFormPanel.hidden = true;
+        var importBtn = document.getElementById('importExcelBtn');
+        if (importBtn) { importBtn.style.display = 'none'; }
+        var importInput = document.getElementById('importExcelInput');
+        if (importInput) { importInput.style.display = 'none'; }
         document.querySelectorAll('.cell-delete').forEach(function(btn) { btn.style.display = 'none'; });
         document.querySelectorAll('.cell-time-menu').forEach(function(btn) { btn.style.display = 'none'; });
         document.querySelectorAll('#legendTable input, #pcTable input, #programsTable input, #preparedBy, #notedBy').forEach(function(inp) {
@@ -943,6 +1109,33 @@
     function init() {
         var exportBtn = document.getElementById('exportExcelBtn');
         if (exportBtn) exportBtn.addEventListener('click', exportToExcel);
+        var importBtn = document.getElementById('importExcelBtn');
+        var importInput = document.getElementById('importExcelInput');
+        if (importBtn && importInput) {
+            importBtn.addEventListener('click', function() { importInput.click(); });
+            importInput.addEventListener('change', function(e) {
+                var file = e.target.files && e.target.files[0];
+                if (file) {
+                    importFromExcel(file);
+                    e.target.value = '';
+                }
+            });
+        }
+        document.querySelectorAll('.legend-color-picker').forEach(function(inp) {
+            var cat = inp.getAttribute('data-category');
+            if (cat && categoryColors.hasOwnProperty(cat)) {
+                categoryColors[cat] = inp.value || categoryColors[cat];
+                inp.addEventListener('input', function() {
+                    categoryColors[cat] = inp.value;
+                    applyCategoryColorsStyle();
+                });
+                inp.addEventListener('change', function() {
+                    categoryColors[cat] = inp.value;
+                    applyCategoryColorsStyle();
+                });
+            }
+        });
+        applyCategoryColorsStyle();
         var restoreJustApplied = false;
 
         if (isBackupMode) {
