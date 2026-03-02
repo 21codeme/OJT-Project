@@ -603,6 +603,20 @@ body {
 .btn-export:hover {
     filter: brightness(1.1);
 }
+.btn-restore {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(45, 106, 79, 0.3);
+}
+.btn-restore:hover {
+    filter: brightness(1.1);
+}
 
 @media (max-width: 900px) {
     .bottom-tables { grid-template-columns: 1fr; }

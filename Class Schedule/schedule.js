@@ -5,6 +5,9 @@
     var activeSheetId = 1;
     var isLoadingFromSupabase = false;
     var syncTimeout = null;
+    var isBackupMode = typeof window !== 'undefined' && window.location && window.location.search.indexOf('backup=1') !== -1;
+    var BACKUP_SNAPSHOT_KEY = 'class_schedule_backup_snapshot';
+    var RESTORE_PAYLOAD_KEY = 'class_schedule_restore_payload';
 
     function checkSupabaseConnection() {
         return typeof window !== 'undefined' && window.supabaseClient != null;
@@ -282,17 +285,19 @@
                                 wrap.appendChild(line3);
                                 contentTd.appendChild(wrap);
                             }
-                            var delBtn = document.createElement('button');
-                            delBtn.type = 'button';
-                            delBtn.className = 'cell-delete';
-                            delBtn.textContent = '\u00D7';
-                            delBtn.title = 'Remove';
-                            delBtn.addEventListener('click', function(ev) {
-                                ev.preventDefault();
-                                deleteEntry(day, entry.timeSlot);
-                                renderScheduleGrid();
-                            });
-                            contentTd.appendChild(delBtn);
+                            if (!isBackupMode) {
+                                var delBtn = document.createElement('button');
+                                delBtn.type = 'button';
+                                delBtn.className = 'cell-delete';
+                                delBtn.textContent = '\u00D7';
+                                delBtn.title = 'Remove';
+                                delBtn.addEventListener('click', function(ev) {
+                                    ev.preventDefault();
+                                    deleteEntry(day, entry.timeSlot);
+                                    renderScheduleGrid();
+                                });
+                                contentTd.appendChild(delBtn);
+                            }
                             skipLeft[colIndex] = info.segment.rowspan - 1;
                         } else {
                             contentTd.className = 'cell-slot cell-display cell-empty';
@@ -314,7 +319,7 @@
                             } else {
                                 timeTd.textContent = timeInfo.isFirst ? (timeInfo.segment.entry.timeSlot || timeLabel) : timeLabel;
                             }
-                            if (timeInfo.isFirst) {
+                            if (timeInfo.isFirst && !isBackupMode) {
                             var entry = timeInfo.segment.entry;
                             var timeEditBtn = document.createElement('button');
                             timeEditBtn.type = 'button';
@@ -805,7 +810,27 @@
             });
             if (rows.length === 0) return Promise.resolve();
             return supabase.from('class_schedule_entries').insert(rows);
-        }).then(function() { }).catch(function(err) { console.error('Sync entries error:', err); });
+        }).then(function() {
+            if (!isBackupMode) saveBackupSnapshot();
+        }).catch(function(err) { console.error('Sync entries error:', err); });
+    }
+
+    function saveBackupSnapshot() {
+        if (isBackupMode) return;
+        try {
+            var snapshot = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, savedAt: Date.now() };
+            localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(snapshot));
+        } catch (e) { }
+    }
+
+    function loadBackupSnapshot() {
+        try {
+            var raw = localStorage.getItem(BACKUP_SNAPSHOT_KEY);
+            if (!raw) return null;
+            var snap = JSON.parse(raw);
+            if (!snap || !Array.isArray(snap.sheets) || snap.sheets.length === 0) return null;
+            return snap;
+        } catch (e) { return null; }
     }
 
     function debouncedSyncActiveSheet() {
@@ -849,6 +874,7 @@
             activeSheetId = sheets[0].id;
             renderSheetTabs();
             renderScheduleGrid();
+            if (!isBackupMode) saveBackupSnapshot();
             console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from Supabase');
         } catch (e) {
             console.error('Load from Supabase:', e);
@@ -857,9 +883,68 @@
         }
     }
 
+    function makeScheduleReadOnly() {
+        var addScheduleBtn = document.getElementById('addScheduleBtn');
+        var addScheduleMenu = document.getElementById('addScheduleMenu');
+        var addSheetBtn = document.getElementById('addSheetBtn');
+        var addSheetMenu = document.getElementById('addSheetMenu');
+        var addFormPanel = document.getElementById('addFormPanel');
+        if (addScheduleBtn) { addScheduleBtn.style.display = 'none'; addScheduleBtn.setAttribute('aria-hidden', 'true'); }
+        if (addScheduleMenu) addScheduleMenu.hidden = true;
+        if (addSheetBtn) { addSheetBtn.style.display = 'none'; addSheetBtn.setAttribute('aria-hidden', 'true'); }
+        if (addSheetMenu) addSheetMenu.hidden = true;
+        if (addFormPanel) addFormPanel.hidden = true;
+        document.querySelectorAll('.cell-delete').forEach(function(btn) { btn.style.display = 'none'; });
+        document.querySelectorAll('.cell-time-menu').forEach(function(btn) { btn.style.display = 'none'; });
+        document.querySelectorAll('#legendTable input, #pcTable input, #programsTable input, #preparedBy, #notedBy').forEach(function(inp) {
+            if (inp) { inp.disabled = true; inp.readOnly = true; }
+        });
+        var restoreBtn = document.getElementById('restoreScheduleBtn');
+        if (restoreBtn) restoreBtn.style.display = 'inline-block';
+    }
+
     function init() {
         var exportBtn = document.getElementById('exportExcelBtn');
         if (exportBtn) exportBtn.addEventListener('click', exportToExcel);
+        var restoreJustApplied = false;
+
+        if (isBackupMode) {
+            var restoreBtn = document.getElementById('restoreScheduleBtn');
+            if (restoreBtn) {
+                restoreBtn.addEventListener('click', function() {
+                    if (!confirm('I-restore ang backup na ito sa main Class Schedule page? Mapapalitan ang laman ng main page.')) return;
+                    try {
+                        var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId };
+                        localStorage.setItem(RESTORE_PAYLOAD_KEY, JSON.stringify(payload));
+                        window.location.href = 'index.html';
+                    } catch (e) {
+                        alert('Restore failed: ' + (e && e.message));
+                    }
+                });
+            }
+        } else {
+            var restorePayload = null;
+            try {
+                var raw = localStorage.getItem(RESTORE_PAYLOAD_KEY);
+                if (raw) {
+                    restorePayload = JSON.parse(raw);
+                    localStorage.removeItem(RESTORE_PAYLOAD_KEY);
+                }
+            } catch (e) { }
+            if (restorePayload && restorePayload.sheets && restorePayload.sheets.length > 0) {
+                sheets = restorePayload.sheets;
+                activeSheetId = restorePayload.activeSheetId != null ? restorePayload.activeSheetId : (sheets[0] && sheets[0].id);
+                if (restorePayload.nextSheetId != null) nextSheetId = restorePayload.nextSheetId;
+                renderSheetTabs();
+                renderScheduleGrid();
+                if (checkSupabaseConnection()) {
+                    sheets.forEach(function(s) { syncEntriesForSheet(s.id); });
+                }
+                saveBackupSnapshot();
+                if (document.getElementById('restoreScheduleBtn')) document.getElementById('restoreScheduleBtn').style.display = 'none';
+                restoreJustApplied = true;
+            }
+        }
 
         var addSheetBtn = document.getElementById('addSheetBtn');
         var addSheetMenu = document.getElementById('addSheetMenu');
@@ -913,11 +998,36 @@
                 }
             });
         });
-        if (checkSupabaseConnection()) {
-            loadFromSupabase();
-        } else {
+        if (!restoreJustApplied && checkSupabaseConnection()) {
+            loadFromSupabase().then(function() {
+                if (isBackupMode) {
+                    if (!sheets || sheets.length === 0) {
+                        var snap = loadBackupSnapshot();
+                        if (snap && snap.sheets && snap.sheets.length > 0) {
+                            sheets = snap.sheets;
+                            activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                            if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                            renderSheetTabs();
+                            renderScheduleGrid();
+                        }
+                    }
+                    makeScheduleReadOnly();
+                }
+            });
+        } else if (!restoreJustApplied) {
             renderSheetTabs();
             renderScheduleGrid();
+            if (isBackupMode) {
+                var snap = loadBackupSnapshot();
+                if (snap && snap.sheets && snap.sheets.length > 0) {
+                    sheets = snap.sheets;
+                    activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                    renderSheetTabs();
+                    renderScheduleGrid();
+                }
+                makeScheduleReadOnly();
+            }
         }
 
         window.addEventListener('beforeunload', function() {
