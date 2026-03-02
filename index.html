@@ -98,12 +98,47 @@
             background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
         }
 
-        .top-left-btn {
+        .top-left-nav {
             position: fixed;
             top: 16px;
             left: 16px;
             z-index: 5;
             pointer-events: auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-nav {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-nav:hover {
+            transform: translateY(-1px);
+        }
+        .btn-inventory-main {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        .btn-inventory-main:hover {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+        }
+        .btn-schedule-main {
+            background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
+        }
+        .btn-schedule-main:hover {
+            background: linear-gradient(135deg, #40916c 0%, #2d6a4f 100%);
+        }
+        .top-left-btn {
+            position: relative;
         }
         .top-left-btn .btn-main {
             padding: 10px 20px;
@@ -127,12 +162,12 @@
             top: 100%;
             left: 0;
             margin-top: 6px;
-            min-width: 180px;
+            min-width: 200px;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 6px 24px rgba(0,0,0,0.25);
             overflow: hidden;
-            z-index: 20;
+            z-index: 100;
         }
         .top-left-btn .backup-dropdown.show {
             display: flex;
@@ -266,11 +301,15 @@
 <body>
     <div class="slideshow" id="slideshow"></div>
     <div class="overlay"></div>
-    <div class="top-left-btn">
-        <button type="button" class="btn-main" id="btnBackupToggle" aria-expanded="false" aria-haspopup="true">Backup ▼</button>
-        <div class="backup-dropdown" id="backupDropdown">
-            <a href="#" class="btn-inventory" id="btnInventory" data-href="Inventory%20Lab/Inventory.html?backup=1">Inventory</a>
-            <a href="#" class="btn-schedule" id="btnSchedule" data-href="Class%20Schedule/index.html?backup=1">Class Schedule</a>
+    <div class="top-left-nav">
+        <a href="#" class="btn-nav btn-inventory-main" id="btnInventoryMain" data-href="Inventory%20Lab/Inventory.html">Inventory</a>
+        <a href="#" class="btn-nav btn-schedule-main" id="btnScheduleMain" data-href="Class%20Schedule/index.html">Class Schedule</a>
+        <div class="top-left-btn">
+            <button type="button" class="btn-main" id="btnBackupToggle" aria-expanded="false" aria-haspopup="true">Backup ▼</button>
+            <div class="backup-dropdown" id="backupDropdown">
+                <a href="#" class="btn-inventory" id="btnInventory" data-href="Inventory%20Lab/Inventory.html?backup=1">Inventory (Backup)</a>
+                <a href="#" class="btn-schedule" id="btnSchedule" data-href="Class%20Schedule/index.html?backup=1">Class Schedule (Backup)</a>
+            </div>
         </div>
     </div>
     <div class="content">
@@ -305,21 +344,28 @@
         const passwordCancel = document.getElementById('passwordCancel');
         let pendingHref = '';
 
-        document.getElementById('btnInventory').addEventListener('click', function(e) {
-            e.preventDefault();
-            pendingHref = this.getAttribute('data-href');
+        function openPasswordModal(href) {
+            pendingHref = href;
             passwordError.classList.remove('show');
             passwordInput.value = '';
             modal.classList.add('show');
             passwordInput.focus();
+        }
+        document.getElementById('btnInventory').addEventListener('click', function(e) {
+            e.preventDefault();
+            openPasswordModal(this.getAttribute('data-href'));
         });
         document.getElementById('btnSchedule').addEventListener('click', function(e) {
             e.preventDefault();
-            pendingHref = this.getAttribute('data-href');
-            passwordError.classList.remove('show');
-            passwordInput.value = '';
-            modal.classList.add('show');
-            passwordInput.focus();
+            openPasswordModal(this.getAttribute('data-href'));
+        });
+        document.getElementById('btnInventoryMain').addEventListener('click', function(e) {
+            e.preventDefault();
+            openPasswordModal(this.getAttribute('data-href'));
+        });
+        document.getElementById('btnScheduleMain').addEventListener('click', function(e) {
+            e.preventDefault();
+            openPasswordModal(this.getAttribute('data-href'));
         });
         document.getElementById('btnBackupToggle').addEventListener('click', function(e) {
             e.stopPropagation();
