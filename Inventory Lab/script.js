@@ -27,27 +27,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('clearBtn').style.display = 'none';
         document.getElementById('restoreBackupBtn').style.display = 'inline-flex';
         (async function() {
-            var snapshot = null;
-            if (typeof initSupabase === 'function') initSupabase();
-            await new Promise(function(r) { setTimeout(r, 400); });
-            for (var t = 0; t < 8 && !checkSupabaseConnection(); t++) {
-                await new Promise(function(r) { setTimeout(r, 300); });
-            }
-            if (checkSupabaseConnection()) {
-                for (var retry = 0; retry < 2; retry++) {
-                    snapshot = await loadBackupFromSupabase();
-                    if (snapshot && snapshot.sheets) {
-                        var rows = Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0);
-                        if (rows > 0) break;
-                    }
-                    await new Promise(function(r) { setTimeout(r, 500); });
-                }
-            }
-            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
-                snapshot = loadBackupSnapshot();
-            }
+            // Unahin ang localStorage snapshot — laging updated agad pag nag-save sa main page (add PC, add item, etc.)
+            var snapshot = loadBackupSnapshot();
             if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
                 snapshot = loadBackupFromLocalStorage();
+            }
+            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
+                if (typeof initSupabase === 'function') initSupabase();
+                await new Promise(function(r) { setTimeout(r, 400); });
+                for (var t = 0; t < 8 && !checkSupabaseConnection(); t++) {
+                    await new Promise(function(r) { setTimeout(r, 300); });
+                }
+                if (checkSupabaseConnection()) {
+                    for (var retry = 0; retry < 2; retry++) {
+                        snapshot = await loadBackupFromSupabase();
+                        if (snapshot && snapshot.sheets) {
+                            var rows = Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0);
+                            if (rows > 0) break;
+                        }
+                        await new Promise(function(r) { setTimeout(r, 500); });
+                    }
+                }
             }
         var totalRows = snapshot && snapshot.sheets ? Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
         if (snapshot && snapshot.sheets && Object.keys(snapshot.sheets).length > 0 && totalRows > 0) {
@@ -2047,67 +2047,20 @@ async function syncToSupabase() {
     }
 }
 
-var BACKUP_SHEET_ID = 'backup-snapshot';
-
-function buildBackupItemsFromSheets() {
-    var items = [];
-    Object.keys(sheets).forEach(function(sheetId) {
-        var sheet = sheets[sheetId];
-        if (!sheet || !sheet.data) return;
-        var sheetLabel = sheetId + ':' + (sheet.name || 'Sheet');
-        var highlightStates = sheet.highlightStates || [];
-        var pictureUrls = sheet.pictureUrls || [];
-        sheet.data.forEach(function(row, idx) {
-            var isPC = row && row.length === 1 && (row[0] || '').toString().trim() !== '';
-            if (isPC) {
-                items.push({
-                    sheet_id: BACKUP_SHEET_ID,
-                    sheet_name: sheetLabel,
-                    row_index: idx,
-                    article: (row[0] || '').toString().trim(),
-                    is_pc_header: true,
-                    is_highlighted: false
-                });
-            } else if (row && row.length >= 10) {
-                items.push({
-                    sheet_id: BACKUP_SHEET_ID,
-                    sheet_name: sheetLabel,
-                    row_index: idx,
-                    article: (row[0] || '').toString().trim(),
-                    description: (row[1] || '').toString().trim(),
-                    old_property_n_assigned: (row[2] || '').toString().trim(),
-                    unit_of_meas: (row[3] || '').toString().trim(),
-                    unit_value: (row[4] || '').toString().trim(),
-                    quantity: (row[5] || '').toString().trim(),
-                    location: (row[6] || '').toString().trim(),
-                    condition: (row[7] || '').toString().trim(),
-                    remarks: (row[8] || '').toString().trim(),
-                    user: (row[9] || '').toString().trim(),
-                    picture_url: pictureUrls[idx] || null,
-                    is_pc_header: false,
-                    is_highlighted: !!highlightStates[idx]
-                });
-            }
-        });
-    });
-    return items;
-}
-
 async function syncBackupToSupabase() {
     if (!checkSupabaseConnection() || isBackupMode) return;
     try {
-        await window.supabaseClient.from('sheets').upsert({ id: BACKUP_SHEET_ID, name: 'Backup Snapshot', updated_at: new Date().toISOString() }, { onConflict: 'id' });
-        var items = buildBackupItemsFromSheets();
-        var del = await window.supabaseClient.from('inventory_items').delete().eq('sheet_id', BACKUP_SHEET_ID);
-        if (del.error) {
-            console.warn('Backup sync: delete old failed', del.error);
-            return;
-        }
-        if (items.length > 0) {
-            var ins = await window.supabaseClient.from('inventory_items').insert(items).select();
-            if (ins.error) console.warn('Backup sync: insert failed', ins.error);
-            else console.log('Backup snapshot saved to Supabase (' + items.length + ' rows)');
-        }
+        var payload = {
+            sheets: sheets,
+            currentSheetId: currentSheetId,
+            sheetCounter: sheetCounter,
+            savedAt: Date.now()
+        };
+        var res = await window.supabaseClient
+            .from('inventory_backup_snapshot')
+            .upsert({ id: 1, data: payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+        if (res.error) console.warn('Backup sync: upsert failed', res.error);
+        else console.log('Inventory backup saved to Supabase (inventory_backup_snapshot)');
     } catch (e) {
         console.warn('Backup sync error', e);
     }
@@ -2117,46 +2070,18 @@ async function loadBackupFromSupabase() {
     if (!checkSupabaseConnection()) return null;
     try {
         var res = await window.supabaseClient
-            .from('inventory_items')
-            .select('*')
-            .eq('sheet_id', BACKUP_SHEET_ID)
-            .order('sheet_name', { ascending: true })
-            .order('row_index', { ascending: true });
-        if (res.error || !res.data || res.data.length === 0) return null;
-        var bySheet = {};
-        res.data.forEach(function(item) {
-            var label = item.sheet_name || '';
-            var colon = label.indexOf(':');
-            var sheetId = colon >= 0 ? label.substring(0, colon) : 'sheet-1';
-            var sheetName = colon >= 0 ? label.substring(colon + 1) : 'Sheet 1';
-            if (!bySheet[sheetId]) {
-                bySheet[sheetId] = { id: sheetId, name: sheetName, data: [], highlightStates: [], pictureUrls: [] };
-            }
-            var s = bySheet[sheetId];
-            if (item.is_pc_header) {
-                s.data.push([item.article || '']);
-                s.highlightStates.push(false);
-                s.pictureUrls.push(null);
-            } else {
-                s.data.push([
-                    item.article || '', item.description || '', item.old_property_n_assigned || '',
-                    item.unit_of_meas || '', item.unit_value || '', item.quantity || '',
-                    item.location || '', item.condition || '', item.remarks || '', item.user || ''
-                ]);
-                s.highlightStates.push(!!item.is_highlighted);
-                s.pictureUrls.push(item.picture_url || null);
-            }
-        });
-        var out = { sheets: {}, currentSheetId: null, sheetCounter: 0 };
-        Object.keys(bySheet).forEach(function(sid) {
-            var s = bySheet[sid];
-            s.hasData = s.data.length > 0;
-            out.sheets[sid] = s;
-            var num = parseInt(sid.replace('sheet-', ''), 10);
-            if (num > out.sheetCounter) out.sheetCounter = num;
-        });
-        out.currentSheetId = Object.keys(out.sheets)[0] || 'sheet-1';
-        return out;
+            .from('inventory_backup_snapshot')
+            .select('data')
+            .eq('id', 1)
+            .maybeSingle();
+        if (res.error || !res.data || !res.data.data) return null;
+        var data = res.data.data;
+        if (!data.sheets || typeof data.sheets !== 'object' || Object.keys(data.sheets).length === 0) return null;
+        return {
+            sheets: data.sheets,
+            currentSheetId: data.currentSheetId || Object.keys(data.sheets)[0],
+            sheetCounter: data.sheetCounter != null ? data.sheetCounter : 1
+        };
     } catch (e) {
         console.warn('Load backup from Supabase error', e);
         return null;

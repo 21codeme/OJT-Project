@@ -811,7 +811,10 @@
             if (rows.length === 0) return Promise.resolve();
             return supabase.from('class_schedule_entries').insert(rows);
         }).then(function() {
-            if (!isBackupMode) saveBackupSnapshot();
+            if (!isBackupMode) {
+                saveBackupSnapshot();
+                syncBackupToSupabase();
+            }
         }).catch(function(err) { console.error('Sync entries error:', err); });
     }
 
@@ -831,6 +834,37 @@
             if (!snap || !Array.isArray(snap.sheets) || snap.sheets.length === 0) return null;
             return snap;
         } catch (e) { return null; }
+    }
+
+    async function syncBackupToSupabase() {
+        if (isBackupMode || !checkSupabaseConnection()) return;
+        try {
+            var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, savedAt: Date.now() };
+            var res = await window.supabaseClient
+                .from('class_schedule_backup_snapshot')
+                .upsert({ id: 1, data: payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+            if (res.error) console.warn('Schedule backup sync failed', res.error);
+            else console.log('Class Schedule backup saved to Supabase (class_schedule_backup_snapshot)');
+        } catch (e) { console.warn('Schedule backup sync error', e); }
+    }
+
+    async function loadBackupFromSupabase() {
+        if (!checkSupabaseConnection()) return null;
+        try {
+            var res = await window.supabaseClient
+                .from('class_schedule_backup_snapshot')
+                .select('data')
+                .eq('id', 1)
+                .maybeSingle();
+            if (res.error || !res.data || !res.data.data) return null;
+            var data = res.data.data;
+            if (!data.sheets || !Array.isArray(data.sheets) || data.sheets.length === 0) return null;
+            return {
+                sheets: data.sheets,
+                activeSheetId: data.activeSheetId != null ? data.activeSheetId : (data.sheets[0] && data.sheets[0].id),
+                nextSheetId: data.nextSheetId != null ? data.nextSheetId : 1
+            };
+        } catch (e) { console.warn('Load schedule backup from Supabase error', e); return null; }
     }
 
     function debouncedSyncActiveSheet() {
@@ -874,7 +908,10 @@
             activeSheetId = sheets[0].id;
             renderSheetTabs();
             renderScheduleGrid();
-            if (!isBackupMode) saveBackupSnapshot();
+            if (!isBackupMode) {
+                saveBackupSnapshot();
+                syncBackupToSupabase();
+            }
             console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from Supabase');
         } catch (e) {
             console.error('Load from Supabase:', e);
@@ -941,6 +978,7 @@
                     sheets.forEach(function(s) { syncEntriesForSheet(s.id); });
                 }
                 saveBackupSnapshot();
+                syncBackupToSupabase();
                 if (document.getElementById('restoreScheduleBtn')) document.getElementById('restoreScheduleBtn').style.display = 'none';
                 restoreJustApplied = true;
             }
@@ -998,41 +1036,47 @@
                 }
             });
         });
-        if (!restoreJustApplied && checkSupabaseConnection()) {
-            loadFromSupabase().then(function() {
-                if (isBackupMode) {
-                    if (!sheets || sheets.length === 0) {
-                        var snap = loadBackupSnapshot();
-                        if (snap && snap.sheets && snap.sheets.length > 0) {
-                            sheets = snap.sheets;
-                            activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                            if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                            renderSheetTabs();
-                            renderScheduleGrid();
-                        }
+        if (isBackupMode) {
+            var snap = loadBackupSnapshot();
+            if (snap && snap.sheets && snap.sheets.length > 0) {
+                sheets = snap.sheets;
+                activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                renderSheetTabs();
+                renderScheduleGrid();
+                makeScheduleReadOnly();
+            } else {
+                (function waitThenLoad(attempt) {
+                    if (attempt > 25) { makeScheduleReadOnly(); return; }
+                    if (checkSupabaseConnection()) {
+                        loadBackupFromSupabase().then(function(snapFromSupabase) {
+                            if (snapFromSupabase && snapFromSupabase.sheets && snapFromSupabase.sheets.length > 0) {
+                                sheets = snapFromSupabase.sheets;
+                                activeSheetId = snapFromSupabase.activeSheetId != null ? snapFromSupabase.activeSheetId : (sheets[0] && sheets[0].id);
+                                if (snapFromSupabase.nextSheetId != null) nextSheetId = snapFromSupabase.nextSheetId;
+                                renderSheetTabs();
+                                renderScheduleGrid();
+                            }
+                            makeScheduleReadOnly();
+                        }).catch(function() { makeScheduleReadOnly(); });
+                    } else {
+                        setTimeout(function() { waitThenLoad(attempt + 1); }, 300);
                     }
-                    makeScheduleReadOnly();
-                }
-            });
+                })(0);
+            }
+        } else if (!restoreJustApplied && checkSupabaseConnection()) {
+            loadFromSupabase();
         } else if (!restoreJustApplied) {
             renderSheetTabs();
             renderScheduleGrid();
-            if (isBackupMode) {
-                var snap = loadBackupSnapshot();
-                if (snap && snap.sheets && snap.sheets.length > 0) {
-                    sheets = snap.sheets;
-                    activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                    renderSheetTabs();
-                    renderScheduleGrid();
-                }
-                makeScheduleReadOnly();
-            }
         }
 
         window.addEventListener('beforeunload', function() {
             if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
-            if (checkSupabaseConnection() && getActiveSheet()) syncEntriesForSheet(activeSheetId);
+            if (checkSupabaseConnection() && getActiveSheet()) {
+                syncEntriesForSheet(activeSheetId);
+                if (!isBackupMode) { saveBackupSnapshot(); syncBackupToSupabase(); }
+            }
         });
 
         var addFormPanel = document.getElementById('addFormPanel');
