@@ -845,15 +845,26 @@
         return String(val).trim();
     }
 
+    var SPECIAL_TYPES_FOR_PARSE = ['VACANT', 'VACANT/LAB MAINTENANCE', 'BREAK', 'LUNCH BREAK'];
     function parseContentCell(val) {
         var text = getCellText(val);
         if (!text) return { type: '', instructor: '', course: '', code: '' };
         if (text.toUpperCase() === 'LUNCH BREAK') return null;
         var lines = text.split(/\r?\n/).map(function(s) { return s.trim(); }).filter(Boolean);
-        var type = lines[0] || '';
-        var instructor = lines[1] || '';
-        var course = lines[2] || '';
-        var code = lines[3] || '';
+        var type = '';
+        var instructor = '';
+        var course = '';
+        var code = '';
+        if (lines.length > 0 && SPECIAL_TYPES_FOR_PARSE.indexOf(lines[0].toUpperCase()) >= 0) {
+            type = lines[0] || '';
+            instructor = lines[1] || '';
+            course = lines[2] || '';
+            code = lines[3] || '';
+        } else {
+            instructor = lines[0] || '';
+            course = lines[1] || '';
+            code = lines[2] || '';
+        }
         return { type: type, instructor: instructor, course: course, code: code };
     }
 
