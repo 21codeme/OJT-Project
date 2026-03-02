@@ -806,6 +806,71 @@
             label.className = 'sheet-tab-label';
             label.textContent = sheet.name;
             tab.appendChild(label);
+            var menuBtn = document.createElement('button');
+            menuBtn.type = 'button';
+            menuBtn.className = 'sheet-tab-menu';
+            menuBtn.innerHTML = '&#x22EE;';
+            menuBtn.setAttribute('aria-label', 'Sheet options');
+            menuBtn.title = 'Rename / Delete';
+            var dropEl = null;
+            function closeDrop() {
+                if (dropEl && dropEl.parentNode) dropEl.parentNode.removeChild(dropEl);
+                dropEl = null;
+                document.removeEventListener('click', closeDrop);
+            }
+            menuBtn.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                if (dropEl && dropEl.parentNode) { closeDrop(); return; }
+                dropEl = document.createElement('div');
+                dropEl.className = 'sheet-tab-dropdown';
+                var renameBtn = document.createElement('button');
+                renameBtn.type = 'button';
+                renameBtn.textContent = 'Rename';
+                renameBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    closeDrop();
+                    var newName = prompt('Rename sheet:', sheet.name);
+                    if (newName == null || (newName = (newName || '').trim()) === '' || newName === sheet.name) return;
+                    sheet.name = newName;
+                    if (checkSupabaseConnection()) {
+                        window.supabaseClient.from('class_schedule_sheets').update({ name: newName }).eq('id', sheet.id).then(function() {}).catch(function(err) { console.error('Rename sheet error:', err); });
+                    }
+                    saveBackupSnapshot();
+                    renderSheetTabs();
+                });
+                var deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    closeDrop();
+                    if (sheets.length <= 1) return;
+                    var idx = sheets.findIndex(function(s) { return s.id === sheet.id; });
+                    if (idx < 0) return;
+                    if (activeSheetId === sheet.id) {
+                        if (idx > 0) activeSheetId = sheets[idx - 1].id;
+                        else if (sheets.length > 1) activeSheetId = sheets[1].id;
+                    }
+                    var sheetIdToDelete = sheet.id;
+                    sheets.splice(idx, 1);
+                    saveBackupSnapshot();
+                    renderSheetTabs();
+                    renderScheduleGrid();
+                    if (checkSupabaseConnection()) {
+                        window.supabaseClient.from('class_schedule_sheets').delete().eq('id', sheetIdToDelete).then(function() {}).catch(function(err) { console.error('Delete sheet error:', err); });
+                    }
+                });
+                dropEl.appendChild(renameBtn);
+                dropEl.appendChild(deleteBtn);
+                document.body.appendChild(dropEl);
+                var rect = menuBtn.getBoundingClientRect();
+                dropEl.style.position = 'fixed';
+                dropEl.style.left = rect.left + 'px';
+                dropEl.style.top = (rect.bottom + 4) + 'px';
+                dropEl.style.zIndex = '9999';
+                setTimeout(function() { document.addEventListener('click', closeDrop); }, 0);
+            });
+            tab.appendChild(menuBtn);
             var closeBtn = document.createElement('button');
             closeBtn.type = 'button';
             closeBtn.className = 'sheet-tab-close';
@@ -830,7 +895,7 @@
             });
             tab.appendChild(closeBtn);
             tab.addEventListener('click', function(ev) {
-                if (ev.target === closeBtn) return;
+                if (ev.target === closeBtn || ev.target === menuBtn) return;
                 activeSheetId = sheet.id;
                 renderSheetTabs();
                 renderScheduleGrid();
