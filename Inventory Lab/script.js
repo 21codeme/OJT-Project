@@ -2460,7 +2460,7 @@ document.getElementById('importExcelInput').addEventListener('change', function(
     if (!file) return;
     e.target.value = '';
     var reader = new FileReader();
-    reader.onload = function(ev) {
+    reader.onload = async function(ev) {
         try {
             if (typeof XLSX === 'undefined') {
                 alert('XLSX library not loaded. Please refresh and try again.');
@@ -2557,7 +2557,17 @@ document.getElementById('importExcelInput').addEventListener('change', function(
             saveBackupToLocalStorage();
             if (checkSupabaseConnection()) {
                 if (syncTimeout) clearTimeout(syncTimeout);
-                syncTimeout = setTimeout(function() { syncToSupabase(); }, 300);
+                syncTimeout = null;
+                var statusEl = document.getElementById('saveStatus');
+                if (statusEl) { statusEl.textContent = 'Saving to Supabase…'; statusEl.className = 'save-status saving'; }
+                try {
+                    await syncToSupabase();
+                    if (hasAnyData()) await syncBackupToSupabase();
+                    if (statusEl) { statusEl.textContent = 'Saved'; statusEl.className = 'save-status saved'; }
+                } catch (err) {
+                    console.warn('Import sync error', err);
+                    if (statusEl) { statusEl.textContent = 'Import saved locally; sync failed'; statusEl.className = 'save-status error'; }
+                }
             }
             alert('Imported ' + sheetData.length + ' row(s) from Excel.');
         } catch (err) {
