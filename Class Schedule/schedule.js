@@ -81,6 +81,15 @@
         });
         var morningAll = morningFiltered.concat(morning).sort(function(a, b) { return a.start - b.start; });
         var afternoonAll = afternoonFiltered.concat(afternoon).sort(function(a, b) { return a.start - b.start; });
+        var entries = (sheet && sheet.entries) ? sheet.entries : [];
+        var morningEndsAtNoon = false;
+        for (var e = 0; e < entries.length; e++) {
+            var range = parseTimeRange(entries[e].timeSlot);
+            if (range.end >= 12 * 60 && range.start < LUNCH_START) { morningEndsAtNoon = true; break; }
+        }
+        if (morningEndsAtNoon && morningAll.length > 0) {
+            morningAll = morningAll.filter(function(row) { return rowHasAnyEntry(row, entries); });
+        }
         return morningAll.concat([lunchRow]).concat(afternoonAll);
     }
 
@@ -127,6 +136,14 @@
 
     function entryOverlapsRow(entryStart, entryEnd, rowStart, rowEnd) {
         return entryStart < rowEnd && entryEnd > rowStart;
+    }
+    function rowHasAnyEntry(row, entries) {
+        if (!entries || !entries.length) return false;
+        for (var i = 0; i < entries.length; i++) {
+            var range = parseTimeRange(entries[i].timeSlot);
+            if (entryOverlapsRow(range.start, range.end, row.start, row.end)) return true;
+        }
+        return false;
     }
 
     function getEntryDurationHours(entry) {
@@ -472,10 +489,11 @@
     }
 
     function getGridData(entries, sheet) {
-        if (entries == null) entries = getScheduleEntries();
+        var targetSheet = sheet || getActiveSheet();
+        if (entries == null) entries = (targetSheet && targetSheet.entries) ? targetSheet.entries : [];
         var data = [];
-        var slots = getEffectiveRowSlots(sheet);
-        var daySegments = DAYS.map(function(day) { return getSegmentsForDay(day, entries, sheet); });
+        var slots = getEffectiveRowSlots(targetSheet);
+        var daySegments = DAYS.map(function(day) { return getSegmentsForDay(day, entries, targetSheet); });
         for (var r = 0; r < slots.length; r++) {
             var row = [];
             DAYS.forEach(function(day, colIndex) {
@@ -628,7 +646,7 @@
 
         const effectiveSlots = getEffectiveRowSlots(sheet);
         const gridData = getGridData(sheet.entries, sheet);
-        const timeLabels = effectiveSlots.map(function(r) { return r.lunch ? '12:15 - 1:00' : r.label; });
+        const timeLabels = effectiveSlots.map(function(r) { return r.lunch ? '12:15 - 1:00' : formatTimeSlotNoon(r.label); });
         const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFF3CD' } };
         const pureYellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
         const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EDDA' } };
@@ -1040,12 +1058,14 @@
             if (sheets[i] !== activeSheet) fillOneSheet(workbook, sheets[i]);
         }
         const headerText = { semester: '2nd Semester 2025 - 2026' };
+        var baseName = 'LAB-SCHED-' + (headerText.semester.replace(/\s+/g, '-') || 'Schedule');
+        if (activeSheet && activeSheet.name) baseName = activeSheet.name.replace(/[/\\?*\[\]]/g, '-').substring(0, 50) + '-' + headerText.semester.replace(/\s+/g, '-');
         workbook.xlsx.writeBuffer().then(function(buffer) {
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'LAB-SCHED-' + (headerText.semester.replace(/\s+/g, '-') || 'Schedule') + '.xlsx';
+            a.download = baseName + '.xlsx';
             a.click();
             URL.revokeObjectURL(url);
             alert('Excel file downloaded.');
