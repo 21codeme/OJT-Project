@@ -88,7 +88,7 @@
             if (range.end >= 12 * 60 && range.start < LUNCH_START) { morningEndsAtNoon = true; break; }
         }
         if (morningEndsAtNoon && morningAll.length > 0) {
-            morningAll = morningAll.filter(function(row) { return rowHasAnyEntry(row, entries); });
+            morningAll = morningAll.filter(function(row) { return rowHasRealEntry(row, entries); });
         }
         return morningAll.concat([lunchRow]).concat(afternoonAll);
     }
@@ -142,6 +142,17 @@
         for (var i = 0; i < entries.length; i++) {
             var range = parseTimeRange(entries[i].timeSlot);
             if (entryOverlapsRow(range.start, range.end, row.start, row.end)) return true;
+        }
+        return false;
+    }
+    function rowHasRealEntry(row, entries) {
+        if (!entries || !entries.length) return false;
+        for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            var range = parseTimeRange(e.timeSlot);
+            if (!entryOverlapsRow(range.start, range.end, row.start, row.end)) continue;
+            var hasContent = (e.instructor && e.instructor.trim()) || (e.course && e.course.trim()) || (e.code && e.code.trim()) || (e.type && e.type.trim());
+            if (hasContent) return true;
         }
         return false;
     }
