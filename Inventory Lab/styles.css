@@ -144,7 +144,7 @@ header h3 {
     font-weight: 500;
 }
 
-.upload-btn, .export-btn, .clear-btn, .add-btn, .add-pc-btn, .new-sheet-btn, .import-excel-btn {
+.upload-btn, .export-btn, .clear-btn, .add-btn, .add-pc-btn, .new-sheet-btn, .import-excel-btn, .restore-backup-btn {
     padding: 12px 24px;
     border: none;
     border-radius: 6px;
@@ -209,6 +209,16 @@ header h3 {
     background: #6c757d;
     cursor: not-allowed;
     opacity: 0.6;
+}
+
+.restore-backup-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+.restore-backup-btn:hover {
+    background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
 .add-btn {

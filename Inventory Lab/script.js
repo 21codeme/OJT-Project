@@ -17,6 +17,85 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
+    if (isBackupMode) {
+        document.body.classList.add('backup-mode');
+        document.getElementById('addItemBtn').style.display = 'none';
+        document.getElementById('addPCBtn').style.display = 'none';
+        document.getElementById('newSheetBtn').style.display = 'none';
+        document.getElementById('importExcelBtn').style.display = 'none';
+        document.getElementById('importExcelInput').style.display = 'none';
+        document.getElementById('clearBtn').style.display = 'none';
+        document.getElementById('restoreBackupBtn').style.display = 'inline-flex';
+        (async function() {
+            var snapshot = null;
+            if (typeof initSupabase === 'function') initSupabase();
+            await new Promise(function(r) { setTimeout(r, 400); });
+            for (var t = 0; t < 8 && !checkSupabaseConnection(); t++) {
+                await new Promise(function(r) { setTimeout(r, 300); });
+            }
+            if (checkSupabaseConnection()) {
+                for (var retry = 0; retry < 2; retry++) {
+                    snapshot = await loadBackupFromSupabase();
+                    if (snapshot && snapshot.sheets) {
+                        var rows = Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0);
+                        if (rows > 0) break;
+                    }
+                    await new Promise(function(r) { setTimeout(r, 500); });
+                }
+            }
+            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
+                snapshot = loadBackupSnapshot();
+            }
+            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
+                snapshot = loadBackupFromLocalStorage();
+            }
+        var totalRows = snapshot && snapshot.sheets ? Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
+        if (snapshot && snapshot.sheets && Object.keys(snapshot.sheets).length > 0 && totalRows > 0) {
+            sheets = snapshot.sheets;
+            currentSheetId = snapshot.currentSheetId || Object.keys(sheets)[0];
+            sheetCounter = snapshot.sheetCounter || 1;
+            updateSheetTabs();
+            var firstId = Object.keys(sheets).find(function(sid) {
+                var s = sheets[sid];
+                return s && s.data && s.data.length > 0;
+            }) || Object.keys(sheets)[0];
+            if (firstId) {
+                currentSheetId = firstId;
+                var sheet = sheets[firstId];
+                displayData(sheet.data || [], true);
+                makeTableReadOnly();
+                document.getElementById('exportBtn').disabled = false;
+            }
+            document.querySelectorAll('.sheet-tab-menu').forEach(function(el) { el.style.display = 'none'; });
+            document.querySelectorAll('.sheet-tab .close-sheet').forEach(function(el) { el.style.display = 'none'; });
+        } else {
+            document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No backup data yet. I-open muna ang main Inventory page (walang ?backup=1), hintayin mag-load ang data, tapos balik dito. O i-refresh ang main Inventory bago buksan ang Backup.</td></tr>';
+        }
+        document.getElementById('restoreBackupBtn').addEventListener('click', async function() {
+            if (!confirm('Restore backup data to Inventory? This will replace current Inventory data.')) return;
+            var snap = await loadBackupFromSupabase();
+            if (!snap || !snap.sheets || Object.keys(snap.sheets).length === 0) snap = loadBackupSnapshot();
+            if (!snap || !snap.sheets || Object.keys(snap.sheets).length === 0) snap = loadBackupFromLocalStorage();
+            if (!snap || !snap.sheets) { alert('No backup data to restore.'); return; }
+            sheets = snap.sheets;
+            currentSheetId = snap.currentSheetId || Object.keys(sheets)[0];
+            sheetCounter = snap.sheetCounter || 1;
+            var backupStr = JSON.stringify({ sheets: sheets, currentSheetId: currentSheetId, sheetCounter: sheetCounter, savedAt: Date.now() });
+            localStorage.setItem(BACKUP_KEY, backupStr);
+            if (typeof syncToSupabase === 'function' && checkSupabaseConnection()) {
+                syncToSupabase().then(function() {
+                    window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
+                }).catch(function() {
+                    window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
+                });
+            } else {
+                window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
+            }
+        });
+        })();
+        return;
+    }
+    
     // Enable add buttons even when no data
     document.getElementById('addItemBtn').disabled = false;
     document.getElementById('addPCBtn').disabled = false;
@@ -38,12 +117,33 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (checkSupabaseConnection()) {
                 console.log('✅ Supabase connected, loading data...');
                 clearInterval(checkSupabaseInit);
-                await loadFromSupabase();
-                
-                // Verify data was loaded
-                const hasData = hasAnyData();
+                var restored = window.location.search.indexOf('restored=1') !== -1;
+                if (restored) {
+                    var rest = loadBackupFromLocalStorage();
+                    if (rest && rest.sheets && Object.keys(rest.sheets).length > 0) {
+                        sheets = rest.sheets;
+                        currentSheetId = rest.currentSheetId || Object.keys(sheets)[0];
+                        sheetCounter = rest.sheetCounter || 1;
+                        updateSheetTabs();
+                        var fid = Object.keys(sheets)[0];
+                        if (fid) { currentSheetId = fid; switchToSheet(fid); }
+                        syncToSupabase();
+                        if (hasAnyData()) {
+                            saveBackupToLocalStorage();
+                            syncBackupToSupabase();
+                        }
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+                        }
+                    } else {
+                        await loadFromSupabase();
+                    }
+                } else {
+                    await loadFromSupabase();
+                }
+                var hasData = hasAnyData();
                 if (hasData) {
-                    console.log('✅ Data loaded successfully from Supabase');
+                    console.log('✅ Data loaded successfully' + (restored ? ' (restored from backup)' : ' from Supabase'));
                 } else {
                     console.log('ℹ️ No existing data found in Supabase (this is normal for first use)');
                 }
@@ -56,8 +156,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 const BACKUP_KEY = 'inventory_lab_backup';
+const BACKUP_SNAPSHOT_KEY = 'inventory_lab_backup_snapshot'; // Hindi naaapektuhan ng Clear Data; gamit sa Backup page
 
 function saveBackupToLocalStorage() {
+    if (isBackupMode) return;
     try {
         const backup = {
             sheets: sheets,
@@ -66,6 +168,9 @@ function saveBackupToLocalStorage() {
             savedAt: Date.now()
         };
         localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
+        if (hasAnyData()) {
+            localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(backup));
+        }
     } catch (e) {
         if (e.name === 'QuotaExceededError') {
             try {
@@ -88,6 +193,30 @@ function loadBackupFromLocalStorage() {
         if (!backup || !backup.sheets) return null;
         return backup;
     } catch (e) { return null; }
+}
+
+function loadBackupSnapshot() {
+    try {
+        const raw = localStorage.getItem(BACKUP_SNAPSHOT_KEY);
+        if (!raw) return null;
+        const backup = JSON.parse(raw);
+        if (!backup || !backup.sheets) return null;
+        return backup;
+    } catch (e) { return null; }
+}
+
+function makeTableReadOnly() {
+    var tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    tbody.querySelectorAll('input').forEach(function(inp) { inp.disabled = true; inp.readOnly = true; });
+    tbody.querySelectorAll('.actions-cell').forEach(function(cell) {
+        cell.innerHTML = '';
+        cell.textContent = '—';
+    });
+    tbody.querySelectorAll('.row-add-cell, .col-add').forEach(function(cell) {
+        if (cell) cell.style.display = 'none';
+    });
+    tbody.querySelectorAll('.picture-cell button').forEach(function(btn) { btn.style.display = 'none'; });
 }
 
 // Save bago mag-close/refresh — localStorage muna (sync, instant), tapos Supabase (async, best-effort)
@@ -120,6 +249,7 @@ let sheets = {
 let currentSheetId = 'sheet-1';
 let sheetCounter = 1;
 let isLoadingFromSupabase = false; // Flag to prevent sync during load
+var isBackupMode = typeof window !== 'undefined' && window.location && window.location.search.indexOf('backup=1') !== -1;
 let isSyncing = false; // Flag to prevent concurrent syncs
 let syncTimeout = null; // For debouncing sync calls
 let originalWorkbook = null;
@@ -1241,15 +1371,18 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
     }
 });
 
-// Display data in table
-function displayData(data) {
+// Display data in table (readOnlyForBackup = true kapag backup page para tamang empty message)
+function displayData(data, readOnlyForBackup) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
     
     console.log(`🖥️ Displaying data: ${data ? data.length : 0} row(s)`);
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data found in the Excel file.</td></tr>';
+        var msg = readOnlyForBackup
+            ? 'No backup data yet. I-open muna ang main Inventory page (walang ?backup=1), hintayin mag-load ang data, tapos balik dito.'
+            : 'No data found in the Excel file.';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">' + msg + '</td></tr>';
         console.log('⚠️ No data to display');
         return;
     }
@@ -1525,9 +1658,8 @@ function createNewSheet(name = null, data = null) {
 function switchToSheet(sheetId) {
     if (!sheets[sheetId]) return;
     
-    // Save current sheet data from table only when NOT loading from Supabase
-    // (during load, table is still empty so save would overwrite the data we just loaded)
-    if (!isLoadingFromSupabase) {
+    // Save current sheet data from table only when NOT loading from Supabase (and not in backup read-only mode)
+    if (!isLoadingFromSupabase && !isBackupMode) {
         saveCurrentSheetData();
     }
     
@@ -1552,10 +1684,11 @@ function switchToSheet(sheetId) {
     console.log(`📋 switchToSheet: Sheet data:`, sheet.data);
     
     displayData(sheet.data);
+    if (isBackupMode) makeTableReadOnly();
     
     // Update buttons
     document.getElementById('exportBtn').disabled = !hasAnyData();
-    document.getElementById('clearBtn').disabled = !sheet.hasData;
+    if (!isBackupMode) document.getElementById('clearBtn').disabled = !sheet.hasData;
 }
 
 function saveCurrentSheetData(skipSync) {
@@ -1635,6 +1768,7 @@ function saveCurrentSheetData(skipSync) {
         syncTimeout = setTimeout(() => {
             syncTimeout = null;
             syncToSupabase();
+            if (hasAnyData()) syncBackupToSupabase();
         }, 100);
     }
 }
@@ -1901,6 +2035,122 @@ async function syncToSupabase() {
     }
 }
 
+var BACKUP_SHEET_ID = 'backup-snapshot';
+
+function buildBackupItemsFromSheets() {
+    var items = [];
+    Object.keys(sheets).forEach(function(sheetId) {
+        var sheet = sheets[sheetId];
+        if (!sheet || !sheet.data) return;
+        var sheetLabel = sheetId + ':' + (sheet.name || 'Sheet');
+        var highlightStates = sheet.highlightStates || [];
+        var pictureUrls = sheet.pictureUrls || [];
+        sheet.data.forEach(function(row, idx) {
+            var isPC = row && row.length === 1 && (row[0] || '').toString().trim() !== '';
+            if (isPC) {
+                items.push({
+                    sheet_id: BACKUP_SHEET_ID,
+                    sheet_name: sheetLabel,
+                    row_index: idx,
+                    article: (row[0] || '').toString().trim(),
+                    is_pc_header: true,
+                    is_highlighted: false
+                });
+            } else if (row && row.length >= 10) {
+                items.push({
+                    sheet_id: BACKUP_SHEET_ID,
+                    sheet_name: sheetLabel,
+                    row_index: idx,
+                    article: (row[0] || '').toString().trim(),
+                    description: (row[1] || '').toString().trim(),
+                    old_property_n_assigned: (row[2] || '').toString().trim(),
+                    unit_of_meas: (row[3] || '').toString().trim(),
+                    unit_value: (row[4] || '').toString().trim(),
+                    quantity: (row[5] || '').toString().trim(),
+                    location: (row[6] || '').toString().trim(),
+                    condition: (row[7] || '').toString().trim(),
+                    remarks: (row[8] || '').toString().trim(),
+                    user: (row[9] || '').toString().trim(),
+                    picture_url: pictureUrls[idx] || null,
+                    is_pc_header: false,
+                    is_highlighted: !!highlightStates[idx]
+                });
+            }
+        });
+    });
+    return items;
+}
+
+async function syncBackupToSupabase() {
+    if (!checkSupabaseConnection() || isBackupMode) return;
+    try {
+        await window.supabaseClient.from('sheets').upsert({ id: BACKUP_SHEET_ID, name: 'Backup Snapshot', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+        var items = buildBackupItemsFromSheets();
+        var del = await window.supabaseClient.from('inventory_items').delete().eq('sheet_id', BACKUP_SHEET_ID);
+        if (del.error) {
+            console.warn('Backup sync: delete old failed', del.error);
+            return;
+        }
+        if (items.length > 0) {
+            var ins = await window.supabaseClient.from('inventory_items').insert(items).select();
+            if (ins.error) console.warn('Backup sync: insert failed', ins.error);
+            else console.log('Backup snapshot saved to Supabase (' + items.length + ' rows)');
+        }
+    } catch (e) {
+        console.warn('Backup sync error', e);
+    }
+}
+
+async function loadBackupFromSupabase() {
+    if (!checkSupabaseConnection()) return null;
+    try {
+        var res = await window.supabaseClient
+            .from('inventory_items')
+            .select('*')
+            .eq('sheet_id', BACKUP_SHEET_ID)
+            .order('sheet_name', { ascending: true })
+            .order('row_index', { ascending: true });
+        if (res.error || !res.data || res.data.length === 0) return null;
+        var bySheet = {};
+        res.data.forEach(function(item) {
+            var label = item.sheet_name || '';
+            var colon = label.indexOf(':');
+            var sheetId = colon >= 0 ? label.substring(0, colon) : 'sheet-1';
+            var sheetName = colon >= 0 ? label.substring(colon + 1) : 'Sheet 1';
+            if (!bySheet[sheetId]) {
+                bySheet[sheetId] = { id: sheetId, name: sheetName, data: [], highlightStates: [], pictureUrls: [] };
+            }
+            var s = bySheet[sheetId];
+            if (item.is_pc_header) {
+                s.data.push([item.article || '']);
+                s.highlightStates.push(false);
+                s.pictureUrls.push(null);
+            } else {
+                s.data.push([
+                    item.article || '', item.description || '', item.old_property_n_assigned || '',
+                    item.unit_of_meas || '', item.unit_value || '', item.quantity || '',
+                    item.location || '', item.condition || '', item.remarks || '', item.user || ''
+                ]);
+                s.highlightStates.push(!!item.is_highlighted);
+                s.pictureUrls.push(item.picture_url || null);
+            }
+        });
+        var out = { sheets: {}, currentSheetId: null, sheetCounter: 0 };
+        Object.keys(bySheet).forEach(function(sid) {
+            var s = bySheet[sid];
+            s.hasData = s.data.length > 0;
+            out.sheets[sid] = s;
+            var num = parseInt(sid.replace('sheet-', ''), 10);
+            if (num > out.sheetCounter) out.sheetCounter = num;
+        });
+        out.currentSheetId = Object.keys(out.sheets)[0] || 'sheet-1';
+        return out;
+    } catch (e) {
+        console.warn('Load backup from Supabase error', e);
+        return null;
+    }
+}
+
 // Load data from Supabase
 async function loadFromSupabase() {
     if (!checkSupabaseConnection()) return;
@@ -1948,6 +2198,10 @@ async function loadFromSupabase() {
                     if (firstId) {
                         currentSheetId = firstId;
                         switchToSheet(firstId);
+                        if (hasAnyData()) {
+                            saveBackupToLocalStorage();
+                            syncBackupToSupabase();
+                        }
                     }
                 } else if (Object.keys(sheets).length === 0) {
                     sheets['sheet-1'] = { id: 'sheet-1', name: 'Sheet 1', data: [], hasData: false, highlightStates: [], pictureUrls: [] };
@@ -2113,6 +2367,12 @@ async function loadFromSupabase() {
         Object.values(sheets).forEach(sheet => {
             console.log(`  - ${sheet.name}: ${sheet.data.length} row(s)`);
         });
+        
+        // I-update ang backup snapshot at Supabase para makita rin sa Backup page ang laman ng Inventory
+        if (hasAnyData()) {
+            saveBackupToLocalStorage();
+            syncBackupToSupabase();
+        }
     } catch (error) {
         console.error('Error loading from Supabase:', error);
         if (!hasAnyData()) {

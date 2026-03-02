@@ -105,13 +105,68 @@
             z-index: 5;
             pointer-events: auto;
         }
-        .top-left-btn .btn {
+        .top-left-btn .btn-main {
             padding: 10px 20px;
             font-size: 0.95rem;
             background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.2s;
         }
-        .top-left-btn .btn:hover {
+        .top-left-btn .btn-main:hover {
             background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+            transform: translateY(-1px);
+        }
+        .top-left-btn .backup-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 6px;
+            min-width: 180px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+            overflow: hidden;
+            z-index: 20;
+        }
+        .top-left-btn .backup-dropdown.show {
+            display: flex;
+            flex-direction: column;
+        }
+        .top-left-btn .backup-dropdown a {
+            display: block;
+            padding: 12px 18px;
+            color: #212529;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: background 0.15s;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .top-left-btn .backup-dropdown a:hover {
+            background: #f0f0f0;
+            transform: none;
+        }
+        .top-left-btn .backup-dropdown a.btn-inventory {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+        }
+        .top-left-btn .backup-dropdown a.btn-inventory:hover {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+        }
+        .top-left-btn .backup-dropdown a.btn-schedule {
+            background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
+            color: #fff;
+        }
+        .top-left-btn .backup-dropdown a.btn-schedule:hover {
+            background: linear-gradient(135deg, #40916c 0%, #2d6a4f 100%);
         }
 
         .password-modal {
@@ -212,16 +267,16 @@
     <div class="slideshow" id="slideshow"></div>
     <div class="overlay"></div>
     <div class="top-left-btn">
-        <a href="Inventory%20Lab/Inventory.html?backup=1" class="btn" id="btnBackup" data-href="Inventory%20Lab/Inventory.html?backup=1">Backup</a>
+        <button type="button" class="btn-main" id="btnBackupToggle" aria-expanded="false" aria-haspopup="true">Backup ▼</button>
+        <div class="backup-dropdown" id="backupDropdown">
+            <a href="#" class="btn-inventory" id="btnInventory" data-href="Inventory%20Lab/Inventory.html?backup=1">Inventory</a>
+            <a href="#" class="btn-schedule" id="btnSchedule" data-href="Class%20Schedule/index.html">Class Schedule</a>
+        </div>
     </div>
     <div class="content">
         <img src="images/omsc.png" alt="OMSC Logo" class="header-logo">
         <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
         <p>Multimedia and Speech Laboratory</p>
-        <div class="buttons">
-            <a href="Inventory%20Lab/Inventory.html" class="btn" id="btnInventory" data-href="Inventory%20Lab/Inventory.html">Inventory</a>
-            <a href="Class%20Schedule/index.html" class="btn btn-schedule" id="btnSchedule" data-href="Class%20Schedule/index.html">Class Schedule</a>
-        </div>
     </div>
 
     <div class="password-modal" id="passwordModal">
@@ -266,14 +321,20 @@
             modal.classList.add('show');
             passwordInput.focus();
         });
-        document.getElementById('btnBackup').addEventListener('click', function(e) {
-            e.preventDefault();
-            pendingHref = this.getAttribute('data-href');
-            passwordError.classList.remove('show');
-            passwordInput.value = '';
-            modal.classList.add('show');
-            passwordInput.focus();
+        document.getElementById('btnBackupToggle').addEventListener('click', function(e) {
+            e.stopPropagation();
+            var dd = document.getElementById('backupDropdown');
+            var open = dd.classList.toggle('show');
+            this.setAttribute('aria-expanded', open);
+            this.textContent = open ? 'Backup ▲' : 'Backup ▼';
         });
+        document.addEventListener('click', function() {
+            var dd = document.getElementById('backupDropdown');
+            dd.classList.remove('show');
+            var btn = document.getElementById('btnBackupToggle');
+            if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Backup ▼'; }
+        });
+        document.getElementById('backupDropdown').addEventListener('click', function(e) { e.stopPropagation(); });
 
         function closePasswordModal() {
             modal.classList.remove('show');
