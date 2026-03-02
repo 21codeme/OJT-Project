@@ -1145,21 +1145,47 @@
         }, 300);
     }
 
+    function tryFallbackFromBackup() {
+        var snap = loadBackupSnapshot();
+        if (snap && snap.sheets && snap.sheets.length > 0) {
+            sheets = snap.sheets;
+            activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+            if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+            renderSheetTabs();
+            renderScheduleGrid();
+            if (!isBackupMode) saveBackupSnapshot();
+            console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from localStorage backup');
+        }
+        isLoadingFromSupabase = false;
+    }
+
     async function loadFromSupabase() {
         if (!checkSupabaseConnection() || isLoadingFromSupabase) return;
         isLoadingFromSupabase = true;
         try {
             var supabase = window.supabaseClient;
             var res = await supabase.from('class_schedule_sheets').select('id, name').order('id', { ascending: true });
-            if (res.error) { console.error('Load sheets error:', res.error); return; }
+            if (res.error) { console.error('Load sheets error:', res.error); tryFallbackFromBackup(); return; }
             var sheetsData = res.data || [];
             if (sheetsData.length === 0) {
+                var snap = loadBackupSnapshot();
+                if (snap && snap.sheets && snap.sheets.length > 0) {
+                    sheets = snap.sheets;
+                    activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                    renderSheetTabs();
+                    renderScheduleGrid();
+                    saveBackupSnapshot();
+                    console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from backup (Supabase empty)');
+                    isLoadingFromSupabase = false;
+                    return;
+                }
                 await supabase.from('class_schedule_sheets').insert({ name: 'COMPUTER LABORATORY' });
                 res = await supabase.from('class_schedule_sheets').select('id, name').order('id', { ascending: true });
                 sheetsData = (res.data || []);
             }
             if (sheetsData.length === 0) {
-                isLoadingFromSupabase = false;
+                tryFallbackFromBackup();
                 return;
             }
             sheets = [];
@@ -1185,6 +1211,8 @@
             console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from Supabase');
         } catch (e) {
             console.error('Load from Supabase:', e);
+            tryFallbackFromBackup();
+            return;
         } finally {
             isLoadingFromSupabase = false;
         }
@@ -1368,8 +1396,21 @@
         } else if (!restoreJustApplied && checkSupabaseConnection()) {
             loadFromSupabase();
         } else if (!restoreJustApplied) {
-            renderSheetTabs();
-            renderScheduleGrid();
+            var snap = loadBackupSnapshot();
+            if (snap && snap.sheets && snap.sheets.length > 0) {
+                sheets = snap.sheets;
+                activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                renderSheetTabs();
+                renderScheduleGrid();
+                console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from localStorage (Supabase not ready)');
+            } else {
+                renderSheetTabs();
+                renderScheduleGrid();
+            }
+            setTimeout(function retryLoad() {
+                if (checkSupabaseConnection()) loadFromSupabase();
+            }, 800);
         }
 
         window.addEventListener('beforeunload', function() {
