@@ -213,8 +213,16 @@ function makeTableReadOnly() {
         cell.innerHTML = '';
         cell.textContent = '—';
     });
-    tbody.querySelectorAll('.row-add-cell, .col-add').forEach(function(cell) {
-        if (cell) cell.style.display = 'none';
+    // Keep first column visible but empty (same layout as main Inventory page)
+    tbody.querySelectorAll('.row-add-cell').forEach(function(cell) {
+        if (cell) { cell.innerHTML = ''; cell.style.display = ''; }
+    });
+    document.querySelectorAll('#inventoryTable .col-add').forEach(function(cell) {
+        if (cell) cell.style.display = '';
+    });
+    // Hide Delete section button in PC header so it doesn't overflow into Picture column
+    tbody.querySelectorAll('.pc-header-row .delete-btn').forEach(function(btn) {
+        if (btn) btn.style.display = 'none';
     });
     tbody.querySelectorAll('.picture-cell button').forEach(function(btn) { btn.style.display = 'none'; });
 }
@@ -699,7 +707,9 @@ function addPCSectionAt(refRow, position) {
     wrapper.appendChild(deleteSectionBtn);
     td.appendChild(wrapper);
     tr.appendChild(td);
-    tr.appendChild(document.createElement('td'));
+    var actionsTd = document.createElement('td');
+    actionsTd.classList.add('actions-cell');
+    tr.appendChild(actionsTd);
     
     if (position === 'above') {
         tbody.insertBefore(tr, refRow);
@@ -1488,7 +1498,9 @@ function displayData(data, readOnlyForBackup) {
             wrapper.appendChild(deleteSectionBtn);
             td.appendChild(wrapper);
             tr.appendChild(td);
-            tr.appendChild(document.createElement('td')); // Actions column (blank)
+            var actionsTd = document.createElement('td');
+            actionsTd.classList.add('actions-cell');
+            tr.appendChild(actionsTd);
         } else {
             // Legacy: kung na-save dati with # column (11 elements, first is number), strip it
             let dataRow = row;

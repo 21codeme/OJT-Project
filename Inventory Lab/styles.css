@@ -711,6 +711,18 @@ tbody tr:hover {
     text-align: center;
     font-weight: 700;
     vertical-align: middle;
+    overflow: hidden;
+    min-width: 0;
+}
+.pc-header-row .pc-name-cell > div {
+    overflow: hidden;
+    min-width: 0;
+}
+.pc-header-row .pc-name-cell .delete-btn {
+    flex-shrink: 0;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .pc-header-row .pc-name-cell input {
     min-width: 120px;
