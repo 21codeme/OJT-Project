@@ -103,6 +103,12 @@
         }
         if (afternoonEndsLate && afternoonAll.length > 0) {
             afternoonAll = afternoonAll.filter(function(row) { return rowHasRealEntry(row, entries); });
+            var longSlot = 3 * 60;
+            var eveningEnd = 20 * 60;
+            afternoonAll = afternoonAll.filter(function(row) {
+                if (row.end - row.start >= longSlot && row.end >= eveningEnd) return false;
+                return true;
+            });
         }
         return morningAll.concat([lunchRow]).concat(afternoonAll);
     }
