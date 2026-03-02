@@ -107,7 +107,7 @@
             if (ampm === 'pm') {
                 if (h !== 12) mins += 12 * 60;
             } else if (ampm === 'am') {
-                if (h === 12) mins -= 12 * 60;
+                if (h === 12) mins = 12 * 60;
             } else {
                 if (h >= 1 && h <= 6) mins += 12 * 60;
             }
@@ -118,6 +118,11 @@
         var end = parts[parts.length - 1];
         if (end <= start) end = start + 60;
         return { start: start, end: end };
+    }
+
+    function formatTimeSlotNoon(str) {
+        if (!str || typeof str !== 'string') return str;
+        return str.replace(/\s*-\s*12:00\s+AM\b/gi, ' - 12:00 PM');
     }
 
     function entryOverlapsRow(entryStart, entryEnd, rowStart, rowEnd) {
@@ -276,7 +281,7 @@
         for (var j = 0; j < sheet.extraRowSlots.length; j++) {
             if (sheet.extraRowSlots[j].start === range.start && sheet.extraRowSlots[j].end === range.end) return;
         }
-        sheet.extraRowSlots.push({ label: entry.timeSlot.trim(), start: range.start, end: range.end });
+        sheet.extraRowSlots.push({ label: formatTimeSlotNoon(entry.timeSlot.trim()), start: range.start, end: range.end });
     }
 
     function setEntry(day, timeSlot, type, instructor, course, code) {
@@ -428,10 +433,10 @@
                         if (timeInfo && timeInfo.segment.type === 'entry') {
                             if (timeInfo.isFirst && timeInfo.segment.rowspan > 1) {
                                 timeTd.setAttribute('rowspan', String(timeInfo.segment.rowspan));
-                                timeTd.textContent = timeInfo.segment.entry.timeSlot || timeLabel;
+                                timeTd.textContent = formatTimeSlotNoon(timeInfo.segment.entry.timeSlot || timeLabel);
                                 skipTimeLeft[colIndex] = timeInfo.segment.rowspan - 1;
                             } else {
-                                timeTd.textContent = timeInfo.isFirst ? (timeInfo.segment.entry.timeSlot || timeLabel) : timeLabel;
+                                timeTd.textContent = timeInfo.isFirst ? formatTimeSlotNoon(timeInfo.segment.entry.timeSlot || timeLabel) : formatTimeSlotNoon(timeLabel);
                             }
                             if (timeInfo.isFirst && !isBackupMode) {
                             var entry = timeInfo.segment.entry;
@@ -1612,6 +1617,8 @@
                     var eh = timePickerEndHour ? timePickerEndHour.value : '9';
                     var em = timePickerEndMin ? timePickerEndMin.value : '00';
                     var eAmPm = timePickerEndAmPm ? timePickerEndAmPm.value : 'AM';
+                    if (sh === '12') sAmPm = 'PM';
+                    if (eh === '12') eAmPm = 'PM';
                     formTimeSlot.value = sh + ':' + sm + ' ' + sAmPm + ' - ' + eh + ':' + em + ' ' + eAmPm;
                     timePickerPanel.hidden = true;
                 });
