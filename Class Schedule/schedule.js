@@ -96,6 +96,14 @@
                 return true;
             });
         }
+        var afternoonEndsLate = false;
+        for (var e2 = 0; e2 < entries.length; e2++) {
+            var range2 = parseTimeRange(entries[e2].timeSlot);
+            if (range2.start >= AFTERNOON_START && range2.end >= 19 * 60) { afternoonEndsLate = true; break; }
+        }
+        if (afternoonEndsLate && afternoonAll.length > 0) {
+            afternoonAll = afternoonAll.filter(function(row) { return rowHasRealEntry(row, entries); });
+        }
         return morningAll.concat([lunchRow]).concat(afternoonAll);
     }
 
