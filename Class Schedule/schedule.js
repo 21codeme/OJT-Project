@@ -897,47 +897,60 @@
                 var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
                 if (!rows || rows.length < 5) { alert('No data found in Excel.'); return; }
                 var headerRowIndex = -1;
-                for (var r = 0; r < Math.min(20, rows.length); r++) {
+                for (var r = 0; r < Math.min(30, rows.length); r++) {
                     var row = rows[r];
                     if (!Array.isArray(row)) continue;
-                    var first = (row[0] != null ? String(row[0]) : '').toLowerCase();
-                    if (first.indexOf('monday') !== -1 || (row[1] != null && String(row[1]).toLowerCase().indexOf('tuesday') !== -1)) {
-                        headerRowIndex = r;
-                        break;
+                    for (var c = 0; c < (row.length || 0); c++) {
+                        var cell = (row[c] != null ? String(row[c]) : '').toLowerCase();
+                        if (cell.indexOf('monday') !== -1) {
+                            headerRowIndex = r;
+                            break;
+                        }
                     }
+                    if (headerRowIndex >= 0) break;
                 }
                 if (headerRowIndex < 0) { alert('Could not find schedule header (Monday, Tuesday...) in Excel.'); return; }
                 var dataStartRow = headerRowIndex + 2;
+                var merges = (ws['!merges'] || []).map(function(m) {
+                    return { sr: m.s.r, sc: m.s.c, er: m.e.r, ec: m.e.c };
+                });
+                function getMergedCellValue(rowIndex, colIndex) {
+                    var val = (rows[rowIndex] && rows[rowIndex][colIndex] != null) ? rows[rowIndex][colIndex] : '';
+                    if (val !== '' && val != null) return val;
+                    for (var i = 0; i < merges.length; i++) {
+                        var m = merges[i];
+                        if (rowIndex >= m.sr && rowIndex <= m.er && colIndex >= m.sc && colIndex <= m.ec) {
+                            var startRow = rows[m.sr];
+                            return startRow && startRow[m.sc] != null ? startRow[m.sc] : '';
+                        }
+                    }
+                    return val;
+                }
                 var entries = [];
-                var lunchRowIndex = 4;
-                var slotIndex = 0;
-                for (var r = 0; r < 10; r++) {
+                var numScheduleRows = Math.min(15, Math.max(10, rows.length - dataStartRow));
+                for (var r = 0; r < numScheduleRows; r++) {
                     var excelRow = rows[dataStartRow + r];
                     if (!excelRow || !Array.isArray(excelRow)) continue;
-                    var firstCell = getCellText(excelRow[0]);
-                    if (firstCell.toUpperCase().indexOf('LUNCH') !== -1) {
-                        slotIndex++;
-                        continue;
-                    }
+                    var firstCellStr = getCellText(getMergedCellValue(dataStartRow + r, 0));
+                    if (firstCellStr.toUpperCase().indexOf('LUNCH') !== -1) continue;
                     var timeLabel = r < ROW_SLOTS.length ? ROW_SLOTS[r].label : '';
                     for (var dayIdx = 0; dayIdx < 6; dayIdx++) {
                         var contentCol = dayIdx * 2;
                         var timeCol = dayIdx * 2 + 1;
-                        var contentVal = excelRow[contentCol];
+                        var contentVal = getMergedCellValue(dataStartRow + r, contentCol);
                         var parsed = parseContentCell(contentVal);
                         if (!parsed) continue;
                         if (!parsed.type && !parsed.instructor && !parsed.course && !parsed.code) continue;
-                        var timeSlot = getCellText(excelRow[timeCol]) || timeLabel;
+                        var timeSlot = getCellText(getMergedCellValue(dataStartRow + r, timeCol)) || timeLabel;
                         entries.push({
                             day: DAYS[dayIdx],
                             timeSlot: timeSlot,
-                            type: parsed.type || '',
-                            instructor: parsed.instructor || '',
-                            course: parsed.course || '',
-                            code: parsed.code || ''
+                            type: (parsed.type || '').trim(),
+                            instructor: (parsed.instructor || '').trim(),
+                            course: (parsed.course || '').trim(),
+                            code: (parsed.code || '').trim()
                         });
                     }
-                    slotIndex++;
                 }
                 var sheet = getActiveSheet();
                 if (!sheet) { alert('No active sheet.'); return; }
