@@ -89,10 +89,10 @@
         }
         if (morningEndsAtNoon && morningAll.length > 0) {
             morningAll = morningAll.filter(function(row) { return rowHasRealEntry(row, entries); });
-            var slotBeforeLunchStart = 11 * 60;
-            var lunchStartMins = 12 * 60 + 15;
+            var noonMins = 12 * 60;
+            var slot11 = 11 * 60;
             morningAll = morningAll.filter(function(row) {
-                if (row.start >= slotBeforeLunchStart && row.end === lunchStartMins) return false;
+                if (row.start >= slot11 && row.end > noonMins) return false;
                 return true;
             });
         }
