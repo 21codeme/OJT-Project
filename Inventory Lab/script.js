@@ -2653,7 +2653,8 @@ document.getElementById('importExcelInput').addEventListener('change', function(
             displayData(sheetData);
             document.getElementById('exportBtn').disabled = false;
             document.getElementById('clearBtn').disabled = false;
-            saveBackupToLocalStorage();
+            // Huwag i-overwrite ang backup snapshot kapag nag-import — para ang na-restore na data ay nandun pa rin sa Backup view
+            // saveBackupToLocalStorage() at syncBackupToSupabase() ay hindi tatawagin dito.
             if (checkSupabaseConnection()) {
                 if (syncTimeout) clearTimeout(syncTimeout);
                 syncTimeout = null;
@@ -2661,12 +2662,14 @@ document.getElementById('importExcelInput').addEventListener('change', function(
                 if (statusEl) { statusEl.textContent = 'Saving to Supabase…'; statusEl.className = 'save-status saving'; }
                 try {
                     await syncToSupabase();
-                    if (hasAnyData()) await syncBackupToSupabase();
                     if (statusEl) { statusEl.textContent = 'Saved'; statusEl.className = 'save-status saved'; }
                 } catch (err) {
                     console.warn('Import sync error', err);
                     if (statusEl) { statusEl.textContent = 'Import saved locally; sync failed'; statusEl.className = 'save-status error'; }
+                    saveBackupToLocalStorage();
                 }
+            } else {
+                saveBackupToLocalStorage();
             }
             alert('Imported ' + sheetData.length + ' row(s) from Excel.');
         } catch (err) {
