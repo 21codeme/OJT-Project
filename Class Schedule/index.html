@@ -54,14 +54,39 @@
                 <button type="button" id="importExcelBtn" class="btn-import">📤 Import Excel</button>
                 <input type="file" id="importExcelInput" accept=".xlsx,.xls" style="display: none;">
                 <button type="button" id="exportExcelBtn" class="btn-export">📥 Export to Excel</button>
+                <button type="button" id="addRowBtn" class="btn-add-row" title="Magdagdag ng bagong row sa table">➕ Add Row</button>
                 <button type="button" id="restoreScheduleBtn" class="btn-restore" style="display: none;">🔄 Restore</button>
             </div>
             <div id="sheetTabsBar" class="sheet-tabs-bar"></div>
             <div id="addFormPanel" class="add-form-panel" hidden>
                 <p class="form-panel-title">Add schedule for <span id="selectedDayLabel"></span></p>
-                <div class="form-row">
+                <div class="form-row form-row-time">
                     <label>Time slot:</label>
-                    <input type="text" id="formTimeSlot" placeholder="e.g. 7:30 - 9:30 or 7:30 to 9:30">
+                    <div class="time-slot-wrap">
+                        <input type="text" id="formTimeSlot" placeholder="e.g. 7:30 - 9:30 AM o 1:00 - 2:30 PM">
+                        <button type="button" id="formTimeSlotClock" class="time-slot-clock" title="Piliin ang oras (hour, minute, AM/PM)" aria-label="Set time">🕐</button>
+                        <div id="timePickerPanel" class="time-picker-panel" hidden>
+                            <div class="time-picker-row">
+                                <span class="time-picker-label">Simula:</span>
+                                <select id="timePickerStartHour"><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+                                <span>:</span>
+                                <select id="timePickerStartMin">
+                                    <option value="0">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option>
+                                </select>
+                                <select id="timePickerStartAmPm"><option value="AM">AM</option><option value="PM">PM</option></select>
+                            </div>
+                            <div class="time-picker-row">
+                                <span class="time-picker-label">Hanggang:</span>
+                                <select id="timePickerEndHour"><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+                                <span>:</span>
+                                <select id="timePickerEndMin">
+                                    <option value="0">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option>
+                                </select>
+                                <select id="timePickerEndAmPm"><option value="AM">AM</option><option value="PM">PM</option></select>
+                            </div>
+                            <button type="button" id="timePickerApply" class="time-picker-apply">Ilagay</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-row">
                     <label>Type:</label>

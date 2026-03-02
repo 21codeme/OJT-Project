@@ -370,6 +370,80 @@ body {
     border-radius: 6px;
     font-size: 0.9rem;
 }
+.time-slot-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 360px;
+}
+.time-slot-wrap #formTimeSlot {
+    flex: 1;
+    max-width: none;
+}
+.time-slot-clock {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.time-slot-clock:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+.time-picker-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    z-index: 100;
+    min-width: 260px;
+}
+.time-picker-panel[hidden] { display: none !important; }
+.time-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.time-picker-row:last-of-type { margin-bottom: 12px; }
+.time-picker-label {
+    font-size: 0.85rem;
+    color: #495057;
+    min-width: 58px;
+}
+.time-picker-row select {
+    width: auto;
+    max-width: none;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+}
+.time-picker-row select:first-of-type { min-width: 50px; }
+.time-picker-apply {
+    width: 100%;
+    padding: 8px;
+    background: #1e3c72;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.time-picker-apply:hover { background: #2a5298; }
+.form-row-time { position: relative; }
+.form-row-time .time-slot-wrap { position: relative; }
 .form-class-fields .form-row { margin-bottom: 10px; }
 .form-actions {
     margin-top: 16px;
@@ -416,8 +490,9 @@ body {
 }
 .schedule-grid th, .schedule-grid td {
     border: 1px solid #dee2e6;
-    padding: 6px;
+    padding: 4px 6px;
     vertical-align: top;
+    line-height: 1.2;
 }
 .schedule-grid thead th {
     background: #4a90a4;
@@ -439,7 +514,7 @@ body {
     text-align: center;
     vertical-align: middle;
     position: relative;
-    padding-right: 24px;
+    padding: 4px 24px 4px 6px;
 }
 .schedule-grid .cell-time-lunch {
     background: #fff3cd;
@@ -484,7 +559,9 @@ body {
 }
 .schedule-grid .cell-slot {
     min-width: 140px;
-    min-height: 72px;
+    min-height: 36px;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 .schedule-grid .cell-slot input, .schedule-grid .cell-slot select {
     width: 100%;
@@ -507,10 +584,12 @@ body {
 .schedule-grid .cell-slot.cell-bg-blue { background: #87b3d9 !important; }
 .schedule-grid .cell-slot.cell-bg-green { background: #d4edda !important; }
 .schedule-grid .cell-slot.cell-display {
-    min-height: 48px;
+    min-height: 32px;
     position: relative;
     font-size: 0.75rem;
     padding-right: 28px;
+    padding-top: 4px;
+    padding-bottom: 4px;
     vertical-align: middle;
     text-align: center;
 }
@@ -692,6 +771,19 @@ body {
     box-shadow: 0 2px 8px rgba(193, 127, 10, 0.3);
 }
 .btn-import:hover {
+    filter: brightness(1.1);
+}
+.btn-add-row {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #0d6e6e 0%, #14a3a3 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+.btn-add-row:hover {
     filter: brightness(1.1);
 }
 .btn-restore {

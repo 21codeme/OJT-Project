@@ -1,7 +1,7 @@
 (function() {
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     var nextSheetId = 1;
-    var sheets = [{ id: 1, name: 'COMPUTER LABORATORY', entries: [] }];
+    var sheets = [{ id: 1, name: 'COMPUTER LABORATORY', entries: [], extraRowSlots: [] }];
     var activeSheetId = 1;
     var isLoadingFromSupabase = false;
     var syncTimeout = null;
@@ -24,19 +24,65 @@
         return s ? s.entries : [];
     }
 
-    /* 4 rows before lunch, 5 after; 1-hour slots so 9-11 = 2 rows (9-10, 10-11) */
+    /* 4 rows before lunch (AM), 5 after (PM) */
     var ROW_SLOTS = [
-        { label: '7:30 - 9:00', start: 7*60+30, end: 9*60+0 },
-        { label: '9:00 - 10:00', start: 9*60+0, end: 10*60+0 },
-        { label: '10:00 - 11:00', start: 10*60+0, end: 11*60+0 },
-        { label: '11:00 - 12:15', start: 11*60+0, end: 12*60+15 },
-        { label: '12:15 - 1:00', start: 12*60+15, end: 13*60+0, lunch: true },
-        { label: '1:00 - 2:30', start: 13*60+0, end: 14*60+30 },
-        { label: '2:30 - 3:00', start: 14*60+30, end: 15*60+0 },
-        { label: '3:00 - 4:00', start: 15*60+0, end: 16*60+0 },
-        { label: '4:00 - 5:30', start: 16*60+0, end: 17*60+30 },
-        { label: '5:30 - 8:30', start: 17*60+30, end: 20*60+30 }
+        { label: '7:30 - 9:00 AM', start: 7*60+30, end: 9*60+0 },
+        { label: '9:00 - 10:00 AM', start: 9*60+0, end: 10*60+0 },
+        { label: '10:00 - 11:00 AM', start: 10*60+0, end: 11*60+0 },
+        { label: '11:00 - 12:15 AM', start: 11*60+0, end: 12*60+15 },
+        { label: '12:15 - 1:00 PM', start: 12*60+15, end: 13*60+0, lunch: true },
+        { label: '1:00 - 2:30 PM', start: 13*60+0, end: 14*60+30 },
+        { label: '2:30 - 3:00 PM', start: 14*60+30, end: 15*60+0 },
+        { label: '3:00 - 4:00 PM', start: 15*60+0, end: 16*60+0 },
+        { label: '4:00 - 5:30 PM', start: 16*60+0, end: 17*60+30 },
+        { label: '5:30 - 8:30 PM', start: 17*60+30, end: 20*60+30 }
     ];
+
+    var LUNCH_START = 12 * 60 + 15;
+    var AFTERNOON_START = 13 * 60 + 0;
+    function extraCoversRange(extraRows, start, end) {
+        if (!extraRows || extraRows.length === 0) return false;
+        var merged = extraRows.slice().sort(function(a, b) { return a.start - b.start; });
+        var m = [];
+        for (var i = 0; i < merged.length; i++) {
+            var r = merged[i];
+            if (m.length && r.start <= m[m.length - 1].end) {
+                if (r.end > m[m.length - 1].end) m[m.length - 1].end = r.end;
+            } else m.push({ start: r.start, end: r.end });
+        }
+        for (var j = 0; j < m.length; j++) {
+            if (m[j].start <= start && m[j].end >= end) return true;
+        }
+        var covered = 0;
+        for (var k = 0; k < m.length; k++) {
+            if (m[k].start < end && m[k].end > start) covered += Math.min(m[k].end, end) - Math.max(m[k].start, start);
+        }
+        return covered >= (end - start);
+    }
+    function getEffectiveRowSlots(sheet) {
+        sheet = sheet || getActiveSheet();
+        var extra = (sheet && sheet.extraRowSlots) ? sheet.extraRowSlots : [];
+        var lunchIdx = 0;
+        ROW_SLOTS.forEach(function(r, i) { if (r.lunch) lunchIdx = i; });
+        var defaultMorning = ROW_SLOTS.slice(0, lunchIdx);
+        var lunchRow = ROW_SLOTS[lunchIdx];
+        var defaultAfternoon = ROW_SLOTS.slice(lunchIdx + 1);
+        var morning = [];
+        var afternoon = [];
+        extra.forEach(function(r) {
+            if (r.start < LUNCH_START) morning.push(r);
+            else if (r.start >= AFTERNOON_START) afternoon.push(r);
+        });
+        var morningFiltered = defaultMorning.filter(function(row) {
+            return !extraCoversRange(morning, row.start, row.end);
+        });
+        var afternoonFiltered = defaultAfternoon.filter(function(row) {
+            return !extraCoversRange(afternoon, row.start, row.end);
+        });
+        var morningAll = morningFiltered.concat(morning).sort(function(a, b) { return a.start - b.start; });
+        var afternoonAll = afternoonFiltered.concat(afternoon).sort(function(a, b) { return a.start - b.start; });
+        return morningAll.concat([lunchRow]).concat(afternoonAll);
+    }
 
     function parseTimeSlotToMinutes(str) {
         if (!str || typeof str !== 'string') return 0;
@@ -49,15 +95,27 @@
 
     function parseTimeRange(str) {
         if (!str || typeof str !== 'string') return { start: 0, end: 0 };
-        var s = str.trim();
-        var all = s.match(/\d{1,2}:\d{2}/g);
-        if (!all || all.length === 0) return { start: 0, end: 0 };
-        var minutes = all.map(function(t) {
-            var p = t.split(':');
-            return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
-        });
-        var start = minutes[0];
-        var end = minutes[minutes.length - 1];
+        var s = str.trim().toLowerCase();
+        var parts = [];
+        var re = /(\d{1,2}):(\d{2})\s*(am|pm)?/gi;
+        var match;
+        while ((match = re.exec(s)) !== null) {
+            var h = parseInt(match[1], 10);
+            var m = parseInt(match[2], 10);
+            var ampm = (match[3] || '').toLowerCase();
+            var mins = h * 60 + m;
+            if (ampm === 'pm') {
+                if (h !== 12) mins += 12 * 60;
+            } else if (ampm === 'am') {
+                if (h === 12) mins -= 12 * 60;
+            } else {
+                if (h >= 1 && h <= 6) mins += 12 * 60;
+            }
+            parts.push(mins);
+        }
+        if (parts.length === 0) return { start: 0, end: 0 };
+        var start = parts[0];
+        var end = parts[parts.length - 1];
         if (end <= start) end = start + 60;
         return { start: start, end: end };
     }
@@ -78,14 +136,15 @@
         return Math.min(3, Math.ceil(hours)); // 3 hours = 3 rows, 9:00-12:00 merged
     }
 
-    function getSegmentsForDay(day, entries) {
+    function getSegmentsForDay(day, entries, sheet) {
         if (entries == null) entries = getScheduleEntries();
         entries = entries.filter(function(e) { return e.day === day; });
-        var rowCount = ROW_SLOTS.length;
+        var slots = getEffectiveRowSlots(sheet);
+        var rowCount = slots.length;
         var rowAssignment = [];
         var entryRowsUsed = {};
         for (var r = 0; r < rowCount; r++) {
-            var row = ROW_SLOTS[r];
+            var row = slots[r];
             if (row.lunch) {
                 rowAssignment[r] = { type: 'lunch' };
                 continue;
@@ -191,7 +250,7 @@
     }
 
     function getDisplayTimeSlots() {
-        return ROW_SLOTS.map(function(r) { return r.label; });
+        return getEffectiveRowSlots().map(function(r) { return r.label; });
     }
 
     function findEntry(day, timeSlot, entries) {
@@ -200,6 +259,24 @@
             if (entries[i].day === day && entries[i].timeSlot === timeSlot) return entries[i];
         }
         return null;
+    }
+
+    function ensureRowForEntry(entry, sheet) {
+        sheet = sheet || getActiveSheet();
+        if (!sheet || !entry || !entry.timeSlot) return;
+        var range = parseTimeRange(entry.timeSlot);
+        if (range.start === 0 && range.end === 0) return;
+        if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
+        var slots = getEffectiveRowSlots(sheet);
+        for (var i = 0; i < slots.length; i++) {
+            var row = slots[i];
+            if (row.lunch) continue;
+            if (row.start === range.start && row.end === range.end) return;
+        }
+        for (var j = 0; j < sheet.extraRowSlots.length; j++) {
+            if (sheet.extraRowSlots[j].start === range.start && sheet.extraRowSlots[j].end === range.end) return;
+        }
+        sheet.extraRowSlots.push({ label: entry.timeSlot.trim(), start: range.start, end: range.end });
     }
 
     function setEntry(day, timeSlot, type, instructor, course, code) {
@@ -214,6 +291,7 @@
         } else {
             entries.push(entry);
         }
+        ensureRowForEntry(entry, ent);
         debouncedSyncActiveSheet();
     }
 
@@ -228,7 +306,10 @@
         var t = (newTimeSlot || '').trim();
         if (!t) return;
         var entry = findEntry(day, oldTimeSlot);
-        if (entry) entry.timeSlot = t;
+        if (entry) {
+            entry.timeSlot = t;
+            ensureRowForEntry(entry, getActiveSheet());
+        }
         debouncedSyncActiveSheet();
     }
 
@@ -239,11 +320,12 @@
             return;
         }
         tbody.innerHTML = '';
+        var slots = getEffectiveRowSlots();
         var daySegments = DAYS.map(function(day) { return getSegmentsForDay(day); });
         var skipLeft = DAYS.map(function() { return 0; });
         var skipTimeLeft = DAYS.map(function() { return 0; });
-        for (var rowIndex = 0; rowIndex < ROW_SLOTS.length; rowIndex++) {
-            var row = ROW_SLOTS[rowIndex];
+        for (var rowIndex = 0; rowIndex < slots.length; rowIndex++) {
+            var row = slots[rowIndex];
             var timeLabel = row.label;
             var tr = document.createElement('tr');
             if (row.lunch) {
@@ -384,11 +466,12 @@
         }
     }
 
-    function getGridData(entries) {
+    function getGridData(entries, sheet) {
         if (entries == null) entries = getScheduleEntries();
         var data = [];
-        var daySegments = DAYS.map(function(day) { return getSegmentsForDay(day, entries); });
-        for (var r = 0; r < ROW_SLOTS.length; r++) {
+        var slots = getEffectiveRowSlots(sheet);
+        var daySegments = DAYS.map(function(day) { return getSegmentsForDay(day, entries, sheet); });
+        for (var r = 0; r < slots.length; r++) {
             var row = [];
             DAYS.forEach(function(day, colIndex) {
                 var info = getSegmentAtRow(daySegments[colIndex], r);
@@ -534,14 +617,15 @@
         ws.getRow(row).height = 16;
         row++;
 
-        const gridData = getGridData(sheet.entries);
-        const timeLabels = ROW_SLOTS.map(function(r) { return r.lunch ? '12:15 - 1:00' : r.label; });
+        const effectiveSlots = getEffectiveRowSlots(sheet);
+        const gridData = getGridData(sheet.entries, sheet);
+        const timeLabels = effectiveSlots.map(function(r) { return r.lunch ? '12:15 - 1:00' : r.label; });
         const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFF3CD' } };
         const pureYellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
         const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EDDA' } };
         var scheduleStartRow = row;
         var lunchRowIndex = -1;
-        ROW_SLOTS.forEach(function(r, i) { if (r.lunch) lunchRowIndex = i; });
+        effectiveSlots.forEach(function(r, i) { if (r.lunch) lunchRowIndex = i; });
         gridData.forEach(function(rowData, r) {
             if (r === lunchRowIndex) {
                 ws.mergeCells(row, 1, row, 12);
@@ -1031,7 +1115,7 @@
                 var newSheetName = (file.name || '').replace(/\.(xlsx|xls)$/i, '').trim() || sheetName || 'Imported Sheet';
                 if (!newSheetName) newSheetName = 'Imported Sheet';
                 function addImportedSheet(id) {
-                    var newSheet = { id: id, name: newSheetName, entries: entries };
+                    var newSheet = { id: id, name: newSheetName, entries: entries, extraRowSlots: [] };
                     sheets.push(newSheet);
                     if (id >= nextSheetId) nextSheetId = id + 1;
                     activeSheetId = newSheet.id;
@@ -1085,7 +1169,10 @@
                 saveBackupSnapshot();
                 syncBackupToSupabase();
             }
-        }).catch(function(err) { console.error('Sync entries error:', err); });
+        }).catch(function(err) {
+            console.error('Sync entries error:', err);
+            if (!isBackupMode) saveBackupSnapshot();
+        });
     }
 
     function saveBackupSnapshot() {
@@ -1149,6 +1236,10 @@
         var snap = loadBackupSnapshot();
         if (snap && snap.sheets && snap.sheets.length > 0) {
             sheets = snap.sheets;
+            sheets.forEach(function(sheet) {
+                if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
+                (sheet.entries || []).forEach(function(entry) { ensureRowForEntry(entry, sheet); });
+            });
             activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
             if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
             renderSheetTabs();
@@ -1198,10 +1289,29 @@
                 var entriesRows = (entriesRes.data || []).map(function(r) {
                     return { day: r.day, timeSlot: r.time_slot, type: r.type || '', instructor: r.instructor || '', course: r.course || '', code: r.code || '' };
                 });
-                sheets.push({ id: sid, name: row.name, entries: entriesRows });
+                var sheetObj = { id: sid, name: row.name, entries: entriesRows, extraRowSlots: [] };
+                sheets.push(sheetObj);
+                entriesRows.forEach(function(entry) { ensureRowForEntry(entry, sheetObj); });
             }
-            nextSheetId = maxId + 1;
-            activeSheetId = sheets[0].id;
+            var fromSupabaseTotal = sheets.reduce(function(s, sh) { return s + (sh.entries && sh.entries.length || 0); }, 0);
+            var usedBackup = false;
+            var snap = loadBackupSnapshot();
+            if (snap && snap.sheets && Array.isArray(snap.sheets) && snap.sheets.length > 0) {
+                var backupTotal = snap.sheets.reduce(function(s, sh) { return s + (sh.entries && sh.entries.length || 0); }, 0);
+                if (backupTotal > fromSupabaseTotal) {
+                    usedBackup = true;
+                    sheets = snap.sheets;
+                    sheets.forEach(function(sheet) {
+                        if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
+                        (sheet.entries || []).forEach(function(entry) { ensureRowForEntry(entry, sheet); });
+                    });
+                    activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                    console.log('Class Schedule: using localStorage backup (more entries than Supabase)');
+                }
+            }
+            if (!usedBackup) nextSheetId = maxId + 1;
+            if (sheets.length > 0 && !sheets.find(function(s) { return s.id === activeSheetId; })) activeSheetId = sheets[0].id;
             renderSheetTabs();
             renderScheduleGrid();
             if (!isBackupMode) {
@@ -1233,6 +1343,8 @@
         if (importBtn) { importBtn.style.display = 'none'; }
         var importInput = document.getElementById('importExcelInput');
         if (importInput) { importInput.style.display = 'none'; }
+        var addRowBtn = document.getElementById('addRowBtn');
+        if (addRowBtn) { addRowBtn.style.display = 'none'; }
         document.querySelectorAll('.cell-delete').forEach(function(btn) { btn.style.display = 'none'; });
         document.querySelectorAll('.cell-time-menu').forEach(function(btn) { btn.style.display = 'none'; });
         document.querySelectorAll('#legendTable input, #pcTable input, #programsTable input, #preparedBy, #notedBy').forEach(function(inp) {
@@ -1245,6 +1357,29 @@
     function init() {
         var exportBtn = document.getElementById('exportExcelBtn');
         if (exportBtn) exportBtn.addEventListener('click', exportToExcel);
+        var addRowBtn = document.getElementById('addRowBtn');
+        if (addRowBtn && !isBackupMode) {
+            addRowBtn.addEventListener('click', function() {
+                var sheet = getActiveSheet();
+                if (!sheet) return;
+                if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
+                var raw = prompt('Oras ng bagong row (hal. 6:00 - 7:00 PM o 18:00 - 19:00):', '');
+                if (raw == null) return;
+                var trimmed = (raw || '').trim();
+                if (!trimmed) return;
+                var range = parseTimeRange(trimmed);
+                if (range.start === 0 && range.end === 0) {
+                    alert('Hindi na-parse ang oras. Gamitin ang format hal. 1:00 - 2:30 PM o 13:00 - 14:30');
+                    return;
+                }
+                if (range.end <= range.start) range.end = range.start + 60;
+                sheet.extraRowSlots.push({ label: trimmed, start: range.start, end: range.end });
+                saveBackupSnapshot();
+                renderScheduleGrid();
+                if (checkSupabaseConnection()) syncBackupToSupabase();
+                alert('Naidagdag ang row: ' + trimmed);
+            });
+        }
         var importBtn = document.getElementById('importExcelBtn');
         var importInput = document.getElementById('importExcelInput');
         if (importBtn && importInput) {
@@ -1340,7 +1475,7 @@
                 var name = btn.getAttribute('data-sheet');
                 if (!name) return;
                 function addSheetWithId(id) {
-                    var newSheet = { id: id, name: name, entries: [] };
+                    var newSheet = { id: id, name: name, entries: [], extraRowSlots: [] };
                     sheets.push(newSheet);
                     if (id >= nextSheetId) nextSheetId = id + 1;
                     activeSheetId = newSheet.id;
@@ -1435,6 +1570,58 @@
         var formYearRow = document.getElementById('formYearRow');
         var formSectionRow = document.getElementById('formSectionRow');
         var formStudentCountRow = document.getElementById('formStudentCountRow');
+        var formTimeSlotClock = document.getElementById('formTimeSlotClock');
+        var timePickerPanel = document.getElementById('timePickerPanel');
+        var timePickerStartHour = document.getElementById('timePickerStartHour');
+        var timePickerStartMin = document.getElementById('timePickerStartMin');
+        var timePickerStartAmPm = document.getElementById('timePickerStartAmPm');
+        var timePickerEndHour = document.getElementById('timePickerEndHour');
+        var timePickerEndMin = document.getElementById('timePickerEndMin');
+        var timePickerEndAmPm = document.getElementById('timePickerEndAmPm');
+        var timePickerApply = document.getElementById('timePickerApply');
+
+        (function initTimePicker() {
+            function pad(n) { return n < 10 ? '0' + n : String(n); }
+            [timePickerStartHour, timePickerEndHour].forEach(function(sel) {
+                if (!sel) return;
+                sel.innerHTML = '';
+                for (var h = 1; h <= 12; h++) sel.appendChild(new Option(String(h), String(h)));
+            });
+            [timePickerStartMin, timePickerEndMin].forEach(function(sel) {
+                if (!sel) return;
+                sel.innerHTML = '';
+                for (var m = 0; m < 60; m++) sel.appendChild(new Option(pad(m), pad(m)));
+            });
+            if (timePickerStartHour) timePickerStartHour.value = '7';
+            if (timePickerStartMin) timePickerStartMin.value = '30';
+            if (timePickerStartAmPm) timePickerStartAmPm.value = 'AM';
+            if (timePickerEndHour) timePickerEndHour.value = '9';
+            if (timePickerEndMin) timePickerEndMin.value = '0';
+            if (timePickerEndAmPm) timePickerEndAmPm.value = 'AM';
+            if (formTimeSlotClock && timePickerPanel) {
+                formTimeSlotClock.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    timePickerPanel.hidden = !timePickerPanel.hidden;
+                });
+            }
+            if (timePickerApply && formTimeSlot && timePickerPanel) {
+                timePickerApply.addEventListener('click', function() {
+                    var sh = timePickerStartHour ? timePickerStartHour.value : '7';
+                    var sm = timePickerStartMin ? timePickerStartMin.value : '00';
+                    var sAmPm = timePickerStartAmPm ? timePickerStartAmPm.value : 'AM';
+                    var eh = timePickerEndHour ? timePickerEndHour.value : '9';
+                    var em = timePickerEndMin ? timePickerEndMin.value : '00';
+                    var eAmPm = timePickerEndAmPm ? timePickerEndAmPm.value : 'AM';
+                    formTimeSlot.value = sh + ':' + sm + ' ' + sAmPm + ' - ' + eh + ':' + em + ' ' + eAmPm;
+                    timePickerPanel.hidden = true;
+                });
+            }
+            document.addEventListener('click', function(ev) {
+                if (timePickerPanel && !timePickerPanel.hidden && formTimeSlotClock && timePickerPanel !== ev.target && !timePickerPanel.contains(ev.target) && ev.target !== formTimeSlotClock) {
+                    timePickerPanel.hidden = true;
+                }
+            });
+        })();
 
         function showForm(day) {
             if (selectedDayLabel) selectedDayLabel.textContent = day;
@@ -1445,6 +1632,7 @@
         }
         function hideForm() {
             if (addFormPanel) addFormPanel.hidden = true;
+            if (timePickerPanel) timePickerPanel.hidden = true;
             if (formInstructor) formInstructor.value = '';
             if (formCourse) formCourse.value = '';
             if (formCode) formCode.value = '';
@@ -1455,10 +1643,14 @@
             if (formTimeSlot) formTimeSlot.value = '';
         }
         function onFormSave() {
+            if (!getActiveSheet()) {
+                alert('Walang active sheet. Pumili muna ng sheet tab.');
+                return;
+            }
             var day = selectedDayLabel ? selectedDayLabel.textContent : '';
             var timeSlot = formTimeSlot ? formTimeSlot.value.trim() : '';
             if (!day || !timeSlot || !formType) {
-                if (!timeSlot) alert('Please enter a time slot (e.g. 7:30 - 9:30).');
+                if (!timeSlot) alert('Ilagay ang time slot (hal. 7:30 - 9:30 AM o gamitin ang orasan).');
                 return;
             }
             var type = formType.value || '';
@@ -1472,10 +1664,11 @@
                 ? (codeCourse + ' ' + codeYear + '-' + codeSection + ' ' + codeCount + ' Student')
                 : (codeCourse || '');
             setEntry(day, timeSlot, type, instructor, course, code);
+            saveBackupSnapshot();
+            renderScheduleGrid();
             if (checkSupabaseConnection() && getActiveSheet()) {
                 setTimeout(function() { syncEntriesForSheet(activeSheetId); }, 150);
             }
-            renderScheduleGrid();
             hideForm();
         }
 
