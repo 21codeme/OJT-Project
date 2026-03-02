@@ -963,20 +963,39 @@
                         });
                     }
                 }
-                var sheet = getActiveSheet();
-                if (!sheet) { alert('No active sheet.'); return; }
-                sheet.entries = entries;
-                renderScheduleGrid();
-                saveBackupSnapshot();
+                var newSheetName = (file.name || '').replace(/\.(xlsx|xls)$/i, '').trim() || sheetName || 'Imported Sheet';
+                if (!newSheetName) newSheetName = 'Imported Sheet';
+                function addImportedSheet(id) {
+                    var newSheet = { id: id, name: newSheetName, entries: entries };
+                    sheets.push(newSheet);
+                    if (id >= nextSheetId) nextSheetId = id + 1;
+                    activeSheetId = newSheet.id;
+                    renderSheetTabs();
+                    renderScheduleGrid();
+                    saveBackupSnapshot();
+                }
                 if (checkSupabaseConnection()) {
                     try {
-                        await syncEntriesForSheet(activeSheetId);
-                        await syncBackupToSupabase();
+                        var res = await window.supabaseClient.from('class_schedule_sheets').insert({ name: newSheetName }).select('id').single();
+                        if (res.data && res.data.id != null) {
+                            addImportedSheet(res.data.id);
+                            await syncEntriesForSheet(activeSheetId);
+                            await syncBackupToSupabase();
+                        } else {
+                            nextSheetId++;
+                            addImportedSheet(nextSheetId);
+                            await syncBackupToSupabase();
+                        }
                     } catch (err) {
                         console.warn('Import sync error', err);
+                        nextSheetId++;
+                        addImportedSheet(nextSheetId);
                     }
+                } else {
+                    nextSheetId++;
+                    addImportedSheet(nextSheetId);
                 }
-                alert('Imported ' + entries.length + ' schedule entry/entries from Excel.');
+                alert('Imported ' + entries.length + ' entry/entries into new sheet "' + newSheetName + '".');
             } catch (err) {
                 console.error('Import Excel error', err);
                 alert('Could not read Excel file. Make sure it is a valid .xlsx or .xls from this app\'s Export.');
