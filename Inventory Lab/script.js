@@ -1935,7 +1935,26 @@ async function loadFromSupabase() {
                 .order('sheet_id', { ascending: true })
                 .order('row_index', { ascending: true });
             if (itemsErr || !allItems || allItems.length === 0) {
-                console.log('No inventory_items found in Supabase');
+                console.log('No inventory_items found in Supabase; restoring from localStorage if any');
+                var backup = loadBackupFromLocalStorage();
+                var backupRows = backup && backup.sheets ? Object.values(backup.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
+                if (backupRows > 0) {
+                    console.log('📂 Restoring ' + backupRows + ' row(s) from localStorage backup');
+                    sheets = backup.sheets || {};
+                    currentSheetId = backup.currentSheetId || 'sheet-1';
+                    sheetCounter = backup.sheetCounter || 1;
+                    updateSheetTabs();
+                    var firstId = Object.keys(sheets)[0];
+                    if (firstId) {
+                        currentSheetId = firstId;
+                        switchToSheet(firstId);
+                    }
+                } else if (Object.keys(sheets).length === 0) {
+                    sheets['sheet-1'] = { id: 'sheet-1', name: 'Sheet 1', data: [], hasData: false, highlightStates: [], pictureUrls: [] };
+                    currentSheetId = 'sheet-1';
+                    updateSheetTabs();
+                    switchToSheet('sheet-1');
+                }
                 return;
             }
             const bySheet = {};
@@ -2096,6 +2115,23 @@ async function loadFromSupabase() {
         });
     } catch (error) {
         console.error('Error loading from Supabase:', error);
+        if (!hasAnyData()) {
+            var backup = loadBackupFromLocalStorage();
+            var backupRows = backup && backup.sheets ? Object.values(backup.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
+            if (backupRows > 0) {
+                console.log('📂 Error during load; restoring ' + backupRows + ' row(s) from localStorage');
+                sheets = backup.sheets || {};
+                currentSheetId = backup.currentSheetId || 'sheet-1';
+                updateSheetTabs();
+                var firstId = Object.keys(sheets)[0];
+                if (firstId) { currentSheetId = firstId; switchToSheet(firstId); }
+            } else if (Object.keys(sheets).length === 0) {
+                sheets['sheet-1'] = { id: 'sheet-1', name: 'Sheet 1', data: [], hasData: false, highlightStates: [], pictureUrls: [] };
+                currentSheetId = 'sheet-1';
+                updateSheetTabs();
+                switchToSheet('sheet-1');
+            }
+        }
     } finally {
         // Clear loading flag after a short delay to ensure display is complete
         setTimeout(() => {
@@ -2217,6 +2253,123 @@ function urlToDataUrl(url) {
             return null;
         });
 }
+
+// Import Excel: read .xlsx/.xls and load into current sheet
+document.getElementById('importExcelBtn').addEventListener('click', function() {
+    document.getElementById('importExcelInput').click();
+});
+document.getElementById('importExcelInput').addEventListener('change', function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            if (typeof XLSX === 'undefined') {
+                alert('XLSX library not loaded. Please refresh and try again.');
+                return;
+            }
+            var data = ev.target.result;
+            var workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: true });
+            var firstSheetName = workbook.SheetNames[0];
+            if (!firstSheetName) {
+                alert('No sheet found in the Excel file.');
+                return;
+            }
+            var worksheet = workbook.Sheets[firstSheetName];
+            var rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            if (!rows || rows.length === 0) {
+                alert('No data found in the Excel file.');
+                return;
+            }
+            // Find header row (contains "Article" and "Description")
+            var headerRowIndex = -1;
+            for (var i = 0; i < Math.min(30, rows.length); i++) {
+                var row = rows[i];
+                if (!row || !Array.isArray(row)) continue;
+                var rowText = row.map(function(c) { return (c != null ? String(c) : '').toLowerCase(); }).join(' ');
+                if (rowText.indexOf('article') !== -1 && rowText.indexOf('description') !== -1) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+            if (headerRowIndex < 0) headerRowIndex = 0;
+            // Map column indices from header (export uses A=empty, B=Article, C=Description, ... K=User)
+            var headerRow = rows[headerRowIndex];
+            var colMap = { article: 1, description: 2, oldProperty: 3, unitMeas: 4, unitValue: 5, qty: 6, location: 7, condition: 8, remarks: 9, user: 10 };
+            if (headerRow && headerRow.length > 0) {
+                for (var c = 0; c < headerRow.length; c++) {
+                    var h = (headerRow[c] != null ? String(headerRow[c]) : '').toLowerCase();
+                    if (h.indexOf('article') !== -1 && (h.indexOf('item') !== -1 || h.indexOf('/') !== -1)) colMap.article = c;
+                    else if (h.indexOf('description') !== -1) colMap.description = c;
+                    else if (h.indexOf('old property') !== -1 || h.indexOf('property n') !== -1) colMap.oldProperty = c;
+                    else if (h.indexOf('unit of meas') !== -1) colMap.unitMeas = c;
+                    else if (h.indexOf('unit value') !== -1) colMap.unitValue = c;
+                    else if (h.indexOf('quantity') !== -1 || h.indexOf('physical count') !== -1) colMap.qty = c;
+                    else if (h.indexOf('location') !== -1 || h.indexOf('whereabout') !== -1) colMap.location = c;
+                    else if (h.indexOf('condition') !== -1) colMap.condition = c;
+                    else if (h.indexOf('remarks') !== -1) colMap.remarks = c;
+                    else if (h === 'user') colMap.user = c;
+                }
+            }
+            var sheetData = [];
+            var highlightStates = [];
+            var pictureUrls = [];
+            for (var r = headerRowIndex + 1; r < rows.length; r++) {
+                var row = rows[r];
+                if (!row || !Array.isArray(row)) continue;
+                var firstVal = (row.find(function(c) { return c != null && String(c).trim() !== ''; }) || row[0] || '').toString().trim();
+                var firstUpper = firstVal.toUpperCase();
+                var isPCHeader = firstVal && (
+                    row.length === 1 ||
+                    firstUpper === 'SERVER' || firstUpper === 'PC' ||
+                    firstUpper.indexOf('PC USED BY') !== -1 ||
+                    /^PC\s*\d*$/.test(firstUpper) || firstUpper.indexOf('PC ') === 0
+                );
+                if (isPCHeader) {
+                    sheetData.push([firstVal]);
+                    highlightStates.push(false);
+                    pictureUrls.push(null);
+                } else {
+                    var art = row[colMap.article] != null ? String(row[colMap.article]).trim() : '';
+                    var desc = row[colMap.description] != null ? String(row[colMap.description]).trim() : '';
+                    var oldP = row[colMap.oldProperty] != null ? String(row[colMap.oldProperty]).trim() : '';
+                    var uom = row[colMap.unitMeas] != null ? String(row[colMap.unitMeas]).trim() : '';
+                    var uv = row[colMap.unitValue] != null ? String(row[colMap.unitValue]).trim() : '';
+                    var qty = row[colMap.qty] != null ? String(row[colMap.qty]).trim() : '';
+                    var loc = row[colMap.location] != null ? String(row[colMap.location]).trim() : '';
+                    var cond = row[colMap.condition] != null ? String(row[colMap.condition]).trim() : '';
+                    var rem = row[colMap.remarks] != null ? String(row[colMap.remarks]).trim() : '';
+                    var user = row[colMap.user] != null ? String(row[colMap.user]).trim() : '';
+                    sheetData.push([art, desc, oldP, uom, uv, qty, loc, cond, rem, user]);
+                    highlightStates.push(false);
+                    pictureUrls.push(null);
+                }
+            }
+            if (sheetData.length === 0) {
+                alert('No data rows found after the header in the Excel file.');
+                return;
+            }
+            setCurrentSheetData(sheetData, true);
+            var sheet = getCurrentSheet();
+            sheet.highlightStates = highlightStates;
+            sheet.pictureUrls = pictureUrls;
+            displayData(sheetData);
+            document.getElementById('exportBtn').disabled = false;
+            document.getElementById('clearBtn').disabled = false;
+            saveBackupToLocalStorage();
+            if (checkSupabaseConnection()) {
+                if (syncTimeout) clearTimeout(syncTimeout);
+                syncTimeout = setTimeout(function() { syncToSupabase(); }, 300);
+            }
+            alert('Imported ' + sheetData.length + ' row(s) from Excel.');
+        } catch (err) {
+            console.error('Import Excel error:', err);
+            alert('Could not read the Excel file. Make sure it is a valid .xlsx or .xls file.');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
 
 // Export to Excel with ExcelJS (supports images and styling)
 document.getElementById('exportBtn').addEventListener('click', async function() {
