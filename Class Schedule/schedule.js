@@ -515,7 +515,11 @@
     }
 
     function fillOneSheet(workbook, sheet) {
-        const ws = workbook.addWorksheet(sheet.name);
+        if (!sheet || !sheet.name) return;
+        if (!sheet.entries) sheet.entries = [];
+        if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
+        (sheet.entries || []).forEach(function(entry) { ensureRowForEntry(entry, sheet); });
+        const ws = workbook.addWorksheet(sheet.name.substring(0, 31));
         var thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         var isComputerLab = (sheet.name === 'COMPUTER LABORATORY');
         var fontMain = 8;
@@ -1028,8 +1032,12 @@
             return;
         }
         const workbook = new ExcelJS.Workbook();
+        var activeSheet = getActiveSheet();
+        if (activeSheet) {
+            fillOneSheet(workbook, activeSheet);
+        }
         for (var i = 0; i < sheets.length; i++) {
-            fillOneSheet(workbook, sheets[i]);
+            if (sheets[i] !== activeSheet) fillOneSheet(workbook, sheets[i]);
         }
         const headerText = { semester: '2nd Semester 2025 - 2026' };
         workbook.xlsx.writeBuffer().then(function(buffer) {
