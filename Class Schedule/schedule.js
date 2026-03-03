@@ -1039,8 +1039,11 @@
             tab.appendChild(closeBtn);
             tab.addEventListener('click', function(ev) {
                 if (ev.target === closeBtn || ev.target === menuBtn) return;
-                var prevId = activeSheetId;
-                if (prevId !== sheet.id && checkSupabaseConnection()) syncEntriesForSheet(prevId);
+                // Save snapshot so other PCs can see changes (non-destructive)
+                if (!isBackupMode) {
+                    saveBackupSnapshot();
+                    if (checkSupabaseConnection()) syncBackupToSupabase();
+                }
                 activeSheetId = sheet.id;
                 renderSheetTabs();
                 renderScheduleGrid();
@@ -1284,8 +1287,9 @@
     }
 
     function syncAllSheetsToSupabase() {
+        // IMPORTANT: Do not delete+insert all sheets repeatedly.
+        // Use the snapshot table for cross-PC visibility (safe upsert).
         if (isBackupMode || !checkSupabaseConnection() || !sheets.length) return;
-        sheets.forEach(function(s) { syncEntriesForSheet(s.id); });
         saveBackupSnapshot();
         syncBackupToSupabase();
     }
@@ -1456,6 +1460,25 @@
         isLoadingFromSupabase = true;
         try {
             var supabase = window.supabaseClient;
+
+            // Prefer the Supabase snapshot for cross-PC consistency (includes entries + metadata).
+            var snapFromSupabase = await loadBackupFromSupabase();
+            if (snapFromSupabase && snapFromSupabase.sheets && snapFromSupabase.sheets.length > 0) {
+                sheets = snapFromSupabase.sheets;
+                sheets.forEach(function(sheet) {
+                    if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
+                    (sheet.entries || []).forEach(function(entry) { ensureRowForEntry(entry, sheet); });
+                });
+                activeSheetId = snapFromSupabase.activeSheetId != null ? snapFromSupabase.activeSheetId : (sheets[0] && sheets[0].id);
+                if (snapFromSupabase.nextSheetId != null) nextSheetId = snapFromSupabase.nextSheetId;
+                if (snapFromSupabase.pageMetadata) applyPageMetadata(snapFromSupabase.pageMetadata);
+                renderSheetTabs();
+                renderScheduleGrid();
+                if (!isBackupMode) saveBackupSnapshot();
+                console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from Supabase snapshot');
+                return;
+            }
+
             var res = await supabase.from('class_schedule_sheets').select('id, name').order('id', { ascending: true });
             if (res.error) { console.error('Load sheets error:', res.error); tryFallbackFromBackup(); return; }
             var sheetsData = res.data || [];
@@ -1515,6 +1538,7 @@
             }
             if (!usedBackup) {
                 nextSheetId = maxId + 1;
+                // If we didn't have a snapshot for entries, still apply metadata if available.
                 loadBackupFromSupabase().then(function(b) { if (b && b.pageMetadata) applyPageMetadata(b.pageMetadata); });
             }
             if (sheets.length > 0 && !sheets.find(function(s) { return s.id === activeSheetId; })) activeSheetId = sheets[0].id;
@@ -1658,9 +1682,6 @@
                 renderSheetTabs();
                 renderScheduleGrid();
                 applyPageMetadata(restorePayload.pageMetadata);
-                if (checkSupabaseConnection()) {
-                    sheets.forEach(function(s) { syncEntriesForSheet(s.id); });
-                }
                 saveBackupSnapshot();
                 syncBackupToSupabase();
                 if (document.getElementById('restoreScheduleBtn')) document.getElementById('restoreScheduleBtn').style.display = 'none';
@@ -1891,6 +1912,8 @@
             setEntry(day, timeSlot, type, instructor, course, code);
             saveBackupSnapshot();
             renderScheduleGrid();
+            // Sync snapshot immediately so other PCs can see the update
+            if (checkSupabaseConnection()) syncBackupToSupabase();
             if (checkSupabaseConnection() && getActiveSheet()) {
                 setTimeout(function() { syncEntriesForSheet(activeSheetId); }, 150);
             }

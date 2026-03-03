@@ -2093,25 +2093,17 @@ async function syncToSupabase() {
         
         // Insert all items (with retry for Failed to fetch)
         if (itemsToInsert.length > 0) {
-            let insertResult;
+            const CHUNK_SIZE = 500; // avoid request/payload limits on large saves
             try {
-                insertResult = await withRetry(async () => {
-                    return await window.supabaseClient
-                        .from('inventory_items')
-                        .insert(itemsToInsert)
-                        .select();
-                });
-            } catch (e) {
-                insertResult = { data: null, error: e };
-            }
-            
-            if (insertResult.error) {
-                const insertError = insertResult.error;
-                console.error('❌ Error inserting items to Supabase:', insertError);
-                if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
-                alert(`Error saving items to database: ${insertError.message}\n\nKung "Failed to fetch", subukan ulit mamaya o check kung naka-pause ang Supabase project (free tier).`);
-            } else {
-                const insertedData = insertResult.data;
+                for (let start = 0; start < itemsToInsert.length; start += CHUNK_SIZE) {
+                    const chunk = itemsToInsert.slice(start, start + CHUNK_SIZE);
+                    const res = await withRetry(async () => {
+                        return await window.supabaseClient
+                            .from('inventory_items')
+                            .insert(chunk);
+                    });
+                    if (res && res.error) throw res.error;
+                }
                 console.log(`✅ Successfully saved ${itemsToInsert.length} item(s) to Supabase`);
                 // I-update ang DOM at pictureUrls sa rows na na-upload ang picture — para lumabas ang image sa PC Location link
                 const pictureUrls = sheets[currentSheetId].pictureUrls || [];
@@ -2125,6 +2117,10 @@ async function syncToSupabase() {
                     }
                 }
                 sheets[currentSheetId].pictureUrls = pictureUrls;
+            } catch (insertError) {
+                console.error('❌ Error inserting items to Supabase:', insertError);
+                if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
+                alert(`Error saving items to database: ${insertError.message}\n\nKung marami na ang rows (hal. PC 20+), pwedeng mag-fail kapag isang bagsakan. Inayos na ito to batch-save, pero kung offline/mahina net, subukan ulit.`);                
             }
         } else {
             console.log('⚠️ No items to sync to Supabase (all rows are empty)');
@@ -2215,11 +2211,21 @@ async function loadFromSupabase() {
         let sheetsToLoad = sheetsData && sheetsData.length > 0 ? sheetsData : [];
         if (sheetsToLoad.length === 0) {
             console.log('No rows in sheets table; loading from inventory_items as fallback...');
-            const { data: allItems, error: itemsErr } = await window.supabaseClient
-                .from('inventory_items')
-                .select('*')
-                .order('sheet_id', { ascending: true })
-                .order('row_index', { ascending: true });
+            const pageSize = 1000;
+            let allItems = [];
+            let itemsErr = null;
+            for (let from = 0; ; from += pageSize) {
+                const resPage = await window.supabaseClient
+                    .from('inventory_items')
+                    .select('*')
+                    .order('sheet_id', { ascending: true })
+                    .order('row_index', { ascending: true })
+                    .range(from, from + pageSize - 1);
+                if (resPage.error) { itemsErr = resPage.error; break; }
+                const page = resPage.data || [];
+                allItems = allItems.concat(page);
+                if (page.length < pageSize) break;
+            }
             if (itemsErr || !allItems || allItems.length === 0) {
                 console.log('No inventory_items found in Supabase; restoring from localStorage if any');
                 var backup = loadBackupFromLocalStorage();
@@ -2261,16 +2267,24 @@ async function loadFromSupabase() {
         for (const sheetData of sheetsToLoad) {
             let itemsData = sheetData.items; // from fallback
             if (!itemsData) {
-                const res = await window.supabaseClient
-                    .from('inventory_items')
-                    .select('*')
-                    .eq('sheet_id', sheetData.id)
-                    .order('row_index', { ascending: true });
-                if (res.error) {
-                    console.error('Error loading items for sheet:', res.error);
-                    continue;
+                const pageSize = 1000;
+                itemsData = [];
+                for (let from = 0; ; from += pageSize) {
+                    const res = await window.supabaseClient
+                        .from('inventory_items')
+                        .select('*')
+                        .eq('sheet_id', sheetData.id)
+                        .order('row_index', { ascending: true })
+                        .range(from, from + pageSize - 1);
+                    if (res.error) {
+                        console.error('Error loading items for sheet:', res.error);
+                        itemsData = [];
+                        break;
+                    }
+                    const page = res.data || [];
+                    itemsData = itemsData.concat(page);
+                    if (page.length < pageSize) break;
                 }
-                itemsData = res.data || [];
             }
             
             // Convert items back to row data format
