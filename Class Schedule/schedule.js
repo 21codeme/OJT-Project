@@ -1134,6 +1134,12 @@
                     if (headerRowIndex >= 0) break;
                 }
                 if (headerRowIndex < 0) { alert('Could not find schedule header (Monday, Tuesday...) in Excel.'); return; }
+                var headerRow = rows[headerRowIndex];
+                var mondayCol = 0;
+                for (var hc = 0; hc < (headerRow && headerRow.length || 0); hc++) {
+                    var hcell = (headerRow[hc] != null ? String(headerRow[hc]) : '').toLowerCase();
+                    if (hcell.indexOf('monday') !== -1) { mondayCol = hc; break; }
+                }
                 var dataStartRow = headerRowIndex + 2;
                 var merges = (ws['!merges'] || []).map(function(m) {
                     return { sr: m.s.r, sc: m.s.c, er: m.e.r, ec: m.e.c };
@@ -1150,22 +1156,41 @@
                     }
                     return val;
                 }
+                function isMergeTopRow(rowIndex, colIndex) {
+                    for (var i = 0; i < merges.length; i++) {
+                        var m = merges[i];
+                        if (rowIndex >= m.sr && rowIndex <= m.er && colIndex >= m.sc && colIndex <= m.ec) {
+                            return rowIndex === m.sr;
+                        }
+                    }
+                    return true;
+                }
+                function extractCellText(val) {
+                    if (val == null) return '';
+                    if (typeof val === 'string') return val.trim();
+                    if (val && val.richText && Array.isArray(val.richText)) return val.richText.map(function(r) { return r.text || ''; }).join('').trim();
+                    return String(val).trim();
+                }
                 var entries = [];
-                var numScheduleRows = Math.min(15, Math.max(10, rows.length - dataStartRow));
+                var numScheduleRows = Math.min(80, Math.max(20, rows.length - dataStartRow));
+                var effectiveRowIdx = 0;
                 for (var r = 0; r < numScheduleRows; r++) {
-                    var excelRow = rows[dataStartRow + r];
+                    var rowIdx = dataStartRow + r;
+                    var excelRow = rows[rowIdx];
                     if (!excelRow || !Array.isArray(excelRow)) continue;
-                    var firstCellStr = getCellText(getMergedCellValue(dataStartRow + r, 0));
+                    var firstCellStr = extractCellText(getMergedCellValue(rowIdx, mondayCol));
                     if (firstCellStr.toUpperCase().indexOf('LUNCH') !== -1) continue;
-                    var timeLabel = r < ROW_SLOTS.length ? ROW_SLOTS[r].label : '';
+                    var timeLabel = effectiveRowIdx < ROW_SLOTS.length ? ROW_SLOTS[effectiveRowIdx].label : '';
+                    effectiveRowIdx++;
                     for (var dayIdx = 0; dayIdx < 6; dayIdx++) {
-                        var contentCol = dayIdx * 2;
-                        var timeCol = dayIdx * 2 + 1;
-                        var contentVal = getMergedCellValue(dataStartRow + r, contentCol);
-                        var parsed = parseContentCell(contentVal);
+                        var contentCol = mondayCol + dayIdx * 2;
+                        var timeCol = mondayCol + dayIdx * 2 + 1;
+                        if (!isMergeTopRow(rowIdx, contentCol)) continue;
+                        var contentVal = getMergedCellValue(rowIdx, contentCol);
+                        var parsed = parseContentCell(extractCellText(contentVal) || contentVal);
                         if (!parsed) continue;
                         if (!parsed.type && !parsed.instructor && !parsed.course && !parsed.code) continue;
-                        var timeSlot = getCellText(getMergedCellValue(dataStartRow + r, timeCol)) || timeLabel;
+                        var timeSlot = extractCellText(getMergedCellValue(rowIdx, timeCol)) || timeLabel;
                         entries.push({
                             day: DAYS[dayIdx],
                             timeSlot: timeSlot,
@@ -1180,6 +1205,7 @@
                 if (!newSheetName) newSheetName = 'Imported Sheet';
                 function addImportedSheet(id) {
                     var newSheet = { id: id, name: newSheetName, entries: entries, extraRowSlots: [] };
+                    entries.forEach(function(entry) { ensureRowForEntry(entry, newSheet); });
                     sheets.push(newSheet);
                     if (id >= nextSheetId) nextSheetId = id + 1;
                     activeSheetId = newSheet.id;
