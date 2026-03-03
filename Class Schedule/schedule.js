@@ -563,12 +563,13 @@
         return rows;
     }
 
-    function fillOneSheet(workbook, sheet) {
+    function fillOneSheet(workbook, sheet, wsName) {
         if (!sheet || !sheet.name) return;
         if (!sheet.entries) sheet.entries = [];
         if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
         (sheet.entries || []).forEach(function(entry) { ensureRowForEntry(entry, sheet); });
-        const ws = workbook.addWorksheet(sheet.name.substring(0, 31));
+        var name = (wsName != null ? wsName : sheet.name).replace(/[:\\\/\?\*\[\]]/g, '-').substring(0, 31);
+        const ws = workbook.addWorksheet(name);
         var thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         var isComputerLab = (sheet.name === 'COMPUTER LABORATORY');
         var fontMain = 8;
@@ -1082,29 +1083,44 @@
             alert('ExcelJS is loading. Please wait and try again.');
             return;
         }
-        const workbook = new ExcelJS.Workbook();
-        var activeSheet = getActiveSheet();
-        if (activeSheet) {
-            fillOneSheet(workbook, activeSheet);
-        }
-        for (var i = 0; i < sheets.length; i++) {
-            if (sheets[i] !== activeSheet) fillOneSheet(workbook, sheets[i]);
-        }
-        const headerText = { semester: '2nd Semester 2025 - 2026' };
-        var baseName = 'LAB-SCHED-' + (headerText.semester.replace(/\s+/g, '-') || 'Schedule');
-        if (activeSheet && activeSheet.name) baseName = activeSheet.name.replace(/[/\\?*\[\]]/g, '-').substring(0, 50) + '-' + headerText.semester.replace(/\s+/g, '-');
-        workbook.xlsx.writeBuffer().then(function(buffer) {
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = baseName + '.xlsx';
-            a.click();
-            URL.revokeObjectURL(url);
-            alert('Excel file downloaded.');
-        }).catch(function(err) {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            var activeSheet = getActiveSheet();
+            var usedNames = {};
+            function ensureUniqueWsName(name) {
+                var base = (name || 'Sheet').replace(/[:\\\/\?\*\[\]]/g, '-').substring(0, 24);
+                var key = base;
+                var n = 1;
+                while (usedNames[key]) { key = base + ' (' + (++n) + ')'; }
+                usedNames[key] = true;
+                return key;
+            }
+            if (activeSheet) {
+                fillOneSheet(workbook, activeSheet, ensureUniqueWsName(activeSheet.name));
+            }
+            for (var i = 0; i < sheets.length; i++) {
+                if (sheets[i] !== activeSheet) fillOneSheet(workbook, sheets[i], ensureUniqueWsName(sheets[i].name));
+            }
+            const headerText = { semester: '2nd Semester 2025 - 2026' };
+            var baseName = 'LAB-SCHED-' + (headerText.semester.replace(/\s+/g, '-') || 'Schedule');
+            if (activeSheet && activeSheet.name) baseName = activeSheet.name.replace(/[/\\?*\[\]]/g, '-').substring(0, 50) + '-' + headerText.semester.replace(/\s+/g, '-');
+            workbook.xlsx.writeBuffer().then(function(buffer) {
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = baseName + '.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert('Excel file downloaded.');
+            }).catch(function(err) {
+                alert('Export failed: ' + (err && err.message));
+            });
+        } catch (err) {
             alert('Export failed: ' + (err && err.message));
-        });
+        }
     }
 
     function importFromExcel(file) {
