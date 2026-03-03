@@ -1290,10 +1290,93 @@
         syncBackupToSupabase();
     }
 
+    function getPageMetadata() {
+        var meta = { categoryColors: Object.assign({}, categoryColors), legend: [], pcTable: { headers: [], rows: [] }, programs: [], preparedBy: '', notedBy: '' };
+        var lt = document.getElementById('legendTable');
+        if (lt) {
+            lt.querySelectorAll('tbody tr').forEach(function(tr) {
+                var cat = tr.getAttribute('data-category');
+                var colorInput = tr.querySelector('input.legend-color-picker');
+                var instInput = tr.querySelector('td:last-child input');
+                if (cat) meta.legend.push({ category: cat, color: colorInput ? colorInput.value : (categoryColors[cat] || ''), instructor: instInput ? instInput.value : '' });
+            });
+        }
+        var pt = document.getElementById('pcTable');
+        if (pt) {
+            pt.querySelectorAll('thead tr th input.pc-year-header').forEach(function(inp) { meta.pcTable.headers.push(inp ? inp.value : ''); });
+            pt.querySelectorAll('tbody tr').forEach(function(tr) {
+                var row = [];
+                tr.querySelectorAll('td input').forEach(function(inp) { row.push(inp ? inp.value : ''); });
+                meta.pcTable.rows.push(row);
+            });
+        }
+        var prt = document.getElementById('programsTable');
+        if (prt) {
+            prt.querySelectorAll('tbody tr').forEach(function(tr) {
+                var ins = tr.querySelectorAll('input');
+                meta.programs.push({ category: ins[0] ? ins[0].value : '', programs: ins[1] ? ins[1].value : '' });
+            });
+        }
+        var pb = document.getElementById('preparedBy');
+        var nb = document.getElementById('notedBy');
+        meta.preparedBy = pb ? pb.value : '';
+        meta.notedBy = nb ? nb.value : '';
+        return meta;
+    }
+
+    function applyPageMetadata(meta) {
+        if (!meta) return;
+        if (meta.categoryColors) {
+            Object.keys(meta.categoryColors).forEach(function(k) { categoryColors[k] = meta.categoryColors[k]; });
+            applyCategoryColorsStyle();
+        }
+        if (meta.legend && meta.legend.length) {
+            meta.legend.forEach(function(item) {
+                var tr = document.querySelector('#legendTable tbody tr[data-category="' + item.category + '"]');
+                if (tr) {
+                    var colorInp = tr.querySelector('input.legend-color-picker');
+                    var instInp = tr.querySelectorAll('td input');
+                    if (colorInp && item.color) { colorInp.value = item.color; categoryColors[item.category] = item.color; }
+                    if (instInp.length > 1) instInp[instInp.length - 1].value = item.instructor || '';
+                }
+            });
+            applyCategoryColorsStyle();
+        }
+        if (meta.pcTable && meta.pcTable.headers) {
+            var pt = document.getElementById('pcTable');
+            if (pt) {
+                var ths = pt.querySelectorAll('thead tr th input.pc-year-header');
+                ths.forEach(function(inp, i) { if (inp && meta.pcTable.headers[i] != null) inp.value = meta.pcTable.headers[i]; });
+                (meta.pcTable.rows || []).forEach(function(row, ri) {
+                    var tr = pt.querySelectorAll('tbody tr')[ri];
+                    if (tr) tr.querySelectorAll('td input').forEach(function(inp, ci) { if (row[ci] != null) inp.value = row[ci]; });
+                });
+            }
+        }
+        if (meta.programs && meta.programs.length) {
+            var prt = document.getElementById('programsTable');
+            if (prt) {
+                meta.programs.forEach(function(item, i) {
+                    var tr = prt.querySelectorAll('tbody tr')[i];
+                    if (tr) {
+                        var ins = tr.querySelectorAll('input');
+                        if (ins[0]) ins[0].value = item.category || '';
+                        if (ins[1]) ins[1].value = item.programs || '';
+                    }
+                });
+            }
+        }
+        var pb = document.getElementById('preparedBy');
+        var nb = document.getElementById('notedBy');
+        if (pb && meta.preparedBy != null) pb.value = meta.preparedBy;
+        if (nb && meta.notedBy != null) nb.value = meta.notedBy;
+    }
+
     function saveBackupSnapshot() {
         if (isBackupMode) return;
         try {
-            var snapshot = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, savedAt: Date.now() };
+            var pageMetadata = getPageMetadata();
+            var snapshot = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: pageMetadata, savedAt: Date.now() };
             localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(snapshot));
         } catch (e) { }
     }
@@ -1311,7 +1394,8 @@
     async function syncBackupToSupabase() {
         if (isBackupMode || !checkSupabaseConnection()) return;
         try {
-            var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, savedAt: Date.now() };
+            var pageMetadata = getPageMetadata();
+            var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: pageMetadata, savedAt: Date.now() };
             var res = await window.supabaseClient
                 .from('class_schedule_backup_snapshot')
                 .upsert({ id: 1, data: payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
@@ -1334,7 +1418,8 @@
             return {
                 sheets: data.sheets,
                 activeSheetId: data.activeSheetId != null ? data.activeSheetId : (data.sheets[0] && data.sheets[0].id),
-                nextSheetId: data.nextSheetId != null ? data.nextSheetId : 1
+                nextSheetId: data.nextSheetId != null ? data.nextSheetId : 1,
+                pageMetadata: data.pageMetadata || null
             };
         } catch (e) { console.warn('Load schedule backup from Supabase error', e); return null; }
     }
@@ -1359,6 +1444,7 @@
             if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
             renderSheetTabs();
             renderScheduleGrid();
+            applyPageMetadata(snap.pageMetadata);
             if (!isBackupMode) saveBackupSnapshot();
             console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from localStorage backup');
         }
@@ -1381,6 +1467,7 @@
                     if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
                     renderSheetTabs();
                     renderScheduleGrid();
+                    applyPageMetadata(snap.pageMetadata);
                     saveBackupSnapshot();
                     console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from backup (Supabase empty)');
                     isLoadingFromSupabase = false;
@@ -1422,10 +1509,14 @@
                     });
                     activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
                     if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                    if (snap.pageMetadata) applyPageMetadata(snap.pageMetadata);
                     console.log('Class Schedule: using localStorage backup (more entries than Supabase)');
                 }
             }
-            if (!usedBackup) nextSheetId = maxId + 1;
+            if (!usedBackup) {
+                nextSheetId = maxId + 1;
+                loadBackupFromSupabase().then(function(b) { if (b && b.pageMetadata) applyPageMetadata(b.pageMetadata); });
+            }
             if (sheets.length > 0 && !sheets.find(function(s) { return s.id === activeSheetId; })) activeSheetId = sheets[0].id;
             renderSheetTabs();
             renderScheduleGrid();
@@ -1511,17 +1602,30 @@
             var cat = inp.getAttribute('data-category');
             if (cat && categoryColors.hasOwnProperty(cat)) {
                 categoryColors[cat] = inp.value || categoryColors[cat];
-                inp.addEventListener('input', function() {
+                function onColorChange() {
                     categoryColors[cat] = inp.value;
                     applyCategoryColorsStyle();
-                });
-                inp.addEventListener('change', function() {
-                    categoryColors[cat] = inp.value;
-                    applyCategoryColorsStyle();
-                });
+                    saveBackupSnapshot();
+                    if (checkSupabaseConnection()) syncBackupToSupabase();
+                }
+                inp.addEventListener('input', onColorChange);
+                inp.addEventListener('change', onColorChange);
             }
         });
         applyCategoryColorsStyle();
+        var metaSyncTimeout = null;
+        function debouncedMetaSave() {
+            if (metaSyncTimeout) clearTimeout(metaSyncTimeout);
+            metaSyncTimeout = setTimeout(function() {
+                metaSyncTimeout = null;
+                saveBackupSnapshot();
+                if (checkSupabaseConnection()) syncBackupToSupabase();
+            }, 500);
+        }
+        document.querySelectorAll('#legendTable input:not(.legend-color-picker), #pcTable input, #programsTable input, #preparedBy, #notedBy').forEach(function(inp) {
+            if (inp) inp.addEventListener('change', debouncedMetaSave);
+            if (inp) inp.addEventListener('input', debouncedMetaSave);
+        });
         var restoreJustApplied = false;
 
         if (isBackupMode) {
@@ -1530,7 +1634,7 @@
                 restoreBtn.addEventListener('click', function() {
                     if (!confirm('I-restore ang backup na ito sa main Class Schedule page? Mapapalitan ang laman ng main page.')) return;
                     try {
-                        var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId };
+                        var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: getPageMetadata() };
                         localStorage.setItem(RESTORE_PAYLOAD_KEY, JSON.stringify(payload));
                         window.location.href = 'index.html';
                     } catch (e) {
@@ -1553,6 +1657,7 @@
                 if (restorePayload.nextSheetId != null) nextSheetId = restorePayload.nextSheetId;
                 renderSheetTabs();
                 renderScheduleGrid();
+                applyPageMetadata(restorePayload.pageMetadata);
                 if (checkSupabaseConnection()) {
                     sheets.forEach(function(s) { syncEntriesForSheet(s.id); });
                 }
@@ -1623,6 +1728,7 @@
                 if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
                 renderSheetTabs();
                 renderScheduleGrid();
+                applyPageMetadata(snap.pageMetadata);
                 makeScheduleReadOnly();
             } else {
                 (function waitThenLoad(attempt) {
@@ -1635,6 +1741,7 @@
                                 if (snapFromSupabase.nextSheetId != null) nextSheetId = snapFromSupabase.nextSheetId;
                                 renderSheetTabs();
                                 renderScheduleGrid();
+                                applyPageMetadata(snapFromSupabase.pageMetadata);
                             }
                             makeScheduleReadOnly();
                         }).catch(function() { makeScheduleReadOnly(); });
@@ -1653,6 +1760,7 @@
                 if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
                 renderSheetTabs();
                 renderScheduleGrid();
+                applyPageMetadata(snap.pageMetadata);
                 console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from localStorage (Supabase not ready)');
             } else {
                 renderSheetTabs();
