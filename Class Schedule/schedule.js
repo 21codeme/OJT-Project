@@ -1038,6 +1038,8 @@
             tab.appendChild(closeBtn);
             tab.addEventListener('click', function(ev) {
                 if (ev.target === closeBtn || ev.target === menuBtn) return;
+                var prevId = activeSheetId;
+                if (prevId !== sheet.id && checkSupabaseConnection()) syncEntriesForSheet(prevId);
                 activeSheetId = sheet.id;
                 renderSheetTabs();
                 renderScheduleGrid();
@@ -1263,6 +1265,13 @@
             console.error('Sync entries error:', err);
             if (!isBackupMode) saveBackupSnapshot();
         });
+    }
+
+    function syncAllSheetsToSupabase() {
+        if (isBackupMode || !checkSupabaseConnection() || !sheets.length) return;
+        sheets.forEach(function(s) { syncEntriesForSheet(s.id); });
+        saveBackupSnapshot();
+        syncBackupToSupabase();
     }
 
     function saveBackupSnapshot() {
@@ -1640,11 +1649,11 @@
 
         window.addEventListener('beforeunload', function() {
             if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
-            if (checkSupabaseConnection() && getActiveSheet()) {
-                syncEntriesForSheet(activeSheetId);
-                if (!isBackupMode) { saveBackupSnapshot(); syncBackupToSupabase(); }
-            }
+            syncAllSheetsToSupabase();
         });
+        if (!isBackupMode) {
+            setInterval(function() { syncAllSheetsToSupabase(); }, 30000);
+        }
 
         var addFormPanel = document.getElementById('addFormPanel');
         var selectedDayLabel = document.getElementById('selectedDayLabel');
