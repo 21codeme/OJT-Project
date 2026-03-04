@@ -161,6 +161,58 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 const BACKUP_KEY = 'inventory_lab_backup';
 const BACKUP_SNAPSHOT_KEY = 'inventory_lab_backup_snapshot'; // Hindi naaapektuhan ng Clear Data; gamit sa Backup page
+const PERMANENT_BACKUP_KEY = 'inventory_lab_permanent_backup'; // Accumulative — rows never deleted even if removed from main table
+
+function rowSignature(row) {
+    if (!Array.isArray(row)) return String(row || '');
+    return row.map(v => (v == null ? '' : String(v)).trim()).join('\t');
+}
+
+function loadPermanentBackup() {
+    try {
+        const raw = localStorage.getItem(PERMANENT_BACKUP_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || !data.sheets) return null;
+        return data;
+    } catch (e) { return null; }
+}
+
+function mergeIntoPermanentBackup(currentSheets) {
+    if (!currentSheets || typeof currentSheets !== 'object') return;
+    try {
+        const existing = loadPermanentBackup() || { sheets: {}, savedAt: 0 };
+        for (const [sheetId, sheet] of Object.entries(currentSheets)) {
+            if (!sheet || !sheet.data || !sheet.hasData) continue;
+            if (!existing.sheets[sheetId]) {
+                existing.sheets[sheetId] = {
+                    id: sheet.id, name: sheet.name,
+                    data: sheet.data.slice(),
+                    hasData: sheet.hasData,
+                    highlightStates: (sheet.highlightStates || []).slice(),
+                    pictureUrls: []
+                };
+            } else {
+                const existingRows = existing.sheets[sheetId].data || [];
+                const existingSigs = new Set(existingRows.map(r => rowSignature(r)));
+                for (const row of sheet.data) {
+                    const sig = rowSignature(row);
+                    if (!existingSigs.has(sig)) {
+                        existingRows.push(row);
+                        existingSigs.add(sig);
+                    }
+                }
+                existing.sheets[sheetId].data = existingRows;
+                existing.sheets[sheetId].hasData = existingRows.length > 0;
+                if (sheet.name) existing.sheets[sheetId].name = sheet.name;
+            }
+        }
+        existing.savedAt = Date.now();
+        localStorage.setItem(PERMANENT_BACKUP_KEY, JSON.stringify(existing));
+    } catch (e) {
+        console.warn('mergeIntoPermanentBackup error', e);
+    }
+}
 
 function saveBackupToLocalStorage() {
     if (isBackupMode) return;
@@ -174,6 +226,7 @@ function saveBackupToLocalStorage() {
         localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
         if (hasAnyData()) {
             localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(backup));
+            mergeIntoPermanentBackup(sheets);
         }
     } catch (e) {
         if (e.name === 'QuotaExceededError') {
@@ -505,6 +558,17 @@ function createEditableCell(value, isPCHeader = false, cellIndex = -1, row = nul
             this.blur();
         }
     });
+    // Auto-save to localStorage on every keystroke so data is never lost on refresh
+    (function() {
+        var inputSaveTimer = null;
+        input.addEventListener('input', function() {
+            if (inputSaveTimer) clearTimeout(inputSaveTimer);
+            inputSaveTimer = setTimeout(function() {
+                inputSaveTimer = null;
+                saveCurrentSheetData(true);
+            }, 600);
+        });
+    })();
     
     // Unit Value: show peso sign prefix automatically
     if (cellIndex === UNIT_VALUE_COL) {
@@ -782,6 +846,13 @@ function addPCSectionAt(refRow, position) {
     input.style.background = 'transparent';
     input.addEventListener('blur', () => updateDataFromTable());
     input.addEventListener('keypress', (e) => { if (e.key === 'Enter') input.blur(); });
+    (function() {
+        var t = null;
+        input.addEventListener('input', function() {
+            if (t) clearTimeout(t);
+            t = setTimeout(function() { t = null; saveCurrentSheetData(true); }, 600);
+        });
+    })();
     const deleteSectionBtn = document.createElement('button');
     deleteSectionBtn.type = 'button';
     deleteSectionBtn.textContent = 'Delete section';
@@ -1443,6 +1514,13 @@ document.getElementById('addPCBtn').addEventListener('click', function() {
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') this.blur();
         });
+        (function() {
+            var t = null;
+            input.addEventListener('input', function() {
+                if (t) clearTimeout(t);
+                t = setTimeout(function() { t = null; saveCurrentSheetData(true); }, 600);
+            });
+        })();
         
         const deleteSectionBtn = document.createElement('button');
         deleteSectionBtn.type = 'button';
@@ -1989,10 +2067,8 @@ async function syncToSupabase() {
         console.log(`📋 Found ${rows.length} row(s) in table`);
         
         let lastPCHeaderName = null;
-        let lastDataRowKey = null; // para i-skip ang magkasunod na duplicate data row
         rows.forEach((row, rowIndex) => {
             if (row.classList.contains('pc-header-row')) {
-                lastDataRowKey = null;
                 sectionUnitMeas = '';
                 sectionUnitValue = '';
                 sectionUser = '';
@@ -2037,10 +2113,6 @@ async function syncToSupabase() {
                     sectionUnitValue = vals[UNIT_VALUE_COL] || '';
                     sectionUser = vals[USER_COL] || '';
                 }
-                // Huwag mag-save ng magkasunod na duplicate data row (same 10 columns)
-                const dataKey = (rowData.slice(0, 10) || []).map(v => (v || '').toString().trim()).join('\t');
-                if (dataKey && dataKey === lastDataRowKey) return;
-                lastDataRowKey = dataKey;
                 lastPCHeaderName = null;
                 sectionPictureUrl = null;
                 const pictureCell = row.querySelector('.picture-cell');
@@ -2145,17 +2217,53 @@ async function syncToSupabase() {
 async function syncBackupToSupabase() {
     if (!checkSupabaseConnection() || isBackupMode) return;
     try {
-        var payload = {
-            sheets: sheets,
-            currentSheetId: currentSheetId,
-            sheetCounter: sheetCounter,
-            savedAt: Date.now()
-        };
+        // Read current permanent backup from Supabase first
+        var existing = null;
+        try {
+            var readRes = await window.supabaseClient
+                .from('inventory_backup_snapshot')
+                .select('data')
+                .eq('id', 1)
+                .maybeSingle();
+            if (!readRes.error && readRes.data && readRes.data.data && readRes.data.data.sheets) {
+                existing = readRes.data.data;
+            }
+        } catch (e) { /* ignore read error, will overwrite */ }
+
+        // Merge current sheets into whatever Supabase already has
+        const merged = existing || { sheets: {}, savedAt: 0 };
+        for (const [sheetId, sheet] of Object.entries(sheets)) {
+            if (!sheet || !sheet.data || !sheet.hasData) continue;
+            if (!merged.sheets[sheetId]) {
+                merged.sheets[sheetId] = {
+                    id: sheet.id, name: sheet.name,
+                    data: sheet.data.slice(),
+                    hasData: sheet.hasData,
+                    highlightStates: (sheet.highlightStates || []).slice(),
+                    pictureUrls: []
+                };
+            } else {
+                const existingRows = merged.sheets[sheetId].data || [];
+                const existingSigs = new Set(existingRows.map(r => rowSignature(r)));
+                for (const row of sheet.data) {
+                    const sig = rowSignature(row);
+                    if (!existingSigs.has(sig)) {
+                        existingRows.push(row);
+                        existingSigs.add(sig);
+                    }
+                }
+                merged.sheets[sheetId].data = existingRows;
+                merged.sheets[sheetId].hasData = existingRows.length > 0;
+                if (sheet.name) merged.sheets[sheetId].name = sheet.name;
+            }
+        }
+        merged.savedAt = Date.now();
+
         var res = await window.supabaseClient
             .from('inventory_backup_snapshot')
-            .upsert({ id: 1, data: payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+            .upsert({ id: 1, data: merged, updated_at: new Date().toISOString() }, { onConflict: 'id' });
         if (res.error) console.warn('Backup sync: upsert failed', res.error);
-        else console.log('Inventory backup saved to Supabase (inventory_backup_snapshot)');
+        else console.log('Permanent backup saved to Supabase (inventory_backup_snapshot)');
     } catch (e) {
         console.warn('Backup sync error', e);
     }
@@ -2202,6 +2310,28 @@ async function loadFromSupabase() {
             return;
         }
         
+        // If localStorage backup is newer than Supabase (e.g. browser refreshed before async sync finished),
+        // restore from localStorage and push to Supabase so other PCs can see the latest data.
+        if (sheetsData && sheetsData.length > 0) {
+            const localBackup = loadBackupFromLocalStorage();
+            if (localBackup && localBackup.savedAt && localBackup.sheets && Object.keys(localBackup.sheets).length > 0) {
+                const maxSupabaseTime = Math.max(...sheetsData.map(s => s.updated_at ? new Date(s.updated_at).getTime() : 0));
+                if (localBackup.savedAt > maxSupabaseTime + 2000) {
+                    console.log('📂 localStorage backup is newer than Supabase — restoring locally and pushing to Supabase');
+                    sheets = localBackup.sheets;
+                    currentSheetId = localBackup.currentSheetId || Object.keys(localBackup.sheets)[0];
+                    sheetCounter = localBackup.sheetCounter || 1;
+                    isLoadingFromSupabase = false;
+                    updateSheetTabs();
+                    const firstId = Object.keys(sheets)[0];
+                    if (firstId) { currentSheetId = firstId; switchToSheet(firstId); }
+                    await syncToSupabase();
+                    if (hasAnyData()) syncBackupToSupabase();
+                    return;
+                }
+            }
+        }
+
         const oldSheets = { ...sheets };
         sheets = {};
         sheetCounter = 0;
