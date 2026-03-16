@@ -144,6 +144,23 @@ header h3 {
     color: #dc3545;
     font-weight: 500;
 }
+.sync-hint {
+    font-size: 12px;
+    color: #6c757d;
+    margin: 6px 0 0 0;
+    padding: 0;
+}
+.backup-mode .sync-hint { display: none; }
+.file-open-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+.file-open-warning a { color: #856404; text-decoration: underline; }
 
 .upload-btn, .export-btn, .clear-btn, .add-btn, .add-pc-btn, .new-sheet-btn, .import-excel-btn, .restore-backup-btn {
     padding: 12px 24px;

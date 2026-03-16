@@ -16,6 +16,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             toggleHeaderBtn.title = hidden ? 'Show header' : 'Hide header';
         });
     }
+
+    // Paalala kapag file:// — para sa multi-PC, kailangan naka-deployed URL (e.g. Vercel)
+    if (!isBackupMode && typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+        var controlsSection = document.getElementById('controlsSection');
+        if (controlsSection) {
+            var fileWarn = document.createElement('div');
+            fileWarn.className = 'file-open-warning';
+            fileWarn.setAttribute('role', 'alert');
+            fileWarn.innerHTML = 'You are opening from a file. For data to save and appear on other PCs, open the app from the <strong>same deployed link</strong> (e.g. your Vercel URL) on all devices.';
+            controlsSection.parentNode.insertBefore(fileWarn, controlsSection);
+        }
+    }
     
     if (isBackupMode) {
         document.body.classList.add('backup-mode');

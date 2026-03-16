@@ -1681,6 +1681,9 @@
         var restoreJustApplied = false;
 
         if (isBackupMode) {
+            document.body.classList.add('backup-mode');
+            var syncHintEl = document.getElementById('syncHintSchedule');
+            if (syncHintEl) syncHintEl.style.display = 'none';
             var restoreBtn = document.getElementById('restoreScheduleBtn');
             if (restoreBtn) {
                 restoreBtn.addEventListener('click', function() {
@@ -1698,6 +1701,16 @@
                 });
             }
         } else {
+            if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+                var toolbar = document.querySelector('.schedule-toolbar');
+                if (toolbar) {
+                    var fileWarn = document.createElement('div');
+                    fileWarn.className = 'file-open-warning';
+                    fileWarn.setAttribute('role', 'alert');
+                    fileWarn.innerHTML = 'You are opening from a file. For data to save and appear on other PCs, open the app from the <strong>same deployed link</strong> (e.g. your Vercel URL) on all devices.';
+                    toolbar.parentNode.insertBefore(fileWarn, toolbar);
+                }
+            }
             var restorePayload = null;
             try {
                 var raw = localStorage.getItem(RESTORE_PAYLOAD_KEY);
