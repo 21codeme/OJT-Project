@@ -1,13 +1,29 @@
-# Ping the deployed site every 6 days so Supabase project doesn't pause (free tier)
+# Ping Supabase API directly every 5 days so the project doesn't pause (free tier).
+# Pinging only the Vercel site does NOT count as Supabase activity (curl doesn't run JS, so no API calls).
 name: Supabase Keep-Alive
 on:
   schedule:
-    - cron: '0 8 */6 * *'  # Every 6 days at 8:00 UTC
+    - cron: '0 8 */5 * *'  # Every 5 days at 8:00 UTC (before typical 7-day inactivity)
   workflow_dispatch:        # Run manually from Actions tab
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping site (triggers Supabase activity)
+      - name: Ping Supabase API (counts as project activity)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY in GitHub Secrets. Add them in repo Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # One lightweight REST request so Supabase sees activity (e.g. list sheets, limit 1)
+          curl -sSf -o /dev/null --max-time 30 \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Accept: application/json" \
+            "$SUPABASE_URL/rest/v1/sheets?select=id&limit=1" || true
+      - name: Ping Vercel site (optional, keeps frontend warm)
         run: |
           curl -sSf -o /dev/null --max-time 30 "https://ojt-project-laboratory.vercel.app" || true
