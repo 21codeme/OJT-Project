@@ -1398,8 +1398,36 @@
     async function syncBackupToSupabase() {
         if (isBackupMode || !checkSupabaseConnection()) return;
         try {
+            // Merge-only: huwag alisin sa backup ang sheet o row (entry) na binura sa main — basahin existing, merge current.
+            var existing = null;
+            try {
+                var readRes = await window.supabaseClient.from('class_schedule_backup_snapshot').select('data').eq('id', 1).maybeSingle();
+                if (!readRes.error && readRes.data && readRes.data.data && readRes.data.data.sheets && Array.isArray(readRes.data.data.sheets)) {
+                    existing = readRes.data.data;
+                }
+            } catch (e) { /* ignore */ }
+            var mergedSheets = (existing && existing.sheets) ? JSON.parse(JSON.stringify(existing.sheets)) : [];
+            (sheets || []).forEach(function(s) {
+                var idx = mergedSheets.findIndex(function(m) { return m.id === s.id; });
+                var currentEntries = (s.entries || []).slice();
+                if (idx < 0) {
+                    mergedSheets.push(JSON.parse(JSON.stringify(s)));
+                } else {
+                    // Merge entries: i-keep lahat ng nasa backup (binurang row hindi mawawala), i-add o i-update mula sa current
+                    var existingEntries = mergedSheets[idx].entries || [];
+                    currentEntries.forEach(function(e) {
+                        var cur = JSON.parse(JSON.stringify(e));
+                        var slotIdx = existingEntries.findIndex(function(ex) { return ex.day === cur.day && ex.timeSlot === cur.timeSlot; });
+                        if (slotIdx >= 0) existingEntries[slotIdx] = cur;
+                        else existingEntries.push(cur);
+                    });
+                    mergedSheets[idx].entries = existingEntries;
+                    mergedSheets[idx].name = s.name || mergedSheets[idx].name;
+                    if (s.extraRowSlots) mergedSheets[idx].extraRowSlots = s.extraRowSlots.slice();
+                }
+            });
             var pageMetadata = getPageMetadata();
-            var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: pageMetadata, savedAt: Date.now() };
+            var payload = { sheets: mergedSheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: pageMetadata, savedAt: Date.now() };
             var res = await window.supabaseClient
                 .from('class_schedule_backup_snapshot')
                 .upsert({ id: 1, data: payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
@@ -1742,35 +1770,58 @@
             });
         });
         if (isBackupMode) {
-            var snap = loadBackupSnapshot();
-            if (snap && snap.sheets && snap.sheets.length > 0) {
-                sheets = snap.sheets;
-                activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                renderSheetTabs();
-                renderScheduleGrid();
-                applyPageMetadata(snap.pageMetadata);
-                makeScheduleReadOnly();
-            } else {
-                (function waitThenLoad(attempt) {
-                    if (attempt > 25) { makeScheduleReadOnly(); return; }
-                    if (checkSupabaseConnection()) {
-                        loadBackupFromSupabase().then(function(snapFromSupabase) {
-                            if (snapFromSupabase && snapFromSupabase.sheets && snapFromSupabase.sheets.length > 0) {
-                                sheets = snapFromSupabase.sheets;
-                                activeSheetId = snapFromSupabase.activeSheetId != null ? snapFromSupabase.activeSheetId : (sheets[0] && sheets[0].id);
-                                if (snapFromSupabase.nextSheetId != null) nextSheetId = snapFromSupabase.nextSheetId;
+            // Unahin ang Supabase backup — doon hindi nabubura ang sheet kahit mag-delete sa Class Schedule (merge-only).
+            (function waitThenLoad(attempt) {
+                if (attempt > 25) {
+                    var snap = loadBackupSnapshot();
+                    if (snap && snap.sheets && snap.sheets.length > 0) {
+                        sheets = snap.sheets;
+                        activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                        if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                        renderSheetTabs();
+                        renderScheduleGrid();
+                        applyPageMetadata(snap.pageMetadata);
+                    }
+                    makeScheduleReadOnly();
+                    return;
+                }
+                if (checkSupabaseConnection()) {
+                    loadBackupFromSupabase().then(function(snapFromSupabase) {
+                        if (snapFromSupabase && snapFromSupabase.sheets && snapFromSupabase.sheets.length > 0) {
+                            sheets = snapFromSupabase.sheets;
+                            activeSheetId = snapFromSupabase.activeSheetId != null ? snapFromSupabase.activeSheetId : (sheets[0] && sheets[0].id);
+                            if (snapFromSupabase.nextSheetId != null) nextSheetId = snapFromSupabase.nextSheetId;
+                            renderSheetTabs();
+                            renderScheduleGrid();
+                            applyPageMetadata(snapFromSupabase.pageMetadata);
+                        } else {
+                            var snap = loadBackupSnapshot();
+                            if (snap && snap.sheets && snap.sheets.length > 0) {
+                                sheets = snap.sheets;
+                                activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                                if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
                                 renderSheetTabs();
                                 renderScheduleGrid();
-                                applyPageMetadata(snapFromSupabase.pageMetadata);
+                                applyPageMetadata(snap.pageMetadata);
                             }
-                            makeScheduleReadOnly();
-                        }).catch(function() { makeScheduleReadOnly(); });
-                    } else {
-                        setTimeout(function() { waitThenLoad(attempt + 1); }, 300);
-                    }
-                })(0);
-            }
+                        }
+                        makeScheduleReadOnly();
+                    }).catch(function() {
+                        var snap = loadBackupSnapshot();
+                        if (snap && snap.sheets && snap.sheets.length > 0) {
+                            sheets = snap.sheets;
+                            activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
+                            if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                            renderSheetTabs();
+                            renderScheduleGrid();
+                            applyPageMetadata(snap.pageMetadata);
+                        }
+                        makeScheduleReadOnly();
+                    });
+                } else {
+                    setTimeout(function() { waitThenLoad(attempt + 1); }, 300);
+                }
+            })(0);
         } else if (!restoreJustApplied && checkSupabaseConnection()) {
             loadFromSupabase();
         } else if (!restoreJustApplied) {

@@ -31,27 +31,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         var sumSection = document.querySelector('.inventory-summary-section');
         if (sumSection) sumSection.style.display = 'none';
         (async function() {
-            // Unahin ang localStorage snapshot — laging updated agad pag nag-save sa main page (add PC, add item, etc.)
-            var snapshot = loadBackupSnapshot();
-            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
-                snapshot = loadBackupFromLocalStorage();
+            // Unahin ang permanent backup sa Supabase — doon hindi nabubura ang sheet kahit mag-delete sa Inventory (merge-only).
+            // Kapag nag-import o nag-create ng sheet, nandoon pa rin sa backup; localStorage lang na-o-overwrite pag delete.
+            if (typeof initSupabase === 'function') initSupabase();
+            await new Promise(function(r) { setTimeout(r, 400); });
+            for (var t = 0; t < 8 && !checkSupabaseConnection(); t++) {
+                await new Promise(function(r) { setTimeout(r, 300); });
+            }
+            var snapshot = null;
+            if (checkSupabaseConnection()) {
+                for (var retry = 0; retry < 2; retry++) {
+                    snapshot = await loadBackupFromSupabase();
+                    if (snapshot && snapshot.sheets && Object.keys(snapshot.sheets).length > 0) break;
+                    await new Promise(function(r) { setTimeout(r, 500); });
+                }
             }
             if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
-                if (typeof initSupabase === 'function') initSupabase();
-                await new Promise(function(r) { setTimeout(r, 400); });
-                for (var t = 0; t < 8 && !checkSupabaseConnection(); t++) {
-                    await new Promise(function(r) { setTimeout(r, 300); });
-                }
-                if (checkSupabaseConnection()) {
-                    for (var retry = 0; retry < 2; retry++) {
-                        snapshot = await loadBackupFromSupabase();
-                        if (snapshot && snapshot.sheets) {
-                            var rows = Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0);
-                            if (rows > 0) break;
-                        }
-                        await new Promise(function(r) { setTimeout(r, 500); });
-                    }
-                }
+                snapshot = loadBackupSnapshot();
+            }
+            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
+                snapshot = loadBackupFromLocalStorage();
             }
         var totalRows = snapshot && snapshot.sheets ? Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
         if (snapshot && snapshot.sheets && Object.keys(snapshot.sheets).length > 0 && totalRows > 0) {
