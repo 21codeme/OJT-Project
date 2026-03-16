@@ -326,8 +326,10 @@ function getCurrentSheet() {
 
 // Set current sheet data
 function setCurrentSheetData(data, hasDataFlag = true) {
-    sheets[currentSheetId].data = data;
-    sheets[currentSheetId].hasData = hasDataFlag;
+    const sheet = sheets[currentSheetId];
+    if (!sheet) return; // e.g. sheet was just deleted
+    sheet.data = data;
+    sheet.hasData = hasDataFlag;
 }
 
 // Apply condition-based row color
@@ -1141,15 +1143,23 @@ function dataURLtoBlob(dataUrl) {
     return new Blob([u8arr], { type: mime });
 }
 
+// Safe folder name for Storage path (no / \ : * ? " < > |)
+function sanitizeStorageFolderName(name) {
+    if (!name || typeof name !== 'string') return 'uncategorized';
+    return name.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120) || 'uncategorized';
+}
+
 // Upload data URL to Supabase Storage; return public URL so PC Location link can show picture
+// Path: inventory-pictures / {PC Section folder} / {sheetId} / {rowIndex} / {timestamp}.jpg
 var _storageBucketChecked = false;
 var _storageBucketMissing = false;
-async function uploadDataUrlToStorage(dataUrl, sheetId, rowIndex) {
+async function uploadDataUrlToStorage(dataUrl, sheetId, rowIndex, pcSectionName) {
     if (!window.supabaseClient || !dataUrl || !dataUrl.startsWith('data:image/')) return null;
     if (_storageBucketMissing) return null;
     try {
         const blob = dataURLtoBlob(dataUrl);
-        const path = `${(sheetId || 'sheet-1')}/${rowIndex}/${Date.now()}.jpg`;
+        const folder = sanitizeStorageFolderName(pcSectionName);
+        const path = `${folder}/${(sheetId || 'sheet-1')}/${rowIndex}/${Date.now()}.jpg`;
         const { error } = await window.supabaseClient.storage.from('inventory-pictures').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
         if (error) {
             _storageBucketChecked = true;
@@ -1845,8 +1855,9 @@ function createNewSheet(name = null, data = null) {
 function switchToSheet(sheetId) {
     if (!sheets[sheetId]) return;
     
-    // Save current sheet data from table only when NOT loading from Supabase (and not in backup read-only mode)
-    if (!isLoadingFromSupabase && !isBackupMode) {
+    // Save current sheet data from table only when NOT loading from Supabase (and not in backup read-only mode).
+    // Skip save if current sheet no longer exists (e.g. just deleted) to avoid "Cannot set properties of undefined".
+    if (!isLoadingFromSupabase && !isBackupMode && sheets[currentSheetId]) {
         saveCurrentSheetData();
     }
     
@@ -1880,6 +1891,7 @@ function switchToSheet(sheetId) {
 }
 
 function saveCurrentSheetData(skipSync) {
+    if (!sheets[currentSheetId]) return; // e.g. sheet was just deleted
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr:not(.empty-row)');
     
@@ -2067,6 +2079,7 @@ async function syncToSupabase() {
         console.log(`📋 Found ${rows.length} row(s) in table`);
         
         let lastPCHeaderName = null;
+        let currentSectionName = '';
         rows.forEach((row, rowIndex) => {
             if (row.classList.contains('pc-header-row')) {
                 sectionUnitMeas = '';
@@ -2080,6 +2093,7 @@ async function syncToSupabase() {
                     // Huwag mag-save ng magkasunod na duplicate PC header (e.g. dalawang "PC 1")
                     if (pcName && pcName === lastPCHeaderName) return;
                     lastPCHeaderName = pcName;
+                    currentSectionName = pcName || currentSectionName;
                     itemsToInsert.push({
                         sheet_id: currentSheetId,
                         sheet_name: sheet.name,
@@ -2143,17 +2157,18 @@ async function syncToSupabase() {
                     user: rowData[9] || '',
                     picture_url: sectionPictureUrl,
                     is_pc_header: false,
-                    is_highlighted: row.classList.contains('highlighted-row')
+                    is_highlighted: row.classList.contains('highlighted-row'),
+                    pc_section_name: currentSectionName
                 });
             }
         });
         
-        // Upload data URL pictures to Storage so we get https URL — para lumabas ang picture sa PC Location link
+        // Upload data URL pictures to Storage so we get https URL — para lumabas ang picture sa PC Location link (folder per PC section)
         const rowIndexToPublicUrl = {};
         for (let i = 0; i < itemsToInsert.length; i++) {
             const item = itemsToInsert[i];
             if (item.picture_url && String(item.picture_url).startsWith('data:image/') && !item.is_pc_header) {
-                const publicUrl = await uploadDataUrlToStorage(item.picture_url, currentSheetId, item.row_index);
+                const publicUrl = await uploadDataUrlToStorage(item.picture_url, currentSheetId, item.row_index, item.pc_section_name);
                 if (publicUrl) {
                     item.picture_url = publicUrl;
                     rowIndexToPublicUrl[item.row_index] = publicUrl;
@@ -3059,7 +3074,7 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
                 // Upload data URL to Storage during export so PC Location link gets https URL and picture shows
                 if (picUrl && picUrl.startsWith('data:image/')) {
                     try {
-                        const publicUrl = await uploadDataUrlToStorage(picUrl, currentSheetId, r.rowIndex);
+                        const publicUrl = await uploadDataUrlToStorage(picUrl, currentSheetId, r.rowIndex, r.sectionName);
                         if (publicUrl) picUrl = publicUrl;
                     } catch (e) { console.warn('Export: could not upload picture for link', e); }
                 }

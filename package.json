@@ -5,7 +5,8 @@
   "main": "config.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "extract-articles": "node scripts/extract-article-items.js"
+    "extract-articles": "node scripts/extract-article-items.js",
+    "sync-pictures": "node scripts/sync-pictures-to-local.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,8 @@
   },
   "homepage": "https://github.com/21codeme/OJT-Project#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.3.1",
     "xlsx": "^0.18.5"
   }
 }

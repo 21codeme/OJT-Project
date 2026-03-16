@@ -34,6 +34,7 @@ This folder contains all database-related files for the Lab Inventory Management
    - Public bucket: **ON**
    - Create bucket.
    - Pag may error na **"new row violates row-level security policy"**, i-run sa **SQL Editor** ang file na **`database/storage-policies.sql`** para payagan ang upload at read sa bucket na iyon.
+   - **Folder structure:** Sa loob ng bucket, ang mga larawan ay naka-organize bilang: **{PC Section} / {sheetId} / {rowIndex} / {timestamp}.jpg** (hal. `PC 1/sheet-2/5/1234567890.jpg`). Lahat ng picture na na-upload sa isang PC section (e.g. PC 1) ay nasa iisang folder; kapag na-import ang Excel, gumagana pa rin ang picture dahil naka-save ang URL sa link.
 
 ## Database Schema
 
