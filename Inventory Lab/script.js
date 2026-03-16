@@ -2709,7 +2709,77 @@ function urlToDataUrl(url) {
         });
 }
 
-// Import Excel: read .xlsx/.xls and load into current sheet
+// Parse one Excel worksheet (rows array) into sheetData + highlightStates + pictureUrls. Stops at "Summary by Article/Item". Returns null if no data.
+function parseExcelWorksheetToSheetData(rows) {
+    if (!rows || rows.length === 0) return null;
+    var headerRowIndex = -1;
+    for (var i = 0; i < Math.min(30, rows.length); i++) {
+        var row = rows[i];
+        if (!row || !Array.isArray(row)) continue;
+        var rowText = row.map(function(c) { return (c != null ? String(c) : '').toLowerCase(); }).join(' ');
+        if (rowText.indexOf('article') !== -1 && rowText.indexOf('description') !== -1) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+    if (headerRowIndex < 0) headerRowIndex = 0;
+    var headerRow = rows[headerRowIndex];
+    var colMap = { article: 1, description: 2, oldProperty: 3, unitMeas: 4, unitValue: 5, qty: 6, location: 7, condition: 8, remarks: 9, user: 10 };
+    if (headerRow && headerRow.length > 0) {
+        for (var c = 0; c < headerRow.length; c++) {
+            var h = (headerRow[c] != null ? String(headerRow[c]) : '').toLowerCase();
+            if (h.indexOf('article') !== -1 && (h.indexOf('item') !== -1 || h.indexOf('/') !== -1)) colMap.article = c;
+            else if (h.indexOf('description') !== -1) colMap.description = c;
+            else if (h.indexOf('old property') !== -1 || h.indexOf('property n') !== -1) colMap.oldProperty = c;
+            else if (h.indexOf('unit of meas') !== -1) colMap.unitMeas = c;
+            else if (h.indexOf('unit value') !== -1) colMap.unitValue = c;
+            else if (h.indexOf('quantity') !== -1 || h.indexOf('physical count') !== -1) colMap.qty = c;
+            else if (h.indexOf('location') !== -1 || h.indexOf('whereabout') !== -1) colMap.location = c;
+            else if (h.indexOf('condition') !== -1) colMap.condition = c;
+            else if (h.indexOf('remarks') !== -1) colMap.remarks = c;
+            else if (h === 'user') colMap.user = c;
+        }
+    }
+    var sheetData = [];
+    var highlightStates = [];
+    var pictureUrls = [];
+    for (var r = headerRowIndex + 1; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row || !Array.isArray(row)) continue;
+        var firstVal = (row.find(function(c) { return c != null && String(c).trim() !== ''; }) || row[0] || '').toString().trim();
+        if (firstVal && firstVal.toLowerCase().indexOf('summary by article') !== -1) break;
+        var firstUpper = firstVal.toUpperCase();
+        var isPCHeader = firstVal && (
+            row.length === 1 ||
+            firstUpper === 'SERVER' || firstUpper === 'PC' ||
+            firstUpper.indexOf('PC USED BY') !== -1 ||
+            /^PC\s*\d*$/.test(firstUpper) || firstUpper.indexOf('PC ') === 0
+        );
+        if (isPCHeader) {
+            sheetData.push([firstVal]);
+            highlightStates.push(false);
+            pictureUrls.push(null);
+        } else {
+            var art = row[colMap.article] != null ? String(row[colMap.article]).trim() : '';
+            var desc = row[colMap.description] != null ? String(row[colMap.description]).trim() : '';
+            var oldP = row[colMap.oldProperty] != null ? String(row[colMap.oldProperty]).trim() : '';
+            var uom = row[colMap.unitMeas] != null ? String(row[colMap.unitMeas]).trim() : '';
+            var uv = row[colMap.unitValue] != null ? String(row[colMap.unitValue]).trim() : '';
+            var qty = row[colMap.qty] != null ? String(row[colMap.qty]).trim() : '';
+            var loc = row[colMap.location] != null ? String(row[colMap.location]).trim() : '';
+            var cond = row[colMap.condition] != null ? String(row[colMap.condition]).trim() : '';
+            var rem = row[colMap.remarks] != null ? String(row[colMap.remarks]).trim() : '';
+            var user = row[colMap.user] != null ? String(row[colMap.user]).trim() : '';
+            sheetData.push([art, desc, oldP, uom, uv, qty, loc, cond, rem, user]);
+            highlightStates.push(false);
+            pictureUrls.push(null);
+        }
+    }
+    if (sheetData.length === 0) return null;
+    return { sheetData: sheetData, highlightStates: highlightStates, pictureUrls: pictureUrls };
+}
+
+// Import Excel: bawat worksheet = bagong sheet sa app (hindi ilalagay sa existing sheet). Kapag multi-sheet Excel, lahat mabubuo.
 document.getElementById('importExcelBtn').addEventListener('click', function() {
     document.getElementById('importExcelInput').click();
 });
@@ -2726,111 +2796,51 @@ document.getElementById('importExcelInput').addEventListener('change', function(
             }
             var data = ev.target.result;
             var workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: true });
-            var firstSheetName = workbook.SheetNames[0];
-            if (!firstSheetName) {
+            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
                 alert('No sheet found in the Excel file.');
                 return;
             }
-            var worksheet = workbook.Sheets[firstSheetName];
-            var rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-            if (!rows || rows.length === 0) {
-                alert('No data found in the Excel file.');
+            var createdSheetIds = [];
+            var totalRows = 0;
+            for (var s = 0; s < workbook.SheetNames.length; s++) {
+                var excelSheetName = workbook.SheetNames[s];
+                var worksheet = workbook.Sheets[excelSheetName];
+                var rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                var parsed = parseExcelWorksheetToSheetData(rows);
+                if (!parsed) continue;
+                var sheetName = (excelSheetName || ('Sheet ' + (s + 1))).toString().trim().slice(0, 80) || ('Imported ' + (s + 1));
+                var sheetId = createNewSheet(sheetName, parsed.sheetData);
+                var sheet = getCurrentSheet();
+                sheet.highlightStates = parsed.highlightStates;
+                sheet.pictureUrls = parsed.pictureUrls;
+                createdSheetIds.push(sheetId);
+                totalRows += parsed.sheetData.length;
+            }
+            if (createdSheetIds.length === 0) {
+                alert('No inventory data found in the Excel file (no rows with Article/Description header, or all sheets empty after "Summary by Article/Item").');
                 return;
             }
-            // Find header row (contains "Article" and "Description")
-            var headerRowIndex = -1;
-            for (var i = 0; i < Math.min(30, rows.length); i++) {
-                var row = rows[i];
-                if (!row || !Array.isArray(row)) continue;
-                var rowText = row.map(function(c) { return (c != null ? String(c) : '').toLowerCase(); }).join(' ');
-                if (rowText.indexOf('article') !== -1 && rowText.indexOf('description') !== -1) {
-                    headerRowIndex = i;
-                    break;
-                }
-            }
-            if (headerRowIndex < 0) headerRowIndex = 0;
-            // Map column indices from header (export uses A=empty, B=Article, C=Description, ... K=User)
-            var headerRow = rows[headerRowIndex];
-            var colMap = { article: 1, description: 2, oldProperty: 3, unitMeas: 4, unitValue: 5, qty: 6, location: 7, condition: 8, remarks: 9, user: 10 };
-            if (headerRow && headerRow.length > 0) {
-                for (var c = 0; c < headerRow.length; c++) {
-                    var h = (headerRow[c] != null ? String(headerRow[c]) : '').toLowerCase();
-                    if (h.indexOf('article') !== -1 && (h.indexOf('item') !== -1 || h.indexOf('/') !== -1)) colMap.article = c;
-                    else if (h.indexOf('description') !== -1) colMap.description = c;
-                    else if (h.indexOf('old property') !== -1 || h.indexOf('property n') !== -1) colMap.oldProperty = c;
-                    else if (h.indexOf('unit of meas') !== -1) colMap.unitMeas = c;
-                    else if (h.indexOf('unit value') !== -1) colMap.unitValue = c;
-                    else if (h.indexOf('quantity') !== -1 || h.indexOf('physical count') !== -1) colMap.qty = c;
-                    else if (h.indexOf('location') !== -1 || h.indexOf('whereabout') !== -1) colMap.location = c;
-                    else if (h.indexOf('condition') !== -1) colMap.condition = c;
-                    else if (h.indexOf('remarks') !== -1) colMap.remarks = c;
-                    else if (h === 'user') colMap.user = c;
-                }
-            }
-            var sheetData = [];
-            var highlightStates = [];
-            var pictureUrls = [];
-            for (var r = headerRowIndex + 1; r < rows.length; r++) {
-                var row = rows[r];
-                if (!row || !Array.isArray(row)) continue;
-                var firstVal = (row.find(function(c) { return c != null && String(c).trim() !== ''; }) || row[0] || '').toString().trim();
-                var firstUpper = firstVal.toUpperCase();
-                var isPCHeader = firstVal && (
-                    row.length === 1 ||
-                    firstUpper === 'SERVER' || firstUpper === 'PC' ||
-                    firstUpper.indexOf('PC USED BY') !== -1 ||
-                    /^PC\s*\d*$/.test(firstUpper) || firstUpper.indexOf('PC ') === 0
-                );
-                if (isPCHeader) {
-                    sheetData.push([firstVal]);
-                    highlightStates.push(false);
-                    pictureUrls.push(null);
-                } else {
-                    var art = row[colMap.article] != null ? String(row[colMap.article]).trim() : '';
-                    var desc = row[colMap.description] != null ? String(row[colMap.description]).trim() : '';
-                    var oldP = row[colMap.oldProperty] != null ? String(row[colMap.oldProperty]).trim() : '';
-                    var uom = row[colMap.unitMeas] != null ? String(row[colMap.unitMeas]).trim() : '';
-                    var uv = row[colMap.unitValue] != null ? String(row[colMap.unitValue]).trim() : '';
-                    var qty = row[colMap.qty] != null ? String(row[colMap.qty]).trim() : '';
-                    var loc = row[colMap.location] != null ? String(row[colMap.location]).trim() : '';
-                    var cond = row[colMap.condition] != null ? String(row[colMap.condition]).trim() : '';
-                    var rem = row[colMap.remarks] != null ? String(row[colMap.remarks]).trim() : '';
-                    var user = row[colMap.user] != null ? String(row[colMap.user]).trim() : '';
-                    sheetData.push([art, desc, oldP, uom, uv, qty, loc, cond, rem, user]);
-                    highlightStates.push(false);
-                    pictureUrls.push(null);
-                }
-            }
-            if (sheetData.length === 0) {
-                alert('No data rows found after the header in the Excel file.');
-                return;
-            }
-            setCurrentSheetData(sheetData, true);
-            var sheet = getCurrentSheet();
-            sheet.highlightStates = highlightStates;
-            sheet.pictureUrls = pictureUrls;
-            displayData(sheetData);
             document.getElementById('exportBtn').disabled = false;
             document.getElementById('clearBtn').disabled = false;
-            // Huwag i-overwrite ang backup snapshot kapag nag-import — para ang na-restore na data ay nandun pa rin sa Backup view
-            // saveBackupToLocalStorage() at syncBackupToSupabase() ay hindi tatawagin dito.
             if (checkSupabaseConnection()) {
                 if (syncTimeout) clearTimeout(syncTimeout);
                 syncTimeout = null;
                 var statusEl = document.getElementById('saveStatus');
                 if (statusEl) { statusEl.textContent = 'Saving to Supabase…'; statusEl.className = 'save-status saving'; }
                 try {
-                    await syncToSupabase();
+                    for (var i = 0; i < createdSheetIds.length; i++) {
+                        switchToSheet(createdSheetIds[i]);
+                        await syncToSupabase();
+                    }
                     if (statusEl) { statusEl.textContent = 'Saved'; statusEl.className = 'save-status saved'; }
                 } catch (err) {
                     console.warn('Import sync error', err);
                     if (statusEl) { statusEl.textContent = 'Import saved locally; sync failed'; statusEl.className = 'save-status error'; }
-                    saveBackupToLocalStorage();
                 }
-            } else {
-                saveBackupToLocalStorage();
             }
-            alert('Imported ' + sheetData.length + ' row(s) from Excel.');
+            saveBackupToLocalStorage();
+            switchToSheet(createdSheetIds[0]);
+            alert('Imported ' + createdSheetIds.length + ' sheet(s) with ' + totalRows + ' total row(s). Data placed in new sheet(s) only.');
         } catch (err) {
             console.error('Import Excel error:', err);
             alert('Could not read the Excel file. Make sure it is a valid .xlsx or .xls file.');
@@ -2857,11 +2867,22 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
     try {
         const workbook = new ExcelJS.Workbook();
         
-        // Export all sheets
+        // Export all sheets — isang Excel file, bawat app sheet = isang worksheet tab (name max 31 chars, no \ / * ? [ ] :)
+        const excelSheetName = (name) => {
+            const s = String(name || 'Sheet').replace(/[\/*?\[\]:\\]/g, '_').trim().slice(0, 31);
+            return s || 'Sheet';
+        };
+        const usedNames = new Set();
         for (const sheet of Object.values(sheets)) {
             if (!sheet.hasData || sheet.data.length === 0) continue;
-            
-            const worksheet = workbook.addWorksheet(sheet.name);
+            let wbName = excelSheetName(sheet.name);
+            let suffix = 0;
+            while (usedNames.has(wbName)) {
+                suffix++;
+                wbName = excelSheetName(sheet.name + ' ' + suffix).slice(0, 31);
+            }
+            usedNames.add(wbName);
+            const worksheet = workbook.addWorksheet(wbName);
             
             // Get current date
             const now = new Date();
