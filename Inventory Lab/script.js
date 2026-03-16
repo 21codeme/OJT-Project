@@ -2685,6 +2685,12 @@ async function deleteSheet(sheetId) {
                 switchToSheet(remainingSheets[0]);
             }
         }
+        
+        // I-update ang backup (localStorage at Supabase) para sa refresh hindi na bumalik ang binurang sheet
+        saveBackupToLocalStorage();
+        if (checkSupabaseConnection() && hasAnyData()) {
+            syncBackupToSupabase().catch(function(err) { console.warn('Backup sync after delete failed:', err); });
+        }
     }
 }
 
