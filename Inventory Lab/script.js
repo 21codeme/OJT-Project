@@ -181,6 +181,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 } else {
                     console.log('ℹ️ No existing data found in Supabase (this is normal for first use)');
                 }
+                if (!isBackupMode) setupMultiPCSync();
             } else if (initAttempts >= maxAttempts) {
                 console.warn('⚠️ Supabase initialization timeout. Using local storage only.');
                 clearInterval(checkSupabaseInit);
@@ -193,6 +194,27 @@ const BACKUP_KEY = 'inventory_lab_backup';
 const BACKUP_SNAPSHOT_KEY = 'inventory_lab_backup_snapshot'; // Hindi naaapektuhan ng Clear Data; gamit sa Backup page
 const PERMANENT_BACKUP_KEY = 'inventory_lab_permanent_backup'; // Accumulative — rows never deleted even if removed from main table
 const RESTORE_ONE_SHEET_KEY = 'inventory_lab_restore_one_sheet'; // Kapag sa Backup page, Restore = current sheet lang
+
+function setupMultiPCSync() {
+    var refreshBtn = document.getElementById('refreshFromServerBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            if (!checkSupabaseConnection()) { alert('Not connected to server. Check internet.'); return; }
+            if (isLoadingFromSupabase) return;
+            loadFromSupabase();
+        });
+    }
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible' || isBackupMode || !checkSupabaseConnection() || isLoadingFromSupabase) return;
+        setTimeout(function() {
+            if (document.visibilityState === 'visible' && !isLoadingFromSupabase) loadFromSupabase();
+        }, 2000);
+    });
+    setInterval(function() {
+        if (document.visibilityState !== 'visible' || isBackupMode || !checkSupabaseConnection() || isLoadingFromSupabase) return;
+        loadFromSupabase();
+    }, 90000);
+}
 
 function rowSignature(row) {
     if (!Array.isArray(row)) return String(row || '');

@@ -1586,6 +1586,30 @@
         }
     }
 
+    var multiPCSyncSetupDone = false;
+    function setupMultiPCSync() {
+        if (multiPCSyncSetupDone) return;
+        multiPCSyncSetupDone = true;
+        var refreshBtn = document.getElementById('refreshScheduleServerBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                if (!checkSupabaseConnection()) { alert('Not connected to server. Check internet.'); return; }
+                if (isLoadingFromSupabase) return;
+                loadFromSupabase();
+            });
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState !== 'visible' || isBackupMode || !checkSupabaseConnection() || isLoadingFromSupabase) return;
+            setTimeout(function() {
+                if (document.visibilityState === 'visible' && !isLoadingFromSupabase) loadFromSupabase();
+            }, 2000);
+        });
+        setInterval(function() {
+            if (document.visibilityState !== 'visible' || isBackupMode || !checkSupabaseConnection() || isLoadingFromSupabase) return;
+            loadFromSupabase();
+        }, 90000);
+    }
+
     function makeScheduleReadOnly() {
         var addScheduleBtn = document.getElementById('addScheduleBtn');
         var addScheduleMenu = document.getElementById('addScheduleMenu');
@@ -1859,7 +1883,7 @@
                 }
             })(0);
         } else if (!restoreJustApplied && checkSupabaseConnection()) {
-            loadFromSupabase();
+            loadFromSupabase().then(function() { if (!isBackupMode) setupMultiPCSync(); });
         } else if (!restoreJustApplied) {
             var snap = loadBackupSnapshot();
             if (snap && snap.sheets && snap.sheets.length > 0) {
@@ -1875,7 +1899,7 @@
                 renderScheduleGrid();
             }
             setTimeout(function retryLoad() {
-                if (checkSupabaseConnection()) loadFromSupabase();
+                if (checkSupabaseConnection()) loadFromSupabase().then(function() { if (!isBackupMode) setupMultiPCSync(); });
             }, 800);
         }
 

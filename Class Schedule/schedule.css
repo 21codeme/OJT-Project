@@ -806,6 +806,18 @@ body {
     margin: -8px 0 12px 0;
     padding: 0;
 }
+.refresh-server-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+    margin-left: 8px;
+    cursor: pointer;
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+.refresh-server-btn:hover {
+    background: #dee2e6;
+}
 .backup-mode .sync-hint { display: none; }
 .file-open-warning {
     background: #fff3cd;
