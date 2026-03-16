@@ -2178,12 +2178,18 @@ async function syncToSupabase() {
         
         console.log(`📦 Prepared ${itemsToInsert.length} item(s) to insert`);
         
-        // Insert all items (with retry for Failed to fetch)
+        // Insert all items (with retry for Failed to fetch). Huwag isama pc_section_name — wala sa DB table, gamit lang sa Storage path.
         if (itemsToInsert.length > 0) {
             const CHUNK_SIZE = 500; // avoid request/payload limits on large saves
+            const dbColumns = ['sheet_id', 'sheet_name', 'row_index', 'article', 'description', 'old_property_n_assigned', 'unit_of_meas', 'unit_value', 'quantity', 'location', 'condition', 'remarks', 'user', 'picture_url', 'is_pc_header', 'is_highlighted'];
+            const toDbRow = (item) => {
+                const row = {};
+                dbColumns.forEach(col => { if (item[col] !== undefined) row[col] = item[col]; });
+                return row;
+            };
             try {
                 for (let start = 0; start < itemsToInsert.length; start += CHUNK_SIZE) {
-                    const chunk = itemsToInsert.slice(start, start + CHUNK_SIZE);
+                    const chunk = itemsToInsert.slice(start, start + CHUNK_SIZE).map(toDbRow);
                     const res = await withRetry(async () => {
                         return await window.supabaseClient
                             .from('inventory_items')
