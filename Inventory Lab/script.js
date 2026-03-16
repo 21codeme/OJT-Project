@@ -1826,12 +1826,27 @@ function setupSheetTabMenu(tab, sheetId) {
         if (newName !== null && newName.trim() !== '') {
             sheet.name = newName.trim();
             if (nameSpan) nameSpan.textContent = sheet.name;
+            var saveOk = true;
             if (checkSupabaseConnection()) {
                 try {
-                    await window.supabaseClient.from('sheets').update({ name: sheet.name }).eq('id', sheetId);
+                    var r = await window.supabaseClient.from('sheets').update({
+                        name: sheet.name,
+                        updated_at: new Date().toISOString()
+                    }).eq('id', sheetId);
+                    if (r.error) {
+                        saveOk = false;
+                        console.warn('Supabase sheet rename failed:', r.error);
+                    }
                 } catch (err) {
+                    saveOk = false;
                     console.warn('Supabase sheet rename sync failed:', err);
                 }
+            }
+            if (saveOk) {
+                saveBackupToLocalStorage();
+                syncBackupToSupabase().catch(function(err) { console.warn('Backup sync after rename failed:', err); });
+            } else {
+                alert('Na-save ang pangalan dito sa browser, pero hindi na-update sa server. I-check ang internet at subukan ang "Refresh from server" mamaya.');
             }
         }
     });
