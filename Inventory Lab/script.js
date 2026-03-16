@@ -2384,28 +2384,8 @@ async function loadFromSupabase() {
             return;
         }
         
-        // If localStorage backup is newer than Supabase (e.g. browser refreshed before async sync finished),
-        // restore from localStorage and push to Supabase so other PCs can see the latest data.
-        if (sheetsData && sheetsData.length > 0) {
-            const localBackup = loadBackupFromLocalStorage();
-            if (localBackup && localBackup.savedAt && localBackup.sheets && Object.keys(localBackup.sheets).length > 0) {
-                const maxSupabaseTime = Math.max(...sheetsData.map(s => s.updated_at ? new Date(s.updated_at).getTime() : 0));
-                if (localBackup.savedAt > maxSupabaseTime + 2000) {
-                    console.log('📂 localStorage backup is newer than Supabase — restoring locally and pushing to Supabase');
-                    sheets = localBackup.sheets;
-                    currentSheetId = localBackup.currentSheetId || Object.keys(localBackup.sheets)[0];
-                    sheetCounter = localBackup.sheetCounter || 1;
-                    isLoadingFromSupabase = false;
-                    updateSheetTabs();
-                    const firstId = Object.keys(sheets)[0];
-                    if (firstId) { currentSheetId = firstId; switchToSheet(firstId); }
-                    await syncToSupabase();
-                    if (hasAnyData()) syncBackupToSupabase();
-                    return;
-                }
-            }
-        }
-
+        // Laging gamitin ang Supabase bilang source of truth para sa listahan ng sheets at laman.
+        // Huwag i-overwrite ng localStorage — para ang na-delete na sheet hindi na bumalik at ang laman ng table ay consistent sa server.
         const oldSheets = { ...sheets };
         sheets = {};
         sheetCounter = 0;
@@ -2698,31 +2678,24 @@ async function deleteSheet(sheetId) {
     }
     
     if (confirm(`Are you sure you want to delete "${sheets[sheetId].name}"?`)) {
-        // Delete from Supabase if connected
         if (checkSupabaseConnection()) {
-            try {
-                // Delete items first
-                const { error: itemsError } = await window.supabaseClient
-                    .from('inventory_items')
-                    .delete()
-                    .eq('sheet_id', sheetId);
-                
-                if (itemsError) {
-                    console.error('Error deleting items from Supabase:', itemsError);
+            var itemsErr = null, sheetErr = null;
+            for (var attempt = 0; attempt < 2; attempt++) {
+                try {
+                    var r1 = await window.supabaseClient.from('inventory_items').delete().eq('sheet_id', sheetId);
+                    itemsErr = r1.error;
+                    var r2 = await window.supabaseClient.from('sheets').delete().eq('id', sheetId);
+                    sheetErr = r2.error;
+                    if (!itemsErr && !sheetErr) break;
+                    if (itemsErr) console.error('Error deleting items from Supabase:', itemsErr);
+                    if (sheetErr) console.error('Error deleting sheet from Supabase:', sheetErr);
+                    if (attempt === 0) await new Promise(function(r) { setTimeout(r, 800); });
+                } catch (e) {
+                    console.error('Error deleting from Supabase:', e);
+                    if (attempt === 1) { itemsErr = itemsErr || e; sheetErr = sheetErr || e; }
                 }
-                
-                // Delete sheet
-                const { error: sheetError } = await window.supabaseClient
-                    .from('sheets')
-                    .delete()
-                    .eq('id', sheetId);
-                
-                if (sheetError) {
-                    console.error('Error deleting sheet from Supabase:', sheetError);
-                }
-            } catch (error) {
-                console.error('Error deleting from Supabase:', error);
             }
+            if (itemsErr || sheetErr) alert('Hindi na-delete sa server. Subukan ang "Refresh from server" o i-check ang internet. Sa refresh ay maaaring bumalik ang sheet.');
         }
         
         delete sheets[sheetId];
