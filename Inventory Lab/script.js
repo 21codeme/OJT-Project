@@ -75,25 +75,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No backup data yet. I-open muna ang main Inventory page (walang ?backup=1), hintayin mag-load ang data, tapos balik dito. O i-refresh ang main Inventory bago buksan ang Backup.</td></tr>';
         }
         document.getElementById('restoreBackupBtn').addEventListener('click', async function() {
-            if (!confirm('Restore backup data to Inventory? This will replace current Inventory data.')) return;
-            var snap = await loadBackupFromSupabase();
-            if (!snap || !snap.sheets || Object.keys(snap.sheets).length === 0) snap = loadBackupSnapshot();
-            if (!snap || !snap.sheets || Object.keys(snap.sheets).length === 0) snap = loadBackupFromLocalStorage();
-            if (!snap || !snap.sheets) { alert('No backup data to restore.'); return; }
-            sheets = snap.sheets;
-            currentSheetId = snap.currentSheetId || Object.keys(sheets)[0];
-            sheetCounter = snap.sheetCounter || 1;
-            var backupStr = JSON.stringify({ sheets: sheets, currentSheetId: currentSheetId, sheetCounter: sheetCounter, savedAt: Date.now() });
-            localStorage.setItem(BACKUP_KEY, backupStr);
-            if (typeof syncToSupabase === 'function' && checkSupabaseConnection()) {
-                syncToSupabase().then(function() {
-                    window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
-                }).catch(function() {
-                    window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
-                });
-            } else {
-                window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
-            }
+            var sid = currentSheetId;
+            var sheet = sheets[sid];
+            if (!sheet || !sheet.data) { alert('Walang data sa sheet na ito para i-restore.'); return; }
+            var sheetName = (sheet.name || sid || 'Sheet').toString();
+            if (!confirm('I-restore lang ang sheet na "' + sheetName + '" sa Inventory? Ang ibang sheet sa Inventory ay hindi papalitan.')) return;
+            try {
+                localStorage.setItem(RESTORE_ONE_SHEET_KEY, JSON.stringify({
+                    sheetId: sid,
+                    sheet: { id: sheet.id, name: sheet.name, data: sheet.data.slice(), hasData: sheet.hasData, highlightStates: (sheet.highlightStates || []).slice(), pictureUrls: (sheet.pictureUrls || []).slice() },
+                    savedAt: Date.now()
+                }));
+            } catch (e) { alert('Hindi ma-save ang restore data.'); return; }
+            window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
         });
         })();
         return;
@@ -122,24 +116,49 @@ document.addEventListener('DOMContentLoaded', async function() {
                 clearInterval(checkSupabaseInit);
                 var restored = window.location.search.indexOf('restored=1') !== -1;
                 if (restored) {
-                    var rest = loadBackupFromLocalStorage();
-                    if (rest && rest.sheets && Object.keys(rest.sheets).length > 0) {
-                        sheets = rest.sheets;
-                        currentSheetId = rest.currentSheetId || Object.keys(sheets)[0];
-                        sheetCounter = rest.sheetCounter || 1;
+                    var oneSheet = null;
+                    try {
+                        var rawOne = localStorage.getItem(RESTORE_ONE_SHEET_KEY);
+                        if (rawOne) oneSheet = JSON.parse(rawOne);
+                    } catch (e) { /* ignore */ }
+                    if (oneSheet && oneSheet.sheetId && oneSheet.sheet) {
+                        await loadFromSupabase();
+                        var rid = oneSheet.sheetId;
+                        var rs = oneSheet.sheet;
+                        sheets[rid] = { id: rs.id, name: rs.name, data: rs.data || [], hasData: rs.hasData !== false, highlightStates: rs.highlightStates || [], pictureUrls: rs.pictureUrls || [] };
+                        var max = 0;
+                        Object.keys(sheets).forEach(function(k) { var n = parseInt(k.replace(/\D/g, ''), 10); if (!isNaN(n) && n > max) max = n; });
+                        sheetCounter = Math.max(sheetCounter || 1, max + 1);
                         updateSheetTabs();
-                        var fid = Object.keys(sheets)[0];
-                        if (fid) { currentSheetId = fid; switchToSheet(fid); }
+                        currentSheetId = rid;
+                        switchToSheet(rid);
                         syncToSupabase();
-                        if (hasAnyData()) {
-                            saveBackupToLocalStorage();
-                            syncBackupToSupabase();
-                        }
+                        saveBackupToLocalStorage();
+                        if (hasAnyData()) syncBackupToSupabase();
+                        localStorage.removeItem(RESTORE_ONE_SHEET_KEY);
                         if (window.history && window.history.replaceState) {
                             window.history.replaceState({}, '', window.location.pathname + window.location.hash);
                         }
                     } else {
-                        await loadFromSupabase();
+                        var rest = loadBackupFromLocalStorage();
+                        if (rest && rest.sheets && Object.keys(rest.sheets).length > 0) {
+                            sheets = rest.sheets;
+                            currentSheetId = rest.currentSheetId || Object.keys(sheets)[0];
+                            sheetCounter = rest.sheetCounter || 1;
+                            updateSheetTabs();
+                            var fid = Object.keys(sheets)[0];
+                            if (fid) { currentSheetId = fid; switchToSheet(fid); }
+                            syncToSupabase();
+                            if (hasAnyData()) {
+                                saveBackupToLocalStorage();
+                                syncBackupToSupabase();
+                            }
+                            if (window.history && window.history.replaceState) {
+                                window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+                            }
+                        } else {
+                            await loadFromSupabase();
+                        }
                     }
                 } else {
                     await loadFromSupabase();
@@ -161,6 +180,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 const BACKUP_KEY = 'inventory_lab_backup';
 const BACKUP_SNAPSHOT_KEY = 'inventory_lab_backup_snapshot'; // Hindi naaapektuhan ng Clear Data; gamit sa Backup page
 const PERMANENT_BACKUP_KEY = 'inventory_lab_permanent_backup'; // Accumulative — rows never deleted even if removed from main table
+const RESTORE_ONE_SHEET_KEY = 'inventory_lab_restore_one_sheet'; // Kapag sa Backup page, Restore = current sheet lang
 
 function rowSignature(row) {
     if (!Array.isArray(row)) return String(row || '');

@@ -1684,9 +1684,12 @@
             var restoreBtn = document.getElementById('restoreScheduleBtn');
             if (restoreBtn) {
                 restoreBtn.addEventListener('click', function() {
-                    if (!confirm('I-restore ang backup na ito sa main Class Schedule page? Mapapalitan ang laman ng main page.')) return;
+                    var activeSheet = getActiveSheet();
+                    if (!activeSheet || !activeSheet.entries) { alert('Walang data sa sheet na ito para i-restore.'); return; }
+                    var sheetName = (activeSheet.name || 'Sheet').toString();
+                    if (!confirm('I-restore lang ang sheet na "' + sheetName + '" sa Class Schedule? Ang ibang sheet ay hindi papalitan.')) return;
                     try {
-                        var payload = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: getPageMetadata() };
+                        var payload = { restoreOneSheet: true, sheet: JSON.parse(JSON.stringify(activeSheet)) };
                         localStorage.setItem(RESTORE_PAYLOAD_KEY, JSON.stringify(payload));
                         window.location.href = 'index.html';
                     } catch (e) {
@@ -1703,7 +1706,27 @@
                     localStorage.removeItem(RESTORE_PAYLOAD_KEY);
                 }
             } catch (e) { }
-            if (restorePayload && restorePayload.sheets && restorePayload.sheets.length > 0) {
+            if (restorePayload && restorePayload.restoreOneSheet && restorePayload.sheet) {
+                var snap = loadBackupSnapshot();
+                if (snap && snap.sheets && snap.sheets.length > 0) {
+                    sheets = snap.sheets.slice();
+                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
+                }
+                var oneSheet = restorePayload.sheet;
+                var idx = sheets.findIndex(function(s) { return s.id === oneSheet.id; });
+                if (idx >= 0) sheets[idx] = oneSheet;
+                else {
+                    sheets.push(oneSheet);
+                    if (oneSheet.id >= nextSheetId) nextSheetId = oneSheet.id + 1;
+                }
+                activeSheetId = oneSheet.id;
+                renderSheetTabs();
+                renderScheduleGrid();
+                saveBackupSnapshot();
+                syncBackupToSupabase();
+                if (document.getElementById('restoreScheduleBtn')) document.getElementById('restoreScheduleBtn').style.display = 'none';
+                restoreJustApplied = true;
+            } else if (restorePayload && restorePayload.sheets && restorePayload.sheets.length > 0) {
                 sheets = restorePayload.sheets;
                 activeSheetId = restorePayload.activeSheetId != null ? restorePayload.activeSheetId : (sheets[0] && sheets[0].id);
                 if (restorePayload.nextSheetId != null) nextSheetId = restorePayload.nextSheetId;
