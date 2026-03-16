@@ -684,25 +684,26 @@ function createActionCell() {
     deleteBtn.className = 'delete-btn';
     deleteBtn.textContent = '🗑️ Delete';
     deleteBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to delete this row?')) {
-            const tr = this.closest('tr');
-            if (tr) {
-                tr.remove();
-                mergeUnitColumnsInTable();
-                updateDataFromTable();
-                
-                // Check if table is now empty
-                const tbody = document.getElementById('tableBody');
-                if (tbody.children.length === 0) {
-                    tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No data loaded. Please import an Excel file or add items manually.</td></tr>';
-                    setCurrentSheetData([], false);
-                    document.getElementById('exportBtn').disabled = !hasAnyData();
-                    document.getElementById('clearBtn').disabled = true;
-                } else {
-                    updateDataFromTable();
-                }
-            }
+        if (!confirm('Are you sure you want to delete this row?')) return;
+        const tr = this.closest('tr');
+        if (!tr) return;
+
+        // Alisin muna ang row sa DOM
+        tr.remove();
+
+        // I-save ang current sheet data batay sa bagong table (kasama na ang delete)
+        saveCurrentSheetData();
+
+        // I-redraw ang buong table mula sa data para ma-reset nang maayos ang lahat ng columns/rowSpan
+        const sheet = getCurrentSheet();
+        if (sheet && sheet.data) {
+            displayData(sheet.data);
         }
+        
+        // Enable/disable buttons depende kung may natitirang data
+        const hasDataNow = hasAnyData();
+        document.getElementById('exportBtn').disabled = !hasDataNow;
+        document.getElementById('clearBtn').disabled = !hasDataNow;
     });
     
     buttonContainer.appendChild(highlightBtn);
