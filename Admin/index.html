@@ -158,6 +158,18 @@
             border: 1px solid #d7dbe0;
             font-size: 0.9rem;
         }
+        .att-actions-cell { white-space: nowrap; }
+        .att-actions-cell button {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-right: 4px;
+        }
+        .btn-row-edit { background: #1e3c72; color: #fff; }
+        .btn-row-reopen { background: #22c55e; color: #fff; }
 
         @media (max-width: 980px) {
             .admin-layout { grid-template-columns: 1fr; min-height: auto; }
@@ -278,6 +290,7 @@
                                                 <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">O.T. Out</th>
                                                 <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Photo</th>
                                                 <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Total Hours</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="attendanceTableBody"></tbody>
@@ -300,6 +313,27 @@
             <button type="button" class="modal-close" id="photoModalClose" aria-label="Close">&times;</button>
             <img id="photoPreviewImg" src="" alt="Preview">
             <div class="modal-caption" id="photoPreviewCaption"></div>
+        </div>
+    </div>
+    <div id="editAttendanceModal" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+        <div style="background:#fff; border-radius:14px; padding:16px; max-width:480px; width:100%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0; color:#1e3c72; font-size:1.05rem;">Edit attendance time</h3>
+                <button type="button" id="editAttClose" style="border:none; border-radius:50%; width:32px; height:32px; background:#1e3c72; color:#fff; cursor:pointer;">&times;</button>
+            </div>
+            <p id="editAttDateLabel" style="margin:0 0 10px; font-weight:700; color:#444;"></p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div><label>AM In</label><input type="time" id="editAmIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+                <div><label>AM Out</label><input type="time" id="editAmOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+                <div><label>PM In</label><input type="time" id="editPmIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+                <div><label>PM Out</label><input type="time" id="editPmOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+                <div><label>O.T. In</label><input type="time" id="editOtIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+                <div><label>O.T. Out</label><input type="time" id="editOtOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+                <button type="button" id="editAttCancel" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="editAttSave" class="btn btn-primary">Save</button>
+            </div>
         </div>
     </div>
 
@@ -682,6 +716,65 @@
                         if (photoModalCaption) photoModalCaption.textContent = label || '';
                         if (photoModal) photoModal.classList.add('show');
                     }
+                    var editModal = document.getElementById('editAttendanceModal');
+                    var editDateLabel = document.getElementById('editAttDateLabel');
+                    var editAmIn = document.getElementById('editAmIn');
+                    var editAmOut = document.getElementById('editAmOut');
+                    var editPmIn = document.getElementById('editPmIn');
+                    var editPmOut = document.getElementById('editPmOut');
+                    var editOtIn = document.getElementById('editOtIn');
+                    var editOtOut = document.getElementById('editOtOut');
+                    var editAttSave = document.getElementById('editAttSave');
+                    var editAttCancel = document.getElementById('editAttCancel');
+                    var editAttClose = document.getElementById('editAttClose');
+                    var currentEditDate = null;
+                    function openEditModal(row) {
+                        if (!editModal) return;
+                        currentEditDate = row.date;
+                        if (editDateLabel) editDateLabel.textContent = 'Date: ' + (row.date || '—');
+                        if (editAmIn) editAmIn.value = row.am_in_time || '';
+                        if (editAmOut) editAmOut.value = row.am_out_time || '';
+                        if (editPmIn) editPmIn.value = row.pm_in_time || '';
+                        if (editPmOut) editPmOut.value = row.pm_out_time || '';
+                        if (editOtIn) editOtIn.value = row.ot_in_time || '';
+                        if (editOtOut) editOtOut.value = row.ot_out_time || '';
+                        editModal.style.display = 'flex';
+                    }
+                    function closeEditModal() {
+                        if (editModal) editModal.style.display = 'none';
+                        currentEditDate = null;
+                    }
+                    if (editAttCancel) editAttCancel.addEventListener('click', closeEditModal);
+                    if (editAttClose) editAttClose.addEventListener('click', closeEditModal);
+                    if (editModal) {
+                        editModal.addEventListener('click', function(e) {
+                            if (e.target === editModal) closeEditModal();
+                        });
+                    }
+                    if (editAttSave) {
+                        editAttSave.addEventListener('click', async function() {
+                            if (!currentEditDate) { closeEditModal(); return; }
+                            var payload = {
+                                am_in_time: editAmIn && editAmIn.value ? editAmIn.value : null,
+                                am_out_time: editAmOut && editAmOut.value ? editAmOut.value : null,
+                                pm_in_time: editPmIn && editPmIn.value ? editPmIn.value : null,
+                                pm_out_time: editPmOut && editPmOut.value ? editPmOut.value : null,
+                                ot_in_time: editOtIn && editOtIn.value ? editOtIn.value : null,
+                                ot_out_time: editOtOut && editOtOut.value ? editOtOut.value : null
+                            };
+                            try {
+                                var upRes = await supabase.from('ojt_attendance')
+                                    .update(payload)
+                                    .eq('trainee_id', traineeId)
+                                    .eq('date', currentEditDate);
+                                if (upRes.error) throw upRes.error;
+                                closeEditModal();
+                                renderAttendanceIfNeeded();
+                            } catch (e) {
+                                alert('Failed to save changes. Please try again.');
+                            }
+                        });
+                    }
                     rows.forEach(function(r) {
                         var tr = document.createElement('tr');
                         var amIn = r.am_in_time || '—';
@@ -745,6 +838,32 @@
                         tr.appendChild(document.createElement('td')).textContent = otOut;
                         tr.appendChild(photoCell);
                         tr.appendChild(document.createElement('td')).textContent = totalHrsText;
+                        var actionsTd = document.createElement('td');
+                        actionsTd.className = 'att-actions-cell';
+                        var btnEdit = document.createElement('button');
+                        btnEdit.type = 'button';
+                        btnEdit.className = 'btn-row-edit';
+                        btnEdit.textContent = 'Edit';
+                        btnEdit.addEventListener('click', function() { openEditModal(r); });
+                        var btnReopenRow = document.createElement('button');
+                        btnReopenRow.type = 'button';
+                        btnReopenRow.className = 'btn-row-reopen';
+                        btnReopenRow.textContent = 'Re-open';
+                        btnReopenRow.addEventListener('click', async function() {
+                            try {
+                                var rr = await supabase.from('ojt_attendance_reopen').upsert(
+                                    { trainee_id: traineeId, date: r.date },
+                                    { onConflict: 'trainee_id,date' }
+                                );
+                                if (rr.error) throw rr.error;
+                                alert('Re-opened attendance for ' + (r.date || '') + '. Trainee can edit this day.');
+                            } catch (e) {
+                                alert('Failed to re-open this date.');
+                            }
+                        });
+                        actionsTd.appendChild(btnEdit);
+                        actionsTd.appendChild(btnReopenRow);
+                        tr.appendChild(actionsTd);
                         tbody.appendChild(tr);
                     });
                 } catch (e) {
