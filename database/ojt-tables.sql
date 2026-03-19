@@ -64,10 +64,12 @@ CREATE TABLE IF NOT EXISTS ojt_attendance (
     ot_in_time TEXT,
     ot_in_photo TEXT,
     ot_out_time TEXT,
+    ot_closed BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(trainee_id, date)
 );
+ALTER TABLE ojt_attendance ADD COLUMN IF NOT EXISTS ot_closed BOOLEAN DEFAULT false;
 
 ALTER TABLE ojt_attendance ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on ojt_attendance" ON ojt_attendance;

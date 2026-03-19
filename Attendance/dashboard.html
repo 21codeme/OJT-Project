@@ -144,6 +144,11 @@
         .modal-box .photo-date-note.show { display: block; }
         .modal-box .photo-date-note.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
         .modal-box .photo-date-note.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .modal-box .time-set-wrap { margin-bottom: 16px; }
+        .modal-box .time-set-wrap label { display: block; font-weight: 700; color: #333; margin-bottom: 6px; }
+        .modal-box .time-set-wrap input[type="time"] { padding: 10px 12px; border-radius: 10px; border: 1px solid #d7dbe0; font-size: 1rem; }
+        .btn-close-ot { background: #64748b !important; color: #fff !important; }
+        .btn-close-ot:hover { opacity: 0.9; }
         .modal-box .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .modal-box .btn-cancel { padding: 10px 18px; border: 1px solid #d7dbe0; border-radius: 10px; background: #fff; font-weight: 700; cursor: pointer; }
         .modal-box .btn-confirm { padding: 10px 18px; border: none; border-radius: 10px; background: #22c55e; color: #fff; font-weight: 700; cursor: pointer; }
@@ -406,20 +411,38 @@
                         <button type="button" class="btn-time time-out-pm" id="btnTimeOutPM">Time Out PM</button>
                         <button type="button" class="btn-time time-in-ot" id="btnTimeInOT">Time In O.T.</button>
                         <button type="button" class="btn-time time-out-ot" id="btnTimeOutOT">Time Out O.T.</button>
+                        <button type="button" class="btn-time btn-close-ot" id="btnCloseOT" title="Kung hindi ka mag-overtime ngayong araw">Close O.T. (No overtime today)</button>
                     </div>
                 </div>
                 <div id="timeInModal" class="modal-overlay">
                     <div class="modal-box">
                         <h3 id="timeInModalTitle">Time In — Upload photo</h3>
-                        <div class="photo-upload">
-                            <label for="timeInPhoto">Photo (required)</label>
+                        <div class="photo-upload" id="timeInPhotoUploadWrap">
+                            <label for="timeInPhoto" id="timeInPhotoLabel">Photo (required)</label>
                             <input type="file" id="timeInPhoto" accept="image/*" capture="environment">
                             <img id="timeInPhotoPreview" class="photo-preview" alt="Preview">
                             <p id="timeInPhotoDateNote" class="photo-date-note" role="alert"></p>
                         </div>
+                        <div id="timeInTimeWrap" class="time-set-wrap" style="display:none;">
+                            <label for="timeInTimeInput">Oras (kung nire-open ng admin)</label>
+                            <input type="time" id="timeInTimeInput">
+                        </div>
                         <div class="modal-actions">
                             <button type="button" class="btn-cancel" id="timeInModalCancel">Cancel</button>
                             <button type="button" class="btn-confirm" id="timeInModalConfirm">Confirm Time In</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="timeOutModal" class="modal-overlay">
+                    <div class="modal-box">
+                        <h3 id="timeOutModalTitle">Time Out — Set oras</h3>
+                        <div class="time-set-wrap">
+                            <label for="timeOutTimeInput">Oras</label>
+                            <input type="time" id="timeOutTimeInput">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="timeOutModalCancel">Cancel</button>
+                            <button type="button" class="btn-confirm" id="timeOutModalConfirm">Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -600,8 +623,19 @@
             var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
             var calYear, calMonth;
             var timeInModalSession = null;
+            var timeOutModalSession = null;
+            var timeInTimeWrap = document.getElementById('timeInTimeWrap');
+            var timeInTimeInput = document.getElementById('timeInTimeInput');
             var recordsCache = [];
             var reopenedDates = {};
+            var fillForDateEl = document.getElementById('fillForDate');
+            function getSelectedDateKey() {
+                if (fillForDateEl && fillForDateEl.value) return fillForDateEl.value;
+                return dateKey(new Date());
+            }
+            function initFillForDate() {
+                if (fillForDateEl && !fillForDateEl.value) fillForDateEl.value = dateKey(new Date());
+            }
 
             function getRecords() {
                 return recordsCache || [];
@@ -624,7 +658,8 @@
                             pm_out_time: r.pmOut || null,
                             ot_in_time: otInTime(r) || null,
                             ot_in_photo: (r.otIn && typeof r.otIn === 'object') ? (r.otIn.photo || null) : null,
-                            ot_out_time: r.otOut || null
+                            ot_out_time: r.otOut || null,
+                            ot_closed: !!(r.otClosed)
                         };
                     });
                     supabase.from('ojt_attendance').upsert(rows, { onConflict: 'trainee_id,date' }).then(function() {}).catch(function() {});
@@ -637,7 +672,7 @@
                         var res = await supabase.from('ojt_attendance').select('*').eq('trainee_id', traineeId);
                         if (res && Array.isArray(res.data) && res.data.length > 0) {
                             recordsCache = res.data.map(function(row) {
-                                return {
+                                var rec = {
                                     date: row.date,
                                     amIn: row.am_in_time ? { time: row.am_in_time, photo: row.am_in_photo || '' } : null,
                                     amOut: row.am_out_time || '',
@@ -646,6 +681,8 @@
                                     otIn: row.ot_in_time ? { time: row.ot_in_time, photo: row.ot_in_photo || '' } : null,
                                     otOut: row.ot_out_time || ''
                                 };
+                                if (row.ot_closed) rec.otClosed = true;
+                                return rec;
                             });
                             localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(recordsCache));
                             return;
@@ -676,6 +713,9 @@
             function dateKey(d) {
                 var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
                 return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+            }
+            if (fillForDateEl) {
+                fillForDateEl.addEventListener('change', function() { refreshAttendanceUI(); });
             }
             function timeStr(d) {
                 return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -772,9 +812,9 @@
             }
 
             function updateTodayStatus() {
-                var todayKey = dateKey(new Date());
+                var selKey = getSelectedDateKey();
                 var records = getRecords();
-                var rec = normalizeRec(findRecord(records, todayKey));
+                var rec = normalizeRec(findRecord(records, selKey));
                 var statusEl = document.getElementById('todayStatus');
                 if (!statusEl) return;
                 if (!rec || !hasAny(rec)) statusEl.innerHTML = '<span class="in">No attendance yet today.</span>';
@@ -800,26 +840,31 @@
             function isTimeOutPMWindow() { var m = getNowMinutes(); return m >= 16 * 60 + 30 && m <= 17 * 60; }
 
             function setButtonsState() {
-                var todayKey = dateKey(new Date());
-                var reopenedToday = !!reopenedDates[todayKey];
+                var selectedKey = getSelectedDateKey();
+                var isToday = selectedKey === dateKey(new Date());
+                var reopenedToday = !!reopenedDates[selectedKey];
+                var canEdit = isToday || reopenedToday;
                 var records = getRecords();
-                var rec = normalizeRec(findRecord(records, todayKey));
+                var rec = normalizeRec(findRecord(records, selectedKey));
                 var btnInAM = document.getElementById('btnTimeInAM');
                 var btnOutAM = document.getElementById('btnTimeOutAM');
                 var btnInPM = document.getElementById('btnTimeInPM');
                 var btnOutPM = document.getElementById('btnTimeOutPM');
                 var btnInOT = document.getElementById('btnTimeInOT');
                 var btnOutOT = document.getElementById('btnTimeOutOT');
-                var canInAM = (isTimeInAMWindow() || reopenedToday) && !(rec && amInTime(rec));
-                var canOutAM = (isTimeOutAMWindow() || reopenedToday) && rec && amInTime(rec) && !rec.amOut;
-                var canInPM = (isTimeInPMWindow() || reopenedToday) && !(rec && pmInTime(rec));
-                var canOutPM = (isTimeOutPMWindow() || reopenedToday) && rec && pmInTime(rec) && !rec.pmOut;
+                var canInAM = canEdit && (isTimeInAMWindow() || reopenedToday) && !(rec && amInTime(rec));
+                var canOutAM = canEdit && (isTimeOutAMWindow() || reopenedToday) && rec && amInTime(rec) && !rec.amOut;
+                var canInPM = canEdit && (isTimeInPMWindow() || reopenedToday) && !(rec && pmInTime(rec));
+                var canOutPM = canEdit && (isTimeOutPMWindow() || reopenedToday) && rec && pmInTime(rec) && !rec.pmOut;
+                var otClosedToday = !!(rec && rec.otClosed);
                 if (btnInAM) btnInAM.disabled = !canInAM;
                 if (btnOutAM) btnOutAM.disabled = !canOutAM;
                 if (btnInPM) btnInPM.disabled = !canInPM;
                 if (btnOutPM) btnOutPM.disabled = !canOutPM;
-                if (btnInOT) btnInOT.disabled = !!(rec && otInTime(rec));
-                if (btnOutOT) btnOutOT.disabled = !(rec && otInTime(rec) && !rec.otOut);
+                if (btnInOT) btnInOT.disabled = !canEdit || otClosedToday || !!(rec && otInTime(rec));
+                if (btnOutOT) btnOutOT.disabled = !canEdit || otClosedToday || !(rec && otInTime(rec) && !rec.otOut);
+                var btnCloseOT = document.getElementById('btnCloseOT');
+                if (btnCloseOT) btnCloseOT.style.display = (canEdit && !otClosedToday) ? 'inline-block' : 'none';
             }
 
             function renderTable() {
@@ -869,7 +914,7 @@
                     if (pmIn && pmOut) totalMins += Math.max(0, timeToMinutes(pmOut) - timeToMinutes(pmIn));
                     var otIn = otInTime(r);
                     var otOut = r.otOut;
-                    if (otIn && otOut) totalMins += Math.max(0, timeToMinutes(otOut) - timeToMinutes(otIn));
+                    if (otIn && otOut && !r.otClosed) totalMins += Math.max(0, timeToMinutes(otOut) - timeToMinutes(otIn));
                 });
                 return Math.round(totalMins / 60 * 10) / 10;
             }
@@ -976,106 +1021,175 @@
                 photoPreview.src = '';
                 photoPreview.classList.remove('has-img');
                 if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
+                if (timeInTimeWrap) timeInTimeWrap.style.display = 'none';
+                if (timeInTimeInput) timeInTimeInput.value = '';
                 modal.classList.remove('show');
+            }
+            function setTimeInputToNow(el) {
+                if (!el) return;
+                var d = new Date();
+                el.value = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
             }
             document.getElementById('timeInModalCancel').addEventListener('click', closeTimeInModal);
             modal.addEventListener('click', function(e) { if (e.target === modal) closeTimeInModal(); });
             document.getElementById('timeInModalConfirm').addEventListener('click', function() {
                 if (!timeInModalSession) return;
+                var selKey = getSelectedDateKey();
+                var reopenedToday = !!reopenedDates[selKey];
+                var isExactDay = selKey === dateKey(new Date());
                 var file = photoInput.files && photoInput.files[0];
-                if (!file) { alert('Please upload a photo for Time In.'); return; }
-                if (!checkFileDateMatchesToday(file)) {
-                    alert('Hindi pareho ang date ng picture sa pag-time in. Ang larawan ay dapat kinuha o ginawa ngayong araw. Pumili ng picture na may petsa ngayong araw.');
-                    return;
+                if (!reopenedToday) {
+                    if (!file) { alert('Please upload a photo for Time In.'); return; }
+                    if (!checkFileDateMatchesToday(file)) {
+                        alert('Hindi pareho ang date ng picture sa pag-time in. Ang larawan ay dapat kinuha o ginawa ngayong araw. Pumili ng picture na may petsa ngayong araw.');
+                        return;
+                    }
                 }
-                var todayKey = dateKey(new Date());
                 var records = getRecords();
-                var rec = findRecord(records, todayKey);
+                var rec = findRecord(records, selKey);
                 if (!rec) {
-                    rec = { date: todayKey };
+                    rec = { date: selKey };
                     records.push(rec);
                     records.sort(function(a, b) { return a.date.localeCompare(b.date); });
                 }
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var photo = e.target.result;
-                    var t = timeStr(new Date());
-                    if (timeInModalSession === 'AM') rec.amIn = { time: t, photo: photo };
-                    else if (timeInModalSession === 'PM') rec.pmIn = { time: t, photo: photo };
-                    else if (timeInModalSession === 'OT') rec.otIn = { time: t, photo: photo };
+                var t = (reopenedToday && timeInTimeInput && timeInTimeInput.value) ? timeInTimeInput.value : timeStr(new Date());
+                function saveWithPhoto(photo) {
+                    if (timeInModalSession === 'AM') rec.amIn = { time: t, photo: photo || '' };
+                    else if (timeInModalSession === 'PM') rec.pmIn = { time: t, photo: photo || '' };
+                    else if (timeInModalSession === 'OT') rec.otIn = { time: t, photo: photo || '' };
                     saveRecords(records);
                     closeTimeInModal();
                     refreshAttendanceUI();
-                };
-                reader.readAsDataURL(file);
+                }
+                if (isExactDay && file && (!reopenedToday || checkFileDateMatchesToday(file))) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) { saveWithPhoto(e.target.result); };
+                    reader.readAsDataURL(file);
+                } else {
+                    if (file && !checkFileDateMatchesToday(file)) {
+                        alert('Sa nire-open na araw, ang picture ay dapat kinuha sa mismong araw na iyon. Itinatala na walang picture.');
+                    }
+                    saveWithPhoto('');
+                }
             });
 
-            document.getElementById('btnTimeInAM').addEventListener('click', function() {
-                var todayKey = dateKey(new Date());
-                var records = getRecords();
-                var rec = normalizeRec(findRecord(records, todayKey));
-                if (rec && amInTime(rec)) return;
-                timeInModalSession = 'AM';
-                modalTitle.textContent = 'Time In AM — Upload photo (required)';
+            function openTimeInModal(session, title) {
+                timeInModalSession = session;
+                modalTitle.textContent = title;
                 photoInput.value = '';
                 photoPreview.src = '';
                 photoPreview.classList.remove('has-img');
                 if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
+                var selKey = getSelectedDateKey();
+                var isReopened = !!reopenedDates[selKey];
+                var isExactDay = selKey === dateKey(new Date());
+                if (timeInTimeWrap) timeInTimeWrap.style.display = isReopened ? 'block' : 'none';
+                if (timeInTimeInput && isReopened) setTimeInputToNow(timeInTimeInput);
+                var photoWrap = document.getElementById('timeInPhotoUploadWrap');
+                if (photoWrap) photoWrap.style.display = isExactDay ? 'block' : 'none';
+                var photoLabel = document.getElementById('timeInPhotoLabel');
+                if (photoLabel) photoLabel.textContent = isReopened ? 'Photo (optional – sa araw na ito lang pwede mag-upload)' : 'Photo (required)';
                 modal.classList.add('show');
+            }
+            document.getElementById('btnTimeInAM').addEventListener('click', function() {
+                var selKey = getSelectedDateKey();
+                var records = getRecords();
+                var rec = normalizeRec(findRecord(records, selKey));
+                if (rec && amInTime(rec)) return;
+                openTimeInModal('AM', 'Time In AM — Upload photo (required)');
             });
             document.getElementById('btnTimeInPM').addEventListener('click', function() {
-                var todayKey = dateKey(new Date());
+                var selKey = getSelectedDateKey();
                 var records = getRecords();
-                var rec = normalizeRec(findRecord(records, todayKey));
+                var rec = normalizeRec(findRecord(records, selKey));
                 if (rec && pmInTime(rec)) return;
-                timeInModalSession = 'PM';
-                modalTitle.textContent = 'Time In PM — Upload photo (required)';
-                photoInput.value = '';
-                photoPreview.src = '';
-                photoPreview.classList.remove('has-img');
-                if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
-                modal.classList.add('show');
+                openTimeInModal('PM', 'Time In PM — Upload photo (required)');
             });
-            document.getElementById('btnTimeOutAM').addEventListener('click', function() {
-                var todayKey = dateKey(new Date());
+            var timeOutModal = document.getElementById('timeOutModal');
+            var timeOutTimeInput = document.getElementById('timeOutTimeInput');
+            var timeOutModalTitle = document.getElementById('timeOutModalTitle');
+            function closeTimeOutModal() {
+                timeOutModalSession = null;
+                if (timeOutModal) timeOutModal.classList.remove('show');
+            }
+            function doTimeOut(session, getRec, setOut) {
+                var selKey = getSelectedDateKey();
                 var records = getRecords();
-                var rec = findRecord(records, todayKey);
+                var rec = findRecord(records, selKey);
+                rec = normalizeRec(rec);
+                if (!rec) return;
+                var reopenedToday = !!reopenedDates[selKey];
+                if (reopenedToday) {
+                    timeOutModalSession = session;
+                    timeOutModalTitle.textContent = 'Time Out ' + (session === 'AM' ? 'AM' : session === 'PM' ? 'PM' : 'O.T.') + ' — Set oras';
+                    setTimeInputToNow(timeOutTimeInput);
+                    timeOutModal.classList.add('show');
+                } else {
+                    var t = timeStr(new Date());
+                    setOut(rec, t);
+                    saveRecords(records);
+                    refreshAttendanceUI();
+                }
+            }
+            document.getElementById('timeOutModalCancel').addEventListener('click', closeTimeOutModal);
+            if (timeOutModal) timeOutModal.addEventListener('click', function(e) { if (e.target === timeOutModal) closeTimeOutModal(); });
+            document.getElementById('timeOutModalConfirm').addEventListener('click', function() {
+                if (!timeOutModalSession) return;
+                var t = timeOutTimeInput && timeOutTimeInput.value ? timeOutTimeInput.value : timeStr(new Date());
+                var selKey = getSelectedDateKey();
+                var records = getRecords();
+                var rec = findRecord(records, selKey);
+                if (!rec) { closeTimeOutModal(); return; }
+                rec = normalizeRec(rec);
+                if (timeOutModalSession === 'AM') rec.amOut = t;
+                else if (timeOutModalSession === 'PM') rec.pmOut = t;
+                else if (timeOutModalSession === 'OT') rec.otOut = t;
+                saveRecords(records);
+                closeTimeOutModal();
+                refreshAttendanceUI();
+            });
+
+            document.getElementById('btnTimeOutAM').addEventListener('click', function() {
+                var selKey = getSelectedDateKey();
+                var records = getRecords();
+                var rec = findRecord(records, selKey);
                 rec = normalizeRec(rec);
                 if (!rec || !amInTime(rec) || rec.amOut) return;
-                rec.amOut = timeStr(new Date());
-                saveRecords(records);
-                refreshAttendanceUI();
+                doTimeOut('AM', function() { return rec; }, function(r, t) { r.amOut = t; });
             });
             document.getElementById('btnTimeOutPM').addEventListener('click', function() {
-                var todayKey = dateKey(new Date());
+                var selKey = getSelectedDateKey();
                 var records = getRecords();
-                var rec = findRecord(records, todayKey);
+                var rec = findRecord(records, selKey);
                 rec = normalizeRec(rec);
                 if (!rec || !pmInTime(rec) || rec.pmOut) return;
-                rec.pmOut = timeStr(new Date());
-                saveRecords(records);
-                refreshAttendanceUI();
+                doTimeOut('PM', function() { return rec; }, function(r, t) { r.pmOut = t; });
             });
             document.getElementById('btnTimeInOT').addEventListener('click', function() {
-                var todayKey = dateKey(new Date());
+                var selKey = getSelectedDateKey();
                 var records = getRecords();
-                var rec = normalizeRec(findRecord(records, todayKey));
+                var rec = normalizeRec(findRecord(records, selKey));
                 if (rec && otInTime(rec)) return;
-                timeInModalSession = 'OT';
-                modalTitle.textContent = 'Time In O.T. — Upload photo (required)';
-                photoInput.value = '';
-                photoPreview.src = '';
-                photoPreview.classList.remove('has-img');
-                if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
-                modal.classList.add('show');
+                openTimeInModal('OT', 'Time In O.T. — Upload photo (required)');
             });
             document.getElementById('btnTimeOutOT').addEventListener('click', function() {
-                var todayKey = dateKey(new Date());
+                var selKey = getSelectedDateKey();
                 var records = getRecords();
-                var rec = findRecord(records, todayKey);
+                var rec = findRecord(records, selKey);
                 rec = normalizeRec(rec);
                 if (!rec || !otInTime(rec) || rec.otOut) return;
-                rec.otOut = timeStr(new Date());
+                doTimeOut('OT', function() { return rec; }, function(r, t) { r.otOut = t; });
+            });
+            document.getElementById('btnCloseOT').addEventListener('click', function() {
+                var selKey = getSelectedDateKey();
+                var records = getRecords();
+                var rec = findRecord(records, selKey);
+                if (!rec) {
+                    rec = { date: selKey };
+                    records.push(rec);
+                    records.sort(function(a, b) { return a.date.localeCompare(b.date); });
+                }
+                rec.otClosed = true;
                 saveRecords(records);
                 refreshAttendanceUI();
             });
@@ -1088,6 +1202,7 @@
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
             }
             loadRecordsFromSupabase().then(function() {
+                initFillForDate();
                 refreshAttendanceUI();
             });
             setInterval(function() {

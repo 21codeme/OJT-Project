@@ -127,6 +127,37 @@
         #photoPreviewModal .modal-inner .modal-close { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #1e3c72; color: #fff; font-size: 1.2rem; cursor: pointer; line-height: 1; }
         #photoPreviewModal .modal-inner .modal-close:hover { background: #2a5298; }
         #photoPreviewModal .modal-caption { margin-top: 8px; font-weight: 700; color: #333; font-size: 0.9rem; }
+        .top-header-actions { position: relative; }
+        #reopenActions {
+            position: absolute;
+            top: 110%;
+            right: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            padding: 12px 14px;
+            min-width: 380px;
+            display: none;
+            z-index: 1000;
+        }
+        #reopenActions .row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        #reopenActions label {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #1e3c72;
+        }
+        #reopenActions input[type="date"] {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #d7dbe0;
+            font-size: 0.9rem;
+        }
 
         @media (max-width: 980px) {
             .admin-layout { grid-template-columns: 1fr; min-height: auto; }
@@ -140,8 +171,22 @@
             <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
             <span>OJT Admin</span>
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-            <button class="btn btn-primary" type="button" id="btnReopen" style="display:none;" title="Re-open attendance buttons for selected trainee for today">Re-open</button>
+        <div class="top-header-actions" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" id="btnReopenMenu" style="display:none;" title="Show re-open options">Re-open</button>
+            <div id="reopenActions">
+                <div class="row">
+                    <label for="reopenDate">Re-open for date:</label>
+                    <input type="date" id="reopenDate">
+                    <button class="btn btn-primary" type="button" id="btnReopen" style="display:none;" title="Re-open attendance for selected trainee for the chosen date">Re-open for date</button>
+                </div>
+                <div class="row">
+                    <label for="reopenFrom">Re-open range:</label>
+                    <input type="date" id="reopenFrom" placeholder="From">
+                    <span>to</span>
+                    <input type="date" id="reopenTo" placeholder="To">
+                    <button class="btn btn-secondary" type="button" id="btnReopenRange" style="display:none;" title="Re-open attendance for all days in range">Re-open range</button>
+                </div>
+            </div>
             <button class="btn btn-secondary" type="button" id="btnLogout" style="display:none;">Log out</button>
         </div>
     </header>
@@ -284,7 +329,10 @@
             var btnLogin = document.getElementById('btnLogin');
             var loginError = document.getElementById('loginError');
             var btnLogout = document.getElementById('btnLogout');
+            var btnReopenMenu = document.getElementById('btnReopenMenu');
+            var reopenActions = document.getElementById('reopenActions');
             var btnReopen = document.getElementById('btnReopen');
+            var btnReopenRange = document.getElementById('btnReopenRange');
 
             var traineeSearch = document.getElementById('traineeSearch');
             var traineeListEl = document.getElementById('traineeList');
@@ -301,12 +349,17 @@
                 if (loginPanel) loginPanel.classList.remove('active');
                 if (adminPanel) adminPanel.classList.add('active');
                 if (btnLogout) btnLogout.style.display = 'inline-block';
+                if (btnReopenMenu) btnReopenMenu.style.display = 'inline-block';
                 if (btnReopen) btnReopen.style.display = 'inline-block';
+                if (btnReopenRange) btnReopenRange.style.display = 'inline-block';
             } else {
                 if (loginPanel) loginPanel.classList.add('active');
                 if (adminPanel) adminPanel.classList.remove('active');
                 if (btnLogout) btnLogout.style.display = 'none';
+                if (btnReopenMenu) btnReopenMenu.style.display = 'none';
                 if (btnReopen) btnReopen.style.display = 'none';
+                if (btnReopenRange) btnReopenRange.style.display = 'none';
+                if (reopenActions) reopenActions.style.display = 'none';
             }
 
             function loadTrainees() {
@@ -740,6 +793,12 @@
                     location.reload();
                 });
             }
+            if (btnReopenMenu) {
+                btnReopenMenu.addEventListener('click', function() {
+                    if (!reopenActions) return;
+                    reopenActions.style.display = (reopenActions.style.display === 'none' || !reopenActions.style.display) ? 'inline-flex' : 'none';
+                });
+            }
 
             (function setupPhotoModal() {
                 var photoModal = document.getElementById('photoPreviewModal');
@@ -748,14 +807,21 @@
                 if (photoModal) photoModal.addEventListener('click', function(e) { if (e.target === photoModal) photoModal.classList.remove('show'); });
             })();
 
+            function getDateStr(d) {
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+            var reopenDateEl = document.getElementById('reopenDate');
+            if (reopenDateEl) {
+                var t = new Date();
+                reopenDateEl.value = getDateStr(t);
+            }
             if (btnReopen) {
                 btnReopen.addEventListener('click', async function() {
                     if (!selectedTrainee || !selectedKey) {
                         alert('Select a trainee first.');
                         return;
                     }
-                    var today = new Date();
-                    var dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                    var dateStr = reopenDateEl && reopenDateEl.value ? reopenDateEl.value : getDateStr(new Date());
                     var traineeId = selectedTrainee.id || selectedKey;
                     var supabase = window.supabaseClient || await waitForSupabaseReady();
                     if (!supabase) {
@@ -769,9 +835,52 @@
                         );
                         if (res.error) throw res.error;
                         var name = selectedTrainee.fullName || selectedTrainee.email || 'Trainee';
-                        alert('Attendance reopened for ' + name + ' for today (' + dateStr + '). The trainee can use the buttons again for this day.');
+                        alert('Attendance reopened for ' + name + ' for ' + dateStr + '. The trainee can fill in and set time for this day.');
+                        if (reopenActions) reopenActions.style.display = 'none';
                     } catch (e) {
                         alert('Failed to re-open. Try again.');
+                    }
+                });
+            }
+            var reopenFromEl = document.getElementById('reopenFrom');
+            var reopenToEl = document.getElementById('reopenTo');
+            if (btnReopenRange) {
+                btnReopenRange.addEventListener('click', async function() {
+                    if (!selectedTrainee || !selectedKey) {
+                        alert('Select a trainee first.');
+                        return;
+                    }
+                    var fromVal = reopenFromEl && reopenFromEl.value;
+                    var toVal = reopenToEl && reopenToEl.value;
+                    if (!fromVal || !toVal) {
+                        alert('Enter both From and To dates.');
+                        return;
+                    }
+                    if (fromVal > toVal) {
+                        alert('From date must be on or before To date.');
+                        return;
+                    }
+                    var traineeId = selectedTrainee.id || selectedKey;
+                    var supabase = window.supabaseClient || await waitForSupabaseReady();
+                    if (!supabase) {
+                        alert('Could not connect. Try again.');
+                        return;
+                    }
+                    try {
+                        var rows = [];
+                        var d = new Date(fromVal + 'T12:00:00');
+                        var end = new Date(toVal + 'T12:00:00');
+                        while (d <= end) {
+                            rows.push({ trainee_id: traineeId, date: getDateStr(d) });
+                            d.setDate(d.getDate() + 1);
+                        }
+                        var res = await supabase.from('ojt_attendance_reopen').upsert(rows, { onConflict: 'trainee_id,date' });
+                        if (res.error) throw res.error;
+                        var name = selectedTrainee.fullName || selectedTrainee.email || 'Trainee';
+                        alert('Reopened ' + rows.length + ' days for ' + name + ' from ' + fromVal + ' to ' + toVal + '.');
+                        if (reopenActions) reopenActions.style.display = 'none';
+                    } catch (e) {
+                        alert('Failed to reopen range. Try again.');
                     }
                 });
             }
@@ -786,7 +895,9 @@
                 loginPanel.classList.remove('active');
                 adminPanel.classList.add('active');
                 btnLogout.style.display = 'inline-block';
+                if (btnReopenMenu) btnReopenMenu.style.display = 'inline-block';
                 if (btnReopen) btnReopen.style.display = 'inline-block';
+                if (btnReopenRange) btnReopenRange.style.display = 'inline-block';
                 loadAllFromSupabase().then(function() {
                     renderTraineeList();
                     var trainees = loadTrainees();
@@ -800,7 +911,10 @@
                 loginPanel.classList.add('active');
                 adminPanel.classList.remove('active');
                 btnLogout.style.display = 'none';
+                if (btnReopenMenu) btnReopenMenu.style.display = 'none';
                 if (btnReopen) btnReopen.style.display = 'none';
+                if (btnReopenRange) btnReopenRange.style.display = 'none';
+                if (reopenActions) reopenActions.style.display = 'none';
             }
         })();
     </script>
