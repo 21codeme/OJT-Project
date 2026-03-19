@@ -430,10 +430,7 @@
                         alert('Please create your account first.');
                         return;
                     }
-                    editPanel.classList.toggle('active');
-                    var isActive = editPanel.classList.contains('active');
-                    editPanel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-                    if (isActive) loadEditForm();
+                    window.location.href = 'edit-profile.html';
                 });
             }
 
