@@ -77,6 +77,68 @@
         .placeholder-content p { margin-bottom: 12px; }
         .back-home { display: inline-block; margin-bottom: 16px; color: #1e3c72; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
         .back-home:hover { text-decoration: underline; }
+
+        /* Attendance calendar & real-time */
+        .attendance-wrap { display: flex; flex-direction: column; gap: 24px; }
+        .attendance-now {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+            padding: 20px 24px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 14px; color: #fff; box-shadow: 0 4px 20px rgba(30,60,114,0.25);
+        }
+        .live-clock { font-size: 2.2rem; font-weight: 800; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+        .live-date { font-size: 1rem; opacity: 0.95; margin-top: 4px; }
+        .time-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .btn-time { padding: 12px 20px; border: none; border-radius: 10px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+        .btn-time:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-time-in { background: #22c55e; color: #fff; }
+        .btn-time-in:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(34,197,94,0.4); }
+        .btn-time-out { background: #ef4444; color: #fff; }
+        .btn-time-out:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(239,68,68,0.4); }
+        .time-in-pm { background: #0ea5e9; color: #fff; }
+        .time-in-pm:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(14,165,233,0.4); }
+        .time-out-pm { background: #f97316; color: #fff; }
+        .time-out-pm:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(249,115,22,0.4); }
+        .time-in-ot { background: #8b5cf6; color: #fff; }
+        .time-in-ot:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(139,92,246,0.4); }
+        .time-out-ot { background: #64748b; color: #fff; }
+        .time-out-ot:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(100,116,139,0.4); }
+        .today-status { font-size: 0.95rem; font-weight: 600; }
+        .today-status .in { color: #86efac; }
+        .today-status .out { color: #fca5a5; }
+        .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+        .cal-title { font-size: 1.2rem; font-weight: 800; color: #1e3c72; }
+        .cal-nav { display: flex; gap: 8px; }
+        .cal-nav button { padding: 8px 14px; border: 1px solid #d7dbe0; border-radius: 8px; background: #fff; font-weight: 700; color: #444; cursor: pointer; }
+        .cal-nav button:hover { background: #f4f6f8; border-color: #1e3c72; color: #1e3c72; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #e8eaed; border: 1px solid #e8eaed; border-radius: 12px; overflow: hidden; }
+        .cal-cell { background: #fff; padding: 10px 8px; min-height: 64px; font-size: 0.85rem; }
+        .cal-cell.weekday { background: #f4f6f8; font-weight: 800; color: #1e3c72; text-align: center; padding: 8px; }
+        .cal-cell.other-month { color: #aaa; }
+        .cal-cell.today { background: rgba(30,60,114,0.12); border: 2px solid #1e3c72; font-weight: 800; color: #1e3c72; }
+        .cal-cell.has-record { background: #ecfdf5; }
+        .cal-cell .day-num { font-weight: 700; margin-bottom: 4px; }
+        .cal-cell .day-times { font-size: 0.75rem; color: #555; line-height: 1.4; }
+        .attendance-summary { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e8eaed; }
+        .attendance-summary h3 { font-size: 1rem; color: #1e3c72; margin-bottom: 12px; }
+        .attendance-summary table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .attendance-summary th, .attendance-summary td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e8eaed; }
+        .attendance-summary th { font-weight: 700; color: #444; }
+        .attendance-summary .thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; vertical-align: middle; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: #fff; border-radius: 14px; padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .modal-box h3 { color: #1e3c72; margin-bottom: 16px; font-size: 1.15rem; }
+        .modal-box .photo-upload { margin-bottom: 16px; }
+        .modal-box .photo-upload label { display: block; font-weight: 700; color: #333; margin-bottom: 8px; }
+        .modal-box .photo-preview { max-width: 120px; max-height: 120px; border-radius: 8px; object-fit: cover; margin-top: 10px; display: none; }
+        .modal-box .photo-preview.has-img { display: block; }
+        .modal-box .photo-date-note { margin-top: 10px; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; display: none; }
+        .modal-box .photo-date-note.show { display: block; }
+        .modal-box .photo-date-note.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .modal-box .photo-date-note.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .modal-box .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .modal-box .btn-cancel { padding: 10px 18px; border: 1px solid #d7dbe0; border-radius: 10px; background: #fff; font-weight: 700; cursor: pointer; }
+        .modal-box .btn-confirm { padding: 10px 18px; border: none; border-radius: 10px; background: #22c55e; color: #fff; font-weight: 700; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -316,9 +378,55 @@
 
         <section id="section-attendance" class="section">
             <h2>Attendance</h2>
-            <div class="placeholder-content">
-                <p>Your attendance records will appear here.</p>
-                <p>Time in / time out and daily attendance summary.</p>
+            <div class="attendance-wrap">
+                <div class="attendance-now">
+                    <div>
+                        <div id="liveClock" class="live-clock">--:--:--</div>
+                        <div id="liveDate" class="live-date">Loading...</div>
+                    </div>
+                    <div class="time-actions">
+                        <div id="todayStatus" class="today-status"></div>
+                        <button type="button" class="btn-time btn-time-in" id="btnTimeInAM">Time In AM</button>
+                        <button type="button" class="btn-time btn-time-out" id="btnTimeOutAM">Time Out AM</button>
+                        <button type="button" class="btn-time time-in-pm" id="btnTimeInPM">Time In PM</button>
+                        <button type="button" class="btn-time time-out-pm" id="btnTimeOutPM">Time Out PM</button>
+                        <button type="button" class="btn-time time-in-ot" id="btnTimeInOT">Time In O.T.</button>
+                        <button type="button" class="btn-time time-out-ot" id="btnTimeOutOT">Time Out O.T.</button>
+                    </div>
+                </div>
+                <div id="timeInModal" class="modal-overlay">
+                    <div class="modal-box">
+                        <h3 id="timeInModalTitle">Time In — Upload photo</h3>
+                        <div class="photo-upload">
+                            <label for="timeInPhoto">Photo (required)</label>
+                            <input type="file" id="timeInPhoto" accept="image/*" capture="environment">
+                            <img id="timeInPhotoPreview" class="photo-preview" alt="Preview">
+                            <p id="timeInPhotoDateNote" class="photo-date-note" role="alert"></p>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" id="timeInModalCancel">Cancel</button>
+                            <button type="button" class="btn-confirm" id="timeInModalConfirm">Confirm Time In</button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="cal-header">
+                        <span id="calTitle" class="cal-title">March 2025</span>
+                        <div class="cal-nav">
+                            <button type="button" id="calPrev">← Prev</button>
+                            <button type="button" id="calToday">Today</button>
+                            <button type="button" id="calNext">Next →</button>
+                        </div>
+                    </div>
+                    <div id="calGrid" class="cal-grid"></div>
+                </div>
+                <div class="attendance-summary">
+                    <h3>Recent attendance</h3>
+                    <table>
+                        <thead><tr><th>Date</th><th>AM In</th><th>AM Out</th><th>PM In</th><th>PM Out</th><th>O.T. In</th><th>O.T. Out</th><th>Photo</th></tr></thead>
+                        <tbody id="attendanceTableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </section>
 
@@ -429,6 +537,379 @@
                     window.location.href = 'edit-profile.html';
                 });
             }
+        })();
+
+        (function() {
+            var ATTENDANCE_KEY = 'ojt_trainee_attendance';
+            var weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            var calYear, calMonth;
+            var timeInModalSession = null;
+
+            function getRecords() {
+                try {
+                    var raw = localStorage.getItem(ATTENDANCE_KEY);
+                    if (raw) return JSON.parse(raw);
+                } catch (e) {}
+                return [];
+            }
+            function saveRecords(arr) {
+                try { localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(arr)); } catch (e) {}
+            }
+            function dateKey(d) {
+                var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+                return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+            }
+            function timeStr(d) {
+                return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            }
+            function findRecord(records, key) {
+                for (var i = 0; i < records.length; i++) if (records[i].date === key) return records[i];
+                return null;
+            }
+            function normalizeRec(rec) {
+                if (!rec) return rec;
+                if (rec.timeIn && !rec.amIn) rec.amIn = { time: rec.timeIn, photo: rec.amInPhoto || '' };
+                if (rec.timeOut && !rec.amOut) rec.amOut = rec.timeOut;
+                return rec;
+            }
+            function hasAny(rec) {
+                if (!rec) return false;
+                rec = normalizeRec(rec);
+                return !!(rec.amIn || rec.amOut || rec.pmIn || rec.pmOut || rec.otIn || rec.otOut);
+            }
+            function amInTime(rec) { rec = normalizeRec(rec); return rec && rec.amIn && typeof rec.amIn === 'object' ? rec.amIn.time : (rec && rec.amIn) || ''; }
+            function pmInTime(rec) { rec = normalizeRec(rec); return rec && rec.pmIn && typeof rec.pmIn === 'object' ? rec.pmIn.time : (rec && rec.pmIn) || ''; }
+            function otInTime(rec) { rec = normalizeRec(rec); return rec && rec.otIn && typeof rec.otIn === 'object' ? rec.otIn.time : (rec && rec.otIn) || ''; }
+
+            function updateLiveClock() {
+                var now = new Date();
+                var el = document.getElementById('liveClock');
+                var dateEl = document.getElementById('liveDate');
+                if (el) el.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+                if (dateEl) dateEl.textContent = weekdays[now.getDay()] + ', ' + monthNames[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+            }
+            setInterval(updateLiveClock, 1000);
+            updateLiveClock();
+
+            function renderCalendar() {
+                var grid = document.getElementById('calGrid');
+                var titleEl = document.getElementById('calTitle');
+                if (!grid) return;
+                var records = getRecords();
+                if (titleEl) titleEl.textContent = monthNames[calMonth] + ' ' + calYear;
+                var first = new Date(calYear, calMonth, 1);
+                var last = new Date(calYear, calMonth + 1, 0);
+                var startDay = first.getDay();
+                var daysInMonth = last.getDate();
+                var todayKey = dateKey(new Date());
+                grid.innerHTML = '';
+                for (var i = 0; i < 7; i++) {
+                    var h = document.createElement('div');
+                    h.className = 'cal-cell weekday';
+                    h.textContent = weekdays[i];
+                    grid.appendChild(h);
+                }
+                for (var p = 0; p < startDay; p++) {
+                    var empty = document.createElement('div');
+                    empty.className = 'cal-cell other-month';
+                    empty.textContent = '';
+                    grid.appendChild(empty);
+                }
+                for (var d = 1; d <= daysInMonth; d++) {
+                    var dt = new Date(calYear, calMonth, d);
+                    var key = dateKey(dt);
+                    var rec = findRecord(records, key);
+                    rec = normalizeRec(rec);
+                    var cell = document.createElement('div');
+                    cell.className = 'cal-cell';
+                    if (key === todayKey) cell.classList.add('today');
+                    if (hasAny(rec)) cell.classList.add('has-record');
+                    var dayNum = document.createElement('div');
+                    dayNum.className = 'day-num';
+                    dayNum.textContent = d;
+                    cell.appendChild(dayNum);
+                    if (rec) {
+                        var dayTimes = document.createElement('div');
+                        dayTimes.className = 'day-times';
+                        var parts = [];
+                        if (amInTime(rec)) parts.push('AM In ' + amInTime(rec));
+                        if (rec.amOut) parts.push('AM Out ' + rec.amOut);
+                        if (pmInTime(rec)) parts.push('PM In ' + pmInTime(rec));
+                        if (rec.pmOut) parts.push('PM Out ' + rec.pmOut);
+                        if (otInTime(rec)) parts.push('OT In ' + otInTime(rec));
+                        if (rec.otOut) parts.push('OT Out ' + rec.otOut);
+                        dayTimes.textContent = parts.join(' · ');
+                        cell.appendChild(dayTimes);
+                    }
+                    grid.appendChild(cell);
+                }
+                var totalCells = 7 + startDay + daysInMonth;
+                var remainder = totalCells % 7;
+                if (remainder !== 0) for (var t = 0; t < (7 - remainder); t++) {
+                    var trail = document.createElement('div');
+                    trail.className = 'cal-cell other-month';
+                    trail.textContent = '';
+                    grid.appendChild(trail);
+                }
+            }
+
+            function updateTodayStatus() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = normalizeRec(findRecord(records, todayKey));
+                var statusEl = document.getElementById('todayStatus');
+                if (!statusEl) return;
+                if (!rec || !hasAny(rec)) statusEl.innerHTML = '<span class="in">No attendance yet today.</span>';
+                else {
+                    var parts = [];
+                    if (amInTime(rec)) parts.push('<span class="in">AM In ' + amInTime(rec) + '</span>');
+                    if (rec.amOut) parts.push('<span class="out">AM Out ' + rec.amOut + '</span>');
+                    if (pmInTime(rec)) parts.push('<span class="in">PM In ' + pmInTime(rec) + '</span>');
+                    if (rec.pmOut) parts.push('<span class="out">PM Out ' + rec.pmOut + '</span>');
+                    if (otInTime(rec)) parts.push('<span class="in">O.T. In ' + otInTime(rec) + '</span>');
+                    if (rec.otOut) parts.push('<span class="out">O.T. Out ' + rec.otOut + '</span>');
+                    statusEl.innerHTML = parts.join(' &nbsp; ');
+                }
+            }
+
+            function setButtonsState() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = normalizeRec(findRecord(records, todayKey));
+                var btnInAM = document.getElementById('btnTimeInAM');
+                var btnOutAM = document.getElementById('btnTimeOutAM');
+                var btnInPM = document.getElementById('btnTimeInPM');
+                var btnOutPM = document.getElementById('btnTimeOutPM');
+                var btnInOT = document.getElementById('btnTimeInOT');
+                var btnOutOT = document.getElementById('btnTimeOutOT');
+                if (btnInAM) btnInAM.disabled = !!(rec && amInTime(rec));
+                if (btnOutAM) btnOutAM.disabled = !(rec && amInTime(rec) && !rec.amOut);
+                if (btnInPM) btnInPM.disabled = !!(rec && pmInTime(rec));
+                if (btnOutPM) btnOutPM.disabled = !(rec && pmInTime(rec) && !rec.pmOut);
+                if (btnInOT) btnInOT.disabled = !!(rec && otInTime(rec));
+                if (btnOutOT) btnOutOT.disabled = !(rec && otInTime(rec) && !rec.otOut);
+            }
+
+            function renderTable() {
+                var tbody = document.getElementById('attendanceTableBody');
+                if (!tbody) return;
+                var records = getRecords().slice().filter(function(r) { return hasAny(r); });
+                records.sort(function(a, b) { return b.date.localeCompare(a.date); });
+                var rows = records.slice(0, 15);
+                tbody.innerHTML = '';
+                rows.forEach(function(r) {
+                    r = normalizeRec(r);
+                    var tr = document.createElement('tr');
+                    var amIn = amInTime(r);
+                    var pmIn = pmInTime(r);
+                    var otIn = otInTime(r);
+                    var amInPhoto = r.amIn && typeof r.amIn === 'object' && r.amIn.photo;
+                    var pmInPhoto = r.pmIn && typeof r.pmIn === 'object' && r.pmIn.photo;
+                    var otInPhoto = r.otIn && typeof r.otIn === 'object' && r.otIn.photo;
+                    var photoCell = '';
+                    if (amInPhoto) photoCell += '<img class="thumb" src="' + amInPhoto + '" alt="AM" title="AM">';
+                    if (pmInPhoto) photoCell += ' <img class="thumb" src="' + pmInPhoto + '" alt="PM" title="PM">';
+                    if (otInPhoto) photoCell += ' <img class="thumb" src="' + otInPhoto + '" alt="O.T." title="O.T.">';
+                    if (!photoCell) photoCell = '—';
+                    tr.innerHTML = '<td>' + r.date + '</td><td>' + (amIn || '—') + '</td><td>' + (r.amOut || '—') + '</td><td>' + (pmIn || '—') + '</td><td>' + (r.pmOut || '—') + '</td><td>' + (otIn || '—') + '</td><td>' + (r.otOut || '—') + '</td><td>' + photoCell + '</td>';
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function refreshAttendanceUI() {
+                updateTodayStatus();
+                setButtonsState();
+                renderCalendar();
+                renderTable();
+            }
+
+            var now = new Date();
+            calYear = now.getFullYear();
+            calMonth = now.getMonth();
+            renderCalendar();
+
+            document.getElementById('calPrev').addEventListener('click', function() {
+                calMonth--;
+                if (calMonth < 0) { calMonth = 11; calYear--; }
+                renderCalendar();
+            });
+            document.getElementById('calNext').addEventListener('click', function() {
+                calMonth++;
+                if (calMonth > 11) { calMonth = 0; calYear++; }
+                renderCalendar();
+            });
+            document.getElementById('calToday').addEventListener('click', function() {
+                var n = new Date();
+                calYear = n.getFullYear();
+                calMonth = n.getMonth();
+                renderCalendar();
+            });
+
+            var modal = document.getElementById('timeInModal');
+            var modalTitle = document.getElementById('timeInModalTitle');
+            var photoInput = document.getElementById('timeInPhoto');
+            var photoPreview = document.getElementById('timeInPhotoPreview');
+            var photoDateNote = document.getElementById('timeInPhotoDateNote');
+            function formatDateLabel(key) {
+                var parts = key.split('-');
+                if (parts.length !== 3) return key;
+                var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                var m = parseInt(parts[1], 10) - 1;
+                return months[m] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+            }
+            function checkFileDateMatchesToday(file) {
+                if (!file || file.lastModified === undefined) return true;
+                var fileDateKey = dateKey(new Date(file.lastModified));
+                var todayKey = dateKey(new Date());
+                return fileDateKey === todayKey;
+            }
+            function showFileDateNote(file) {
+                if (!photoDateNote) return;
+                photoDateNote.classList.remove('show', 'error', 'ok');
+                if (!file) return;
+                var fileDateKey = dateKey(new Date(file.lastModified));
+                var todayKey = dateKey(new Date());
+                if (fileDateKey === todayKey) {
+                    photoDateNote.textContent = 'Petsa ng picture ay tumutugma sa araw na ito.';
+                    photoDateNote.classList.add('show', 'ok');
+                } else {
+                    photoDateNote.textContent = 'Hindi pareho ang date ng picture sa pag-time in. Petsa ng file: ' + formatDateLabel(fileDateKey) + '. Dapat ay ngayong araw: ' + formatDateLabel(todayKey) + '.';
+                    photoDateNote.classList.add('show', 'error');
+                }
+            }
+            photoInput.addEventListener('change', function() {
+                var file = this.files && this.files[0];
+                if (!file) {
+                    photoPreview.classList.remove('has-img');
+                    photoPreview.src = '';
+                    photoDateNote.classList.remove('show', 'error', 'ok');
+                    photoDateNote.textContent = '';
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function(e) { photoPreview.src = e.target.result; photoPreview.classList.add('has-img'); };
+                reader.readAsDataURL(file);
+                showFileDateNote(file);
+            });
+            function closeTimeInModal() {
+                timeInModalSession = null;
+                photoInput.value = '';
+                photoPreview.src = '';
+                photoPreview.classList.remove('has-img');
+                if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
+                modal.classList.remove('show');
+            }
+            document.getElementById('timeInModalCancel').addEventListener('click', closeTimeInModal);
+            modal.addEventListener('click', function(e) { if (e.target === modal) closeTimeInModal(); });
+            document.getElementById('timeInModalConfirm').addEventListener('click', function() {
+                if (!timeInModalSession) return;
+                var file = photoInput.files && photoInput.files[0];
+                if (!file) { alert('Please upload a photo for Time In.'); return; }
+                if (!checkFileDateMatchesToday(file)) {
+                    alert('Hindi pareho ang date ng picture sa pag-time in. Ang larawan ay dapat kinuha o ginawa ngayong araw. Pumili ng picture na may petsa ngayong araw.');
+                    return;
+                }
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = findRecord(records, todayKey);
+                if (!rec) {
+                    rec = { date: todayKey };
+                    records.push(rec);
+                    records.sort(function(a, b) { return a.date.localeCompare(b.date); });
+                }
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var photo = e.target.result;
+                    var t = timeStr(new Date());
+                    if (timeInModalSession === 'AM') rec.amIn = { time: t, photo: photo };
+                    else if (timeInModalSession === 'PM') rec.pmIn = { time: t, photo: photo };
+                    else if (timeInModalSession === 'OT') rec.otIn = { time: t, photo: photo };
+                    saveRecords(records);
+                    closeTimeInModal();
+                    refreshAttendanceUI();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            document.getElementById('btnTimeInAM').addEventListener('click', function() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = normalizeRec(findRecord(records, todayKey));
+                if (rec && amInTime(rec)) return;
+                timeInModalSession = 'AM';
+                modalTitle.textContent = 'Time In AM — Upload photo (required)';
+                photoInput.value = '';
+                photoPreview.src = '';
+                photoPreview.classList.remove('has-img');
+                if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
+                modal.classList.add('show');
+            });
+            document.getElementById('btnTimeInPM').addEventListener('click', function() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = normalizeRec(findRecord(records, todayKey));
+                if (rec && pmInTime(rec)) return;
+                timeInModalSession = 'PM';
+                modalTitle.textContent = 'Time In PM — Upload photo (required)';
+                photoInput.value = '';
+                photoPreview.src = '';
+                photoPreview.classList.remove('has-img');
+                if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
+                modal.classList.add('show');
+            });
+            document.getElementById('btnTimeOutAM').addEventListener('click', function() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = findRecord(records, todayKey);
+                rec = normalizeRec(rec);
+                if (!rec || !amInTime(rec) || rec.amOut) return;
+                rec.amOut = timeStr(new Date());
+                saveRecords(records);
+                refreshAttendanceUI();
+            });
+            document.getElementById('btnTimeOutPM').addEventListener('click', function() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = findRecord(records, todayKey);
+                rec = normalizeRec(rec);
+                if (!rec || !pmInTime(rec) || rec.pmOut) return;
+                rec.pmOut = timeStr(new Date());
+                saveRecords(records);
+                refreshAttendanceUI();
+            });
+            document.getElementById('btnTimeInOT').addEventListener('click', function() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = normalizeRec(findRecord(records, todayKey));
+                if (rec && otInTime(rec)) return;
+                timeInModalSession = 'OT';
+                modalTitle.textContent = 'Time In O.T. — Upload photo (required)';
+                photoInput.value = '';
+                photoPreview.src = '';
+                photoPreview.classList.remove('has-img');
+                if (photoDateNote) { photoDateNote.classList.remove('show', 'error', 'ok'); photoDateNote.textContent = ''; }
+                modal.classList.add('show');
+            });
+            document.getElementById('btnTimeOutOT').addEventListener('click', function() {
+                var todayKey = dateKey(new Date());
+                var records = getRecords();
+                var rec = findRecord(records, todayKey);
+                rec = normalizeRec(rec);
+                if (!rec || !otInTime(rec) || rec.otOut) return;
+                rec.otOut = timeStr(new Date());
+                saveRecords(records);
+                refreshAttendanceUI();
+            });
+
+            var sectionAttendance = document.getElementById('section-attendance');
+            if (sectionAttendance) {
+                var observer = new MutationObserver(function() {
+                    if (sectionAttendance.classList.contains('active')) refreshAttendanceUI();
+                });
+                observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
+            }
+            refreshAttendanceUI();
         })();
     </script>
 </body>
