@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Profile - OJT Trainee</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; }
@@ -352,39 +354,69 @@
 
                 maybeUpdatePictureUrl(function(pictureUrl) {
                     if (pictureUrl) updated.pictureUrl = pictureUrl;
-                    try {
-                        localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
-                        localStorage.setItem('ojt_trainee_documents', JSON.stringify(docs));
+                    var traineeId = null;
+                    try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (err) {}
+                    var supabase = window.supabaseClient;
+                    var saveLocalFallback = function() {
+                        try {
+                            localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
+                            localStorage.setItem('ojt_trainee_documents', JSON.stringify(docs));
+                        } catch (err) {}
+                    };
+                    var finish = function() {
+                        alert('Profile updated!');
+                        window.location.href = 'dashboard.html';
+                    };
 
-                        // Upsert into local trainee DB for Admin listing (prototype only).
-                        var DB_KEY = 'ojt_trainees_db';
-                        var DOCS_DB_KEY = 'ojt_trainee_documents_db';
-                        var arr = [];
-                        var raw = localStorage.getItem(DB_KEY);
-                        if (raw) arr = JSON.parse(raw);
-                        if (!Array.isArray(arr)) arr = [];
-
-                        var key = updated.studentId || updated.username || updated.email || ('trainee_' + Date.now());
-                        var idx = -1;
-                        for (var i = 0; i < arr.length; i++) {
-                            var t = arr[i] || {};
-                            var tKey = t.studentId || t.username || t.email;
-                            if (tKey && tKey === key) { idx = i; break; }
-                        }
-                        if (idx >= 0) arr[idx] = updated;
-                        else arr.push(updated);
-                        localStorage.setItem(DB_KEY, JSON.stringify(arr));
-
-                        // Store document filenames per trainee.
-                        var docsMap = {};
-                        var docsRaw = localStorage.getItem(DOCS_DB_KEY);
-                        if (docsRaw) docsMap = JSON.parse(docsRaw);
-                        if (!docsMap || typeof docsMap !== 'object') docsMap = {};
-                        docsMap[key] = docs;
-                        localStorage.setItem(DOCS_DB_KEY, JSON.stringify(docsMap));
-                    } catch (err) {}
-                    alert('Profile updated!');
-                    window.location.href = 'dashboard.html';
+                    if (supabase && traineeId) {
+                        supabase.from('ojt_trainees').update({
+                            email: updated.email || null,
+                            username: updated.username || null,
+                            full_name: updated.fullName || null,
+                            student_id: updated.studentId || null,
+                            course: updated.course || null,
+                            year_level: updated.yearLevel || null,
+                            school_name: updated.schoolName || null,
+                            department: updated.department || null,
+                            coordinator: updated.coordinator || null,
+                            company_name: updated.companyName || null,
+                            company_address: updated.companyAddress || null,
+                            supervisor: updated.supervisor || null,
+                            position_role: updated.positionRole || null,
+                            contact_number: updated.contactNumber || null,
+                            emergency_contact: updated.emergencyContact || null,
+                            training_hours: updated.trainingHours || null,
+                            start_date: updated.startDate || null,
+                            end_date: updated.endDate || null,
+                            picture_url: updated.pictureUrl || null,
+                            updated_at: new Date().toISOString()
+                        }).eq('id', traineeId).then(function() {
+                            var docTypes = ['resume', 'endorsement', 'moa', 'medical', 'idPicture'];
+                            var ops = [];
+                            docTypes.forEach(function(type) {
+                                if (!docs[type]) return;
+                                ops.push(supabase.from('ojt_trainee_documents').upsert({
+                                    trainee_id: traineeId,
+                                    doc_type: type,
+                                    file_name: docs[type] || null,
+                                    file_data: null
+                                }, { onConflict: 'trainee_id,doc_type' }));
+                            });
+                            Promise.all(ops).then(function() {
+                                saveLocalFallback();
+                                finish();
+                            }).catch(function() {
+                                saveLocalFallback();
+                                finish();
+                            });
+                        }).catch(function() {
+                            saveLocalFallback();
+                            finish();
+                        });
+                        return;
+                    }
+                    saveLocalFallback();
+                    finish();
                 });
             });
         })();

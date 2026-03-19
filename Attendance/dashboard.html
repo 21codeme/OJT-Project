@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OJT Trainee - Occidental Mindoro State College</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; }
@@ -461,11 +463,14 @@
                 if (confirm('Log out?')) window.location.href = 'index.html';
             });
             var stored = null;
+            var traineeId = null;
             try {
                 var raw = localStorage.getItem('ojt_trainee_profile');
                 if (raw) stored = JSON.parse(raw);
+                traineeId = localStorage.getItem('ojt_trainee_id');
             } catch (e) {}
-            if (stored) {
+            function applyProfileToUI() {
+                if (!stored) return;
                 if (stored.fullName) document.getElementById('profileFullName').textContent = stored.fullName;
                 if (stored.email) document.getElementById('profileEmail').textContent = stored.email;
                 if (stored.username) document.getElementById('profileUsername').textContent = stored.username;
@@ -486,6 +491,42 @@
                 if (stored.emergencyContact) document.getElementById('profileEmergencyContact').textContent = stored.emergencyContact;
                 if (stored.pictureUrl) document.getElementById('profilePicture').src = stored.pictureUrl;
             }
+            applyProfileToUI();
+
+            (async function loadProfileFromSupabase() {
+                var supabase = window.supabaseClient;
+                if (!supabase || !traineeId) return;
+                try {
+                    var res = await supabase.from('ojt_trainees').select('*').eq('id', traineeId).maybeSingle();
+                    if (res && res.data) {
+                        var row = res.data;
+                        stored = {
+                            id: row.id,
+                            fullName: row.full_name || '—',
+                            email: row.email || '',
+                            username: row.username || '',
+                            studentId: row.student_id || '—',
+                            course: row.course || '—',
+                            yearLevel: row.year_level || '—',
+                            schoolName: row.school_name || '—',
+                            department: row.department || '—',
+                            coordinator: row.coordinator || '—',
+                            companyName: row.company_name || '—',
+                            companyAddress: row.company_address || '—',
+                            supervisor: row.supervisor || '—',
+                            positionRole: row.position_role || '—',
+                            contactNumber: row.contact_number || '—',
+                            emergencyContact: row.emergency_contact || '—',
+                            trainingHours: row.training_hours || '—',
+                            startDate: row.start_date || '—',
+                            endDate: row.end_date || '—',
+                            pictureUrl: row.picture_url || null
+                        };
+                        localStorage.setItem('ojt_trainee_profile', JSON.stringify(stored));
+                        applyProfileToUI();
+                    }
+                } catch (e) {}
+            })();
 
             function splitFullName(fullName) {
                 if (!fullName) return { first: '', middle: '', last: '' };
@@ -541,20 +582,68 @@
 
         (function() {
             var ATTENDANCE_KEY = 'ojt_trainee_attendance';
+            var traineeId = null;
+            try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
             var weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
             var calYear, calMonth;
             var timeInModalSession = null;
+            var recordsCache = [];
 
             function getRecords() {
-                try {
-                    var raw = localStorage.getItem(ATTENDANCE_KEY);
-                    if (raw) return JSON.parse(raw);
-                } catch (e) {}
-                return [];
+                return recordsCache || [];
             }
             function saveRecords(arr) {
-                try { localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(arr)); } catch (e) {}
+                recordsCache = Array.isArray(arr) ? arr : [];
+                try { localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(recordsCache)); } catch (e) {}
+                var supabase = window.supabaseClient;
+                if (supabase && traineeId) {
+                    var rows = recordsCache.map(function(r) {
+                        r = normalizeRec(r);
+                        return {
+                            trainee_id: traineeId,
+                            date: r.date,
+                            am_in_time: amInTime(r) || null,
+                            am_in_photo: (r.amIn && typeof r.amIn === 'object') ? (r.amIn.photo || null) : null,
+                            am_out_time: r.amOut || null,
+                            pm_in_time: pmInTime(r) || null,
+                            pm_in_photo: (r.pmIn && typeof r.pmIn === 'object') ? (r.pmIn.photo || null) : null,
+                            pm_out_time: r.pmOut || null,
+                            ot_in_time: otInTime(r) || null,
+                            ot_in_photo: (r.otIn && typeof r.otIn === 'object') ? (r.otIn.photo || null) : null,
+                            ot_out_time: r.otOut || null
+                        };
+                    });
+                    supabase.from('ojt_attendance').upsert(rows, { onConflict: 'trainee_id,date' }).then(function() {}).catch(function() {});
+                }
+            }
+            async function loadRecordsFromSupabase() {
+                var supabase = window.supabaseClient;
+                if (supabase && traineeId) {
+                    try {
+                        var res = await supabase.from('ojt_attendance').select('*').eq('trainee_id', traineeId);
+                        if (res && Array.isArray(res.data) && res.data.length > 0) {
+                            recordsCache = res.data.map(function(row) {
+                                return {
+                                    date: row.date,
+                                    amIn: row.am_in_time ? { time: row.am_in_time, photo: row.am_in_photo || '' } : null,
+                                    amOut: row.am_out_time || '',
+                                    pmIn: row.pm_in_time ? { time: row.pm_in_time, photo: row.pm_in_photo || '' } : null,
+                                    pmOut: row.pm_out_time || '',
+                                    otIn: row.ot_in_time ? { time: row.ot_in_time, photo: row.ot_in_photo || '' } : null,
+                                    otOut: row.ot_out_time || ''
+                                };
+                            });
+                            localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(recordsCache));
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                try {
+                    var raw = localStorage.getItem(ATTENDANCE_KEY);
+                    recordsCache = raw ? JSON.parse(raw) : [];
+                } catch (e) { recordsCache = []; }
+                if (!Array.isArray(recordsCache)) recordsCache = [];
             }
             function dateKey(d) {
                 var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
@@ -922,7 +1011,9 @@
                 });
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
             }
-            refreshAttendanceUI();
+            loadRecordsFromSupabase().then(function() {
+                refreshAttendanceUI();
+            });
             setInterval(function() {
                 if (sectionAttendance && sectionAttendance.classList.contains('active')) setButtonsState();
             }, 1000);

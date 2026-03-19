@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - OJT Trainee Management</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; }
@@ -241,6 +243,8 @@
 
             var selectedKey = null;
             var selectedTrainee = null;
+            var traineesCache = [];
+            var docsMapCache = {};
 
             // Show admin panel immediately if already logged in (e.g. from Attendance with ?autologin=1)
             var isAuthedNow = fromAutologin;
@@ -256,11 +260,13 @@
             }
 
             function loadTrainees() {
-                var arr = [];
-                try {
-                    var raw = localStorage.getItem(DB_KEY);
-                    if (raw) arr = JSON.parse(raw);
-                } catch (e) {}
+                var arr = traineesCache && traineesCache.length ? traineesCache.slice() : [];
+                if (!arr.length) {
+                    try {
+                        var raw = localStorage.getItem(DB_KEY);
+                        if (raw) arr = JSON.parse(raw);
+                    } catch (e) {}
+                }
                 if (!Array.isArray(arr)) arr = [];
                 arr.sort(function(a, b) {
                     var an = (a.fullName || '').toString();
@@ -270,8 +276,51 @@
                 return arr;
             }
 
+            async function loadAllFromSupabase() {
+                var supabase = window.supabaseClient;
+                if (!supabase) return;
+                try {
+                    var tr = await supabase.from('ojt_trainees').select('*');
+                    if (Array.isArray(tr.data)) {
+                        traineesCache = tr.data.map(function(row) {
+                            return {
+                                id: row.id,
+                                fullName: row.full_name || '—',
+                                email: row.email || '',
+                                username: row.username || '',
+                                studentId: row.student_id || '—',
+                                course: row.course || '—',
+                                yearLevel: row.year_level || '—',
+                                schoolName: row.school_name || '—',
+                                department: row.department || '—',
+                                coordinator: row.coordinator || '—',
+                                companyName: row.company_name || '—',
+                                companyAddress: row.company_address || '—',
+                                supervisor: row.supervisor || '—',
+                                positionRole: row.position_role || '—',
+                                contactNumber: row.contact_number || '—',
+                                emergencyContact: row.emergency_contact || '—',
+                                trainingHours: row.training_hours || '—',
+                                startDate: row.start_date || '—',
+                                endDate: row.end_date || '—',
+                                pictureUrl: row.picture_url || null
+                            };
+                        });
+                    }
+                    var dr = await supabase.from('ojt_trainee_documents').select('*');
+                    docsMapCache = {};
+                    if (Array.isArray(dr.data)) {
+                        dr.data.forEach(function(d) {
+                            if (!d || !d.trainee_id) return;
+                            if (!docsMapCache[d.trainee_id]) docsMapCache[d.trainee_id] = {};
+                            docsMapCache[d.trainee_id][d.doc_type] = d.file_name || '—';
+                        });
+                    }
+                } catch (e) {}
+            }
+
             function getTraineeKey(t) {
-                return t && (t.studentId || t.username || t.email) ? (t.studentId || t.username || t.email) : null;
+                return t && (t.id || t.studentId || t.username || t.email) ? (t.id || t.studentId || t.username || t.email) : null;
             }
 
             function setTab(tabName) {
@@ -398,10 +447,12 @@
                     return;
                 }
 
-                var docsRaw = localStorage.getItem(DOCS_DB_KEY);
-                var docsMap = {};
-                try { if (docsRaw) docsMap = JSON.parse(docsRaw); } catch (e) {}
-                if (!docsMap || typeof docsMap !== 'object') docsMap = {};
+                var docsMap = (docsMapCache && typeof docsMapCache === 'object') ? docsMapCache : {};
+                if (!docsMap || typeof docsMap !== 'object' || Object.keys(docsMap).length === 0) {
+                    var docsRaw = localStorage.getItem(DOCS_DB_KEY);
+                    try { if (docsRaw) docsMap = JSON.parse(docsRaw); } catch (e) {}
+                    if (!docsMap || typeof docsMap !== 'object') docsMap = {};
+                }
 
                 var docs = docsMap[selectedKey] || null;
                 if (!docs || typeof docs !== 'object') {
@@ -437,11 +488,24 @@
             }
 
             if (btnLogin) {
-                btnLogin.addEventListener('click', function() {
+                btnLogin.addEventListener('click', async function() {
                     loginError.classList.remove('show');
                     var username = (document.getElementById('adminUser').value || '').trim();
                     var pass = (document.getElementById('adminPass').value || '').trim();
-                    if (username !== REQUIRED_ADMIN_USERNAME || pass !== REQUIRED_ADMIN_PASSWORD) {
+                    var allowed = (username === REQUIRED_ADMIN_USERNAME && pass === REQUIRED_ADMIN_PASSWORD);
+                    if (!allowed && window.supabaseClient) {
+                        try {
+                            var adminRes = await window.supabaseClient
+                                .from('ojt_admin')
+                                .select('username,password_hash')
+                                .eq('username', username.toLowerCase())
+                                .maybeSingle();
+                            if (adminRes && adminRes.data && adminRes.data.password_hash === pass) {
+                                allowed = true;
+                            }
+                        } catch (e) {}
+                    }
+                    if (!allowed) {
                         loginError.classList.add('show');
                         return;
                     }
@@ -467,15 +531,15 @@
                 loginPanel.classList.remove('active');
                 adminPanel.classList.add('active');
                 btnLogout.style.display = 'inline-block';
-                renderTraineeList();
-
-                // Auto select first trainee
-                var trainees = loadTrainees();
-                if (trainees.length > 0) {
-                    var first = trainees[0];
-                    selectedKey = getTraineeKey(first);
-                    renderDetails(first, selectedKey);
-                }
+                loadAllFromSupabase().then(function() {
+                    renderTraineeList();
+                    var trainees = loadTrainees();
+                    if (trainees.length > 0) {
+                        var first = trainees[0];
+                        selectedKey = getTraineeKey(first);
+                        renderDetails(first, selectedKey);
+                    }
+                });
             } else {
                 loginPanel.classList.add('active');
                 adminPanel.classList.remove('active');

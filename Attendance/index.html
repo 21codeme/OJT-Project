@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance - Occidental Mindoro State College</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; overflow-x: hidden; }
@@ -268,28 +270,77 @@
                 loginError.classList.remove('show');
             });
 
-            loginForm.addEventListener('submit', function(e) {
+            loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 loginError.classList.remove('show');
                 var usernameOrEmail = document.getElementById('loginEmail').value.trim();
                 var pass = document.getElementById('loginPassword').value.trim();
                 if (!usernameOrEmail || !pass) return;
 
-                // Admin shortcut
-                if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME && pass === REQUIRED_ADMIN_PASSWORD) {
-                    try { localStorage.setItem('ojt_admin_session', '1'); } catch (err) {}
-                    window.location.href = '../Admin/index.html?autologin=1';
-                    return;
-                }
-
-                // If username entered is 'admin' but password wrong, block.
-                if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME && pass !== REQUIRED_ADMIN_PASSWORD) {
+                // Admin login (Supabase-backed; fallback to local prototype values).
+                if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME) {
+                    var adminOk = false;
+                    var supabaseForAdmin = window.supabaseClient;
+                    if (supabaseForAdmin) {
+                        try {
+                            var adminRes = await supabaseForAdmin
+                                .from('ojt_admin')
+                                .select('username,password_hash')
+                                .eq('username', usernameOrEmail.toLowerCase())
+                                .maybeSingle();
+                            if (adminRes && adminRes.data && adminRes.data.password_hash === pass) {
+                                adminOk = true;
+                            }
+                        } catch (err) {}
+                    }
+                    if (!adminOk && pass === REQUIRED_ADMIN_PASSWORD) adminOk = true;
+                    if (adminOk) {
+                        try { localStorage.setItem('ojt_admin_session', '1'); } catch (err) {}
+                        window.location.href = '../Admin/index.html?autologin=1';
+                        return;
+                    }
                     loginError.textContent = 'Invalid admin username/password.';
                     loginError.classList.add('show');
                     return;
                 }
 
-                // Trainee login (prototype): accepts any non-empty password.
+                // Trainee login: fetch from Supabase by email or username
+                var supabase = window.supabaseClient;
+                if (supabase) {
+                    var r = await supabase.from('ojt_trainees').select('*').eq('email', usernameOrEmail).maybeSingle();
+                    if (!r.data) r = await supabase.from('ojt_trainees').select('*').eq('username', usernameOrEmail).maybeSingle();
+                    if (r.data && r.data.id) {
+                        var row = r.data;
+                        var profile = {
+                            id: row.id,
+                            fullName: row.full_name || '—',
+                            email: row.email || '',
+                            username: row.username || '',
+                            studentId: row.student_id || '—',
+                            course: row.course || '—',
+                            yearLevel: row.year_level || '—',
+                            schoolName: row.school_name || '—',
+                            department: row.department || '—',
+                            coordinator: row.coordinator || '—',
+                            companyName: row.company_name || '—',
+                            companyAddress: row.company_address || '—',
+                            supervisor: row.supervisor || '—',
+                            positionRole: row.position_role || '—',
+                            contactNumber: row.contact_number || '—',
+                            emergencyContact: row.emergency_contact || '—',
+                            trainingHours: row.training_hours || '—',
+                            startDate: row.start_date || '—',
+                            endDate: row.end_date || '—',
+                            pictureUrl: row.picture_url || null
+                        };
+                        try {
+                            localStorage.setItem('ojt_trainee_id', row.id);
+                            localStorage.setItem('ojt_trainee_profile', JSON.stringify(profile));
+                        } catch (err) {}
+                        window.location.href = 'dashboard.html';
+                        return;
+                    }
+                }
                 try {
                     var saved = localStorage.getItem('ojt_trainee_profile');
                     if (saved) {
@@ -386,35 +437,67 @@
                     pictureFile = document.getElementById('createPicture').files[0] || null;
                 } catch (e) {}
                 
-                function saveAndRedirect(pictureUrl) {
+                function toSupabaseRow(pictureUrl) {
                     if (pictureUrl) profile.pictureUrl = pictureUrl;
-                    try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(profile)); } catch (err) {}
+                    return {
+                        email: profile.email,
+                        username: profile.username,
+                        full_name: profile.fullName,
+                        student_id: profile.studentId,
+                        course: profile.course,
+                        year_level: profile.yearLevel,
+                        school_name: profile.schoolName,
+                        department: profile.department,
+                        coordinator: profile.coordinator,
+                        company_name: profile.companyName,
+                        company_address: profile.companyAddress,
+                        supervisor: profile.supervisor,
+                        position_role: profile.positionRole,
+                        contact_number: profile.contactNumber,
+                        emergency_contact: profile.emergencyContact,
+                        training_hours: profile.trainingHours,
+                        start_date: profile.startDate,
+                        end_date: profile.endDate,
+                        picture_url: profile.pictureUrl || null
+                    };
+                }
 
-                    // Upsert into local trainee DB for Admin listing (prototype only).
+                async function saveAndRedirect(pictureUrl) {
+                    if (pictureUrl) profile.pictureUrl = pictureUrl;
+                    var supabase = window.supabaseClient;
+                    if (supabase) {
+                        var row = toSupabaseRow(pictureUrl);
+                        var ins = await supabase.from('ojt_trainees').insert(row).select('id').single();
+                        if (ins.error) {
+                            if (ins.error.code === '23505') createError.textContent = 'Email or account already exists.';
+                            else createError.textContent = 'Could not save. Try again.';
+                            createError.classList.add('show');
+                            return;
+                        }
+                        var traineeId = ins.data && ins.data.id;
+                        if (traineeId) {
+                            try {
+                                localStorage.setItem('ojt_trainee_id', traineeId);
+                                profile.id = traineeId;
+                                localStorage.setItem('ojt_trainee_profile', JSON.stringify(profile));
+                            } catch (err) {}
+                            window.location.href = 'dashboard.html';
+                            return;
+                        }
+                    }
+                    try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(profile)); } catch (err) {}
                     try {
-                        var DB_KEY = 'ojt_trainees_db';
-                        var docsKey = 'ojt_trainee_documents_db';
                         var arr = [];
-                        var raw = localStorage.getItem(DB_KEY);
+                        var raw = localStorage.getItem('ojt_trainees_db');
                         if (raw) arr = JSON.parse(raw);
                         if (!Array.isArray(arr)) arr = [];
-
-                        var key = profile.studentId || profile.username || profile.email || ('trainee_' + Date.now());
                         var idx = -1;
                         for (var i = 0; i < arr.length; i++) {
-                            var t = arr[i] || {};
-                            var tKey = t.studentId || t.username || t.email;
-                            if (tKey && tKey === key) { idx = i; break; }
+                            if ((arr[i].email || arr[i].username) === profile.email) { idx = i; break; }
                         }
-                        if (idx >= 0) arr[idx] = profile;
-                        else arr.push(profile);
-                        localStorage.setItem(DB_KEY, JSON.stringify(arr));
-
-                        // Ensure documents map exists (optional)
-                        var docsRaw = localStorage.getItem(docsKey);
-                        if (!docsRaw) localStorage.setItem(docsKey, JSON.stringify({}));
+                        if (idx >= 0) arr[idx] = profile; else arr.push(profile);
+                        localStorage.setItem('ojt_trainees_db', JSON.stringify(arr));
                     } catch (err) {}
-
                     window.location.href = 'dashboard.html';
                 }
 
