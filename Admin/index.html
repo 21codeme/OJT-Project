@@ -217,6 +217,15 @@
             var DB_KEY = 'ojt_trainees_db';
             var DOCS_DB_KEY = 'ojt_trainee_documents_db';
 
+            // Fallback for environments where localStorage might not persist across redirects.
+            // Attendance login will redirect here with ?autologin=1
+            try {
+                var params = new URLSearchParams(window.location.search || '');
+                if (params.get('autologin') === '1') {
+                    localStorage.setItem(ADMIN_SESSION_KEY, '1');
+                }
+            } catch (e) {}
+
             var loginPanel = document.getElementById('loginPanel');
             var adminPanel = document.getElementById('adminPanel');
             var btnLogin = document.getElementById('btnLogin');

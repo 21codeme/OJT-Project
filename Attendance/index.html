@@ -297,7 +297,7 @@
                 // Admin shortcut
                 if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME && pass === REQUIRED_ADMIN_PASSWORD) {
                     try { localStorage.setItem('ojt_admin_session', '1'); } catch (err) {}
-                    window.location.href = '../Admin/index.html';
+                    window.location.href = '../Admin/index.html?autologin=1';
                     return;
                 }
 
