@@ -641,26 +641,25 @@
                 recordsCache = Array.isArray(arr) ? arr : [];
                 try { localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(recordsCache)); } catch (e) {}
                 var supabase = window.supabaseClient;
-                if (supabase && traineeId) {
-                    var rows = recordsCache.map(function(r) {
-                        r = normalizeRec(r);
-                        return {
-                            trainee_id: traineeId,
-                            date: r.date,
-                            am_in_time: amInTime(r) || null,
-                            am_in_photo: (r.amIn && typeof r.amIn === 'object') ? (r.amIn.photo || null) : null,
-                            am_out_time: r.amOut || null,
-                            pm_in_time: pmInTime(r) || null,
-                            pm_in_photo: (r.pmIn && typeof r.pmIn === 'object') ? (r.pmIn.photo || null) : null,
-                            pm_out_time: r.pmOut || null,
-                            ot_in_time: otInTime(r) || null,
-                            ot_in_photo: (r.otIn && typeof r.otIn === 'object') ? (r.otIn.photo || null) : null,
-                            ot_out_time: r.otOut || null,
-                            ot_closed: !!(r.otClosed)
-                        };
-                    });
-                    supabase.from('ojt_attendance').upsert(rows, { onConflict: 'trainee_id,date' }).then(function() {}).catch(function() {});
-                }
+                if (!supabase || !traineeId) return Promise.resolve();
+                var rows = recordsCache.map(function(r) {
+                    r = normalizeRec(r);
+                    return {
+                        trainee_id: traineeId,
+                        date: r.date,
+                        am_in_time: amInTime(r) || null,
+                        am_in_photo: (r.amIn && typeof r.amIn === 'object') ? (r.amIn.photo || null) : null,
+                        am_out_time: r.amOut || null,
+                        pm_in_time: pmInTime(r) || null,
+                        pm_in_photo: (r.pmIn && typeof r.pmIn === 'object') ? (r.pmIn.photo || null) : null,
+                        pm_out_time: r.pmOut || null,
+                        ot_in_time: otInTime(r) || null,
+                        ot_in_photo: (r.otIn && typeof r.otIn === 'object') ? (r.otIn.photo || null) : null,
+                        ot_out_time: r.otOut || null,
+                        ot_closed: !!(r.otClosed)
+                    };
+                });
+                return supabase.from('ojt_attendance').upsert(rows, { onConflict: 'trainee_id,date' });
             }
             async function loadRecordsFromSupabase() {
                 var supabase = window.supabaseClient;
@@ -798,7 +797,7 @@
                     (function(selKey) {
                         cell.addEventListener('click', function() {
                             selectedDateKey = selKey;
-                            refreshAttendanceUI();
+                            refreshAttendanceUI(true);
                         });
                     })(key);
                     grid.appendChild(cell);
@@ -939,16 +938,21 @@
                 if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
                 if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
             }
-            function refreshAttendanceUI() {
-                loadRecordsFromSupabase().then(function() {
-                    return loadReopenedDates();
-                }).then(function() {
-                    updateTodayStatus();
-                    setButtonsState();
-                    renderCalendar();
-                    renderTable();
-                    updateTrainingHoursSummary();
-                });
+            function refreshAttendanceUIFromLocal() {
+                updateTodayStatus();
+                setButtonsState();
+                renderCalendar();
+                renderTable();
+                updateTrainingHoursSummary();
+            }
+            function refreshAttendanceUI(fromServer) {
+                if (fromServer) {
+                    loadRecordsFromSupabase().then(function() {
+                        return loadReopenedDates();
+                    }).then(refreshAttendanceUIFromLocal);
+                } else {
+                    refreshAttendanceUIFromLocal();
+                }
             }
 
             var now = new Date();
@@ -1061,9 +1065,12 @@
                     if (timeInModalSession === 'AM') rec.amIn = { time: t, photo: photo || '' };
                     else if (timeInModalSession === 'PM') rec.pmIn = { time: t, photo: photo || '' };
                     else if (timeInModalSession === 'OT') rec.otIn = { time: t, photo: photo || '' };
-                    saveRecords(records);
-                    closeTimeInModal();
-                    refreshAttendanceUI();
+                    saveRecords(records).then(function() {
+                        closeTimeInModal();
+                        refreshAttendanceUI(false);
+                    }).catch(function() {
+                        alert('Hindi na-save sa server. Subukan muli.');
+                    });
                 }
                 if (isExactDay && file && (!reopenedToday || checkFileDateMatchesToday(file))) {
                     var reader = new FileReader();
@@ -1131,8 +1138,11 @@
                 } else {
                     var t = timeStr(new Date());
                     setOut(rec, t);
-                    saveRecords(records);
-                    refreshAttendanceUI();
+                    saveRecords(records).then(function() {
+                        refreshAttendanceUI(false);
+                    }).catch(function() {
+                        alert('Hindi na-save sa server. Subukan muli.');
+                    });
                 }
             }
             document.getElementById('timeOutModalCancel').addEventListener('click', closeTimeOutModal);
@@ -1148,9 +1158,12 @@
                 if (timeOutModalSession === 'AM') rec.amOut = t;
                 else if (timeOutModalSession === 'PM') rec.pmOut = t;
                 else if (timeOutModalSession === 'OT') rec.otOut = t;
-                saveRecords(records);
-                closeTimeOutModal();
-                refreshAttendanceUI();
+                saveRecords(records).then(function() {
+                    closeTimeOutModal();
+                    refreshAttendanceUI(false);
+                }).catch(function() {
+                    alert('Hindi na-save sa server. Subukan muli.');
+                });
             });
 
             document.getElementById('btnTimeOutAM').addEventListener('click', function() {
@@ -1194,20 +1207,23 @@
                     records.sort(function(a, b) { return a.date.localeCompare(b.date); });
                 }
                 rec.otClosed = true;
-                saveRecords(records);
-                refreshAttendanceUI();
+                saveRecords(records).then(function() {
+                    refreshAttendanceUI(false);
+                }).catch(function() {
+                    alert('Hindi na-save sa server. Subukan muli.');
+                });
             });
 
             var sectionAttendance = document.getElementById('section-attendance');
             if (sectionAttendance) {
                 var observer = new MutationObserver(function() {
-                    if (sectionAttendance.classList.contains('active')) refreshAttendanceUI();
+                    if (sectionAttendance.classList.contains('active')) refreshAttendanceUI(true);
                 });
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
             }
             loadRecordsFromSupabase().then(function() {
-                refreshAttendanceUI();
-            });
+                return loadReopenedDates();
+            }).then(refreshAttendanceUIFromLocal);
             setInterval(function() {
                 if (sectionAttendance && sectionAttendance.classList.contains('active')) setButtonsState();
             }, 1000);
