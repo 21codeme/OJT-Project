@@ -673,6 +673,15 @@
                 }
             }
 
+            function getNowMinutes() {
+                var d = new Date();
+                return d.getHours() * 60 + d.getMinutes();
+            }
+            function isTimeInAMWindow() { var m = getNowMinutes(); return m >= 7 * 60 && m <= 8 * 60 + 30; }
+            function isTimeOutAMWindow() { var m = getNowMinutes(); return m >= 11 * 60 + 30 && m <= 12 * 60 + 15; }
+            function isTimeInPMWindow() { var m = getNowMinutes(); return m >= 13 * 60 && m <= 13 * 60 + 30; }
+            function isTimeOutPMWindow() { var m = getNowMinutes(); return m >= 16 * 60 + 30 && m <= 17 * 60; }
+
             function setButtonsState() {
                 var todayKey = dateKey(new Date());
                 var records = getRecords();
@@ -683,10 +692,14 @@
                 var btnOutPM = document.getElementById('btnTimeOutPM');
                 var btnInOT = document.getElementById('btnTimeInOT');
                 var btnOutOT = document.getElementById('btnTimeOutOT');
-                if (btnInAM) btnInAM.disabled = !!(rec && amInTime(rec));
-                if (btnOutAM) btnOutAM.disabled = !(rec && amInTime(rec) && !rec.amOut);
-                if (btnInPM) btnInPM.disabled = !!(rec && pmInTime(rec));
-                if (btnOutPM) btnOutPM.disabled = !(rec && pmInTime(rec) && !rec.pmOut);
+                var canInAM = isTimeInAMWindow() && !(rec && amInTime(rec));
+                var canOutAM = isTimeOutAMWindow() && rec && amInTime(rec) && !rec.amOut;
+                var canInPM = isTimeInPMWindow() && !(rec && pmInTime(rec));
+                var canOutPM = isTimeOutPMWindow() && rec && pmInTime(rec) && !rec.pmOut;
+                if (btnInAM) btnInAM.disabled = !canInAM;
+                if (btnOutAM) btnOutAM.disabled = !canOutAM;
+                if (btnInPM) btnInPM.disabled = !canInPM;
+                if (btnOutPM) btnOutPM.disabled = !canOutPM;
                 if (btnInOT) btnInOT.disabled = !!(rec && otInTime(rec));
                 if (btnOutOT) btnOutOT.disabled = !(rec && otInTime(rec) && !rec.otOut);
             }
@@ -910,6 +923,9 @@
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
             }
             refreshAttendanceUI();
+            setInterval(function() {
+                if (sectionAttendance && sectionAttendance.classList.contains('active')) setButtonsState();
+            }, 1000);
         })();
     </script>
 </body>
