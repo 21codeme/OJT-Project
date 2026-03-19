@@ -388,6 +388,32 @@
                 function saveAndRedirect(pictureUrl) {
                     if (pictureUrl) profile.pictureUrl = pictureUrl;
                     try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(profile)); } catch (err) {}
+
+                    // Upsert into local trainee DB for Admin listing (prototype only).
+                    try {
+                        var DB_KEY = 'ojt_trainees_db';
+                        var docsKey = 'ojt_trainee_documents_db';
+                        var arr = [];
+                        var raw = localStorage.getItem(DB_KEY);
+                        if (raw) arr = JSON.parse(raw);
+                        if (!Array.isArray(arr)) arr = [];
+
+                        var key = profile.studentId || profile.username || profile.email || ('trainee_' + Date.now());
+                        var idx = -1;
+                        for (var i = 0; i < arr.length; i++) {
+                            var t = arr[i] || {};
+                            var tKey = t.studentId || t.username || t.email;
+                            if (tKey && tKey === key) { idx = i; break; }
+                        }
+                        if (idx >= 0) arr[idx] = profile;
+                        else arr.push(profile);
+                        localStorage.setItem(DB_KEY, JSON.stringify(arr));
+
+                        // Ensure documents map exists (optional)
+                        var docsRaw = localStorage.getItem(docsKey);
+                        if (!docsRaw) localStorage.setItem(docsKey, JSON.stringify({}));
+                    } catch (err) {}
+
                     window.location.href = 'dashboard.html';
                 }
 

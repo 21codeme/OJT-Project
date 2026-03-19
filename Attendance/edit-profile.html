@@ -355,6 +355,33 @@
                     try {
                         localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
                         localStorage.setItem('ojt_trainee_documents', JSON.stringify(docs));
+
+                        // Upsert into local trainee DB for Admin listing (prototype only).
+                        var DB_KEY = 'ojt_trainees_db';
+                        var DOCS_DB_KEY = 'ojt_trainee_documents_db';
+                        var arr = [];
+                        var raw = localStorage.getItem(DB_KEY);
+                        if (raw) arr = JSON.parse(raw);
+                        if (!Array.isArray(arr)) arr = [];
+
+                        var key = updated.studentId || updated.username || updated.email || ('trainee_' + Date.now());
+                        var idx = -1;
+                        for (var i = 0; i < arr.length; i++) {
+                            var t = arr[i] || {};
+                            var tKey = t.studentId || t.username || t.email;
+                            if (tKey && tKey === key) { idx = i; break; }
+                        }
+                        if (idx >= 0) arr[idx] = updated;
+                        else arr.push(updated);
+                        localStorage.setItem(DB_KEY, JSON.stringify(arr));
+
+                        // Store document filenames per trainee.
+                        var docsMap = {};
+                        var docsRaw = localStorage.getItem(DOCS_DB_KEY);
+                        if (docsRaw) docsMap = JSON.parse(docsRaw);
+                        if (!docsMap || typeof docsMap !== 'object') docsMap = {};
+                        docsMap[key] = docs;
+                        localStorage.setItem(DOCS_DB_KEY, JSON.stringify(docsMap));
                     } catch (err) {}
                     alert('Profile updated!');
                     window.location.href = 'dashboard.html';

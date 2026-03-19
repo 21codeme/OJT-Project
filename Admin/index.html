@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - OJT Trainee Management</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+        .top-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff; padding: 14px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+        .brand span { font-weight: 800; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 22px 24px 60px;
+        }
+
+        .panel { display: none; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 20px; }
+        .panel.active { display: block; }
+
+        .login-grid { max-width: 520px; margin: 0 auto; }
+        .login-grid h2 { color: #1e3c72; margin-bottom: 12px; }
+        .field { margin-bottom: 14px; }
+        .field label { font-weight: 800; color: #333; font-size: 0.95rem; display: block; margin-bottom: 6px; }
+        .field input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #d7dbe0; font-size: 1rem; background: #fff; }
+        .field input:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18); }
+
+        .btn {
+            padding: 12px 16px; border-radius: 12px; border: none; cursor: pointer;
+            font-weight: 900; font-size: 0.98rem;
+        }
+        .btn-primary { background: linear-gradient(135deg, #b45309 0%, #ea580c 100%); color: #fff; }
+        .btn-primary:hover { opacity: 0.95; }
+        .btn-secondary { background: #fff; color: #444; border: 1px solid #d7dbe0; }
+        .btn-secondary:hover { background: #f4f6f8; }
+
+        .error { color: #c00; margin-top: 10px; display: none; font-weight: 700; }
+        .error.show { display: block; }
+
+        .admin-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+        .sidebar {
+            border: 1px solid #e8eaed;
+            border-radius: 14px;
+            padding: 14px;
+            background: #fff;
+        }
+        .sidebar h3 { color: #1e3c72; margin-bottom: 10px; }
+        .search { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7dbe0; }
+        .search:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18); }
+
+        .trainee-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow-y: auto; }
+        .trainee-item {
+            display: flex; align-items: center; gap: 10px;
+            border: 1px solid #e8eaed; border-radius: 12px; padding: 10px;
+            background: #fff; cursor: pointer;
+        }
+        .trainee-item:hover { background: #f7f8fa; }
+        .trainee-item.active { border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.12); }
+        .trainee-item img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #1e3c72; }
+        .trainee-item .meta { min-width: 0; }
+        .trainee-item .name { font-weight: 900; color: #1e3c72; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .trainee-item .sub { color: #777; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .details {
+            border: 1px solid #e8eaed;
+            border-radius: 14px;
+            padding: 16px;
+            background: #fff;
+        }
+        .details-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+        .details-title { display: flex; gap: 14px; align-items: center; }
+        .details-title img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 4px solid #1e3c72; }
+        .details-title h2 { color: #1e3c72; font-size: 1.25rem; }
+        .details-title p { color: #555; font-weight: 600; font-size: 0.9rem; }
+
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .tab-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            background: rgba(30,60,114,0.08);
+            color: #1e3c72;
+            font-weight: 900;
+        }
+        .tab-btn.active { background: rgba(30,60,114,0.95); color: #fff; }
+        .tab-btn:hover { background: rgba(30,60,114,0.15); }
+
+        .tab-content { margin-top: 14px; }
+
+        .kv { display: grid; grid-template-columns: 280px 1fr; gap: 10px 16px; }
+        .kv .k { color: #444; font-weight: 800; font-size: 0.92rem; }
+        .kv .v { color: #222; font-weight: 700; font-size: 0.92rem; }
+        .muted { color: #777; font-weight: 600; }
+        .doc-list { display: flex; flex-direction: column; gap: 8px; }
+        .doc-item { border: 1px solid #e8eaed; border-radius: 12px; padding: 10px 12px; background: #fafbff; }
+        .doc-item .t { font-weight: 900; color: #1e3c72; }
+        .doc-item .d { color: #555; font-weight: 700; margin-top: 3px; }
+
+        @media (max-width: 980px) {
+            .admin-layout { grid-template-columns: 1fr; }
+            .trainee-list { max-height: 320px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="top-header">
+        <div class="brand">
+            <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
+            <span>OJT Admin</span>
+        </div>
+        <div>
+            <button class="btn btn-secondary" type="button" id="btnLogout" style="display:none;">Log out</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="loginPanel" class="panel active">
+            <div class="login-grid">
+                <h2>Admin Login</h2>
+                <div class="field">
+                    <label for="adminUser">Username</label>
+                    <input id="adminUser" type="text" placeholder="admin" autocomplete="username">
+                </div>
+                <div class="field">
+                    <label for="adminPass">Password</label>
+                    <input id="adminPass" type="password" placeholder="Password" autocomplete="current-password">
+                </div>
+                <button class="btn btn-primary" type="button" id="btnLogin">Log in</button>
+                <div id="loginError" class="error">Incorrect password.</div>
+            </div>
+        </div>
+
+        <div id="adminPanel" class="panel">
+            <div class="admin-layout">
+                <aside class="sidebar">
+                    <h3>OJT Trainees</h3>
+                    <input id="traineeSearch" class="search" type="text" placeholder="Search by name or student ID">
+                    <div id="traineeList" class="trainee-list"></div>
+                </aside>
+
+                <section class="details">
+                    <div class="details-header">
+                        <div class="details-title">
+                            <img id="detailPicture" src="../images/omsc.png" alt="Trainee">
+                            <div>
+                                <h2 id="detailName">Select a trainee</h2>
+                                <p id="detailSub" class="muted">—</p>
+                            </div>
+                        </div>
+                        <div class="tabs">
+                            <button class="tab-btn active" type="button" data-tab="profile">Profile</button>
+                            <button class="tab-btn" type="button" data-tab="documents">Documents</button>
+                            <button class="tab-btn" type="button" data-tab="attendance">Attendance</button>
+                            <button class="tab-btn" type="button" data-tab="dailylogs">Daily Logs</button>
+                        </div>
+                    </div>
+
+                    <div id="tabContent">
+                        <div class="tab-content" data-content="profile">
+                            <div class="kv">
+                                <div class="k">Full Name</div><div class="v" id="kvFullName">—</div>
+                                <div class="k">Valid Email Address</div><div class="v" id="kvEmail">—</div>
+                                <div class="k">Username</div><div class="v" id="kvUsername">—</div>
+                                <div class="k">Student ID Number</div><div class="v" id="kvStudentId">—</div>
+                                <div class="k">Course / Program</div><div class="v" id="kvCourse">—</div>
+                                <div class="k">Year Level</div><div class="v" id="kvYearLevel">—</div>
+                                <div class="k">School Name</div><div class="v" id="kvSchoolName">—</div>
+                                <div class="k">Department / College</div><div class="v" id="kvDepartment">—</div>
+                                <div class="k">OJT Coordinator / Adviser</div><div class="v" id="kvCoordinator">—</div>
+                                <div class="k">Company Name</div><div class="v" id="kvCompanyName">—</div>
+                                <div class="k">Company Address</div><div class="v" id="kvCompanyAddress">—</div>
+                                <div class="k">Supervisor / Mentor</div><div class="v" id="kvSupervisor">—</div>
+                                <div class="k">Position / Role</div><div class="v" id="kvPositionRole">—</div>
+                                <div class="k">Contact Number</div><div class="v" id="kvContactNumber">—</div>
+                                <div class="k">Emergency Contact</div><div class="v" id="kvEmergencyContact">—</div>
+                                <div class="k">Training Hours Required</div><div class="v" id="kvTrainingHours">—</div>
+                                <div class="k">Start Date</div><div class="v" id="kvStartDate">—</div>
+                                <div class="k">End Date</div><div class="v" id="kvEndDate">—</div>
+                            </div>
+                        </div>
+
+                        <div class="tab-content" data-content="documents" style="display:none;">
+                            <div class="doc-list" id="docsList"></div>
+                            <p class="muted" id="docsEmpty" style="display:none;margin-top:10px;">No documents uploaded yet.</p>
+                        </div>
+
+                        <div class="tab-content" data-content="attendance" style="display:none;">
+                            <p class="muted">Attendance tracking is not implemented in this prototype admin page yet.</p>
+                        </div>
+
+                        <div class="tab-content" data-content="dailylogs" style="display:none;">
+                            <p class="muted">Daily logs is not implemented in this prototype admin page yet.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            var REQUIRED_ADMIN_PASSWORD = 'Comlab2026@omsc';
+            var ADMIN_SESSION_KEY = 'ojt_admin_session';
+            var DB_KEY = 'ojt_trainees_db';
+            var DOCS_DB_KEY = 'ojt_trainee_documents_db';
+
+            var loginPanel = document.getElementById('loginPanel');
+            var adminPanel = document.getElementById('adminPanel');
+            var btnLogin = document.getElementById('btnLogin');
+            var loginError = document.getElementById('loginError');
+            var btnLogout = document.getElementById('btnLogout');
+
+            var traineeSearch = document.getElementById('traineeSearch');
+            var traineeListEl = document.getElementById('traineeList');
+
+            var selectedKey = null;
+            var selectedTrainee = null;
+
+            function loadTrainees() {
+                var arr = [];
+                try {
+                    var raw = localStorage.getItem(DB_KEY);
+                    if (raw) arr = JSON.parse(raw);
+                } catch (e) {}
+                if (!Array.isArray(arr)) arr = [];
+                arr.sort(function(a, b) {
+                    var an = (a.fullName || '').toString();
+                    var bn = (b.fullName || '').toString();
+                    return an.localeCompare(bn);
+                });
+                return arr;
+            }
+
+            function getTraineeKey(t) {
+                return t && (t.studentId || t.username || t.email) ? (t.studentId || t.username || t.email) : null;
+            }
+
+            function setTab(tabName) {
+                var contents = document.querySelectorAll('#tabContent .tab-content');
+                contents.forEach(function(c) {
+                    c.style.display = (c.getAttribute('data-content') === tabName) ? 'block' : 'none';
+                });
+                var btns = document.querySelectorAll('.tabs .tab-btn');
+                btns.forEach(function(b) {
+                    if (b.getAttribute('data-tab') === tabName) b.classList.add('active');
+                    else b.classList.remove('active');
+                });
+            }
+
+            document.querySelectorAll('.tabs .tab-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    setTab(this.getAttribute('data-tab'));
+                    renderDocsIfNeeded();
+                });
+            });
+
+            function renderTraineeList() {
+                traineeListEl.innerHTML = '';
+                var trainees = loadTrainees();
+                var q = (traineeSearch.value || '').toLowerCase().trim();
+                if (q) {
+                    trainees = trainees.filter(function(t) {
+                        var name = (t.fullName || '').toString().toLowerCase();
+                        var sid = (t.studentId || '').toString().toLowerCase();
+                        return name.includes(q) || sid.includes(q);
+                    });
+                }
+
+                if (trainees.length === 0) {
+                    var empty = document.createElement('div');
+                    empty.className = 'muted';
+                    empty.style.padding = '12px';
+                    empty.textContent = 'No trainees found. Create an account on the Attendance page first.';
+                    traineeListEl.appendChild(empty);
+                    return;
+                }
+
+                trainees.forEach(function(t) {
+                    var key = getTraineeKey(t);
+                    var item = document.createElement('div');
+                    item.className = 'trainee-item' + (key === selectedKey ? ' active' : '');
+                    item.setAttribute('role', 'button');
+                    item.tabIndex = 0;
+                    item.addEventListener('click', function() {
+                        selectedKey = key;
+                        selectedTrainee = t;
+                        renderDetails(t, key);
+                    });
+                    item.innerHTML = '' +
+                        '<img src="' + (t.pictureUrl || '../images/omsc.png') + '" alt="pic" onerror="this.src=\\'../images/omsc.png\\'">' +
+                        '<div class="meta">' +
+                            '<div class="name">' + (t.fullName || '—') + '</div>' +
+                            '<div class="sub">ID: ' + (t.studentId || '—') + '</div>' +
+                        '</div>';
+                    traineeListEl.appendChild(item);
+                });
+            }
+
+            function renderDetails(t, key) {
+                if (!t) return;
+                selectedTrainee = t;
+                selectedKey = key;
+
+                document.getElementById('detailName').textContent = t.fullName || '—';
+                document.getElementById('detailSub').textContent = 'Student ID: ' + (t.studentId || '—');
+                document.getElementById('detailPicture').src = t.pictureUrl || '../images/omsc.png';
+
+                document.getElementById('kvFullName').textContent = t.fullName || '—';
+                document.getElementById('kvEmail').textContent = t.email || '—';
+                document.getElementById('kvUsername').textContent = t.username || '—';
+                document.getElementById('kvStudentId').textContent = t.studentId || '—';
+                document.getElementById('kvCourse').textContent = t.course || '—';
+                document.getElementById('kvYearLevel').textContent = t.yearLevel || '—';
+                document.getElementById('kvSchoolName').textContent = t.schoolName || '—';
+                document.getElementById('kvDepartment').textContent = t.department || '—';
+                document.getElementById('kvCoordinator').textContent = t.coordinator || '—';
+                document.getElementById('kvCompanyName').textContent = t.companyName || '—';
+                document.getElementById('kvCompanyAddress').textContent = t.companyAddress || '—';
+                document.getElementById('kvSupervisor').textContent = t.supervisor || '—';
+                document.getElementById('kvPositionRole').textContent = t.positionRole || '—';
+                document.getElementById('kvContactNumber').textContent = t.contactNumber || '—';
+                document.getElementById('kvEmergencyContact').textContent = t.emergencyContact || '—';
+                document.getElementById('kvTrainingHours').textContent = t.trainingHours || '—';
+                document.getElementById('kvStartDate').textContent = t.startDate || '—';
+                document.getElementById('kvEndDate').textContent = t.endDate || '—';
+
+                renderDocsIfNeeded(true);
+            }
+
+            function renderDocsIfNeeded(force) {
+                var tabBtn = document.querySelector('.tabs .tab-btn.active');
+                var tab = tabBtn ? tabBtn.getAttribute('data-tab') : 'profile';
+                if (tab !== 'documents' && !force) return;
+
+                var docsList = document.getElementById('docsList');
+                var docsEmpty = document.getElementById('docsEmpty');
+                docsList.innerHTML = '';
+
+                if (!selectedKey || !selectedTrainee) {
+                    docsEmpty.style.display = 'block';
+                    return;
+                }
+
+                var docsRaw = localStorage.getItem(DOCS_DB_KEY);
+                var docsMap = {};
+                try { if (docsRaw) docsMap = JSON.parse(docsRaw); } catch (e) {}
+                if (!docsMap || typeof docsMap !== 'object') docsMap = {};
+
+                var docs = docsMap[selectedKey] || null;
+                if (!docs || typeof docs !== 'object') {
+                    docsEmpty.style.display = 'block';
+                    return;
+                }
+                docsEmpty.style.display = 'none';
+
+                var order = [
+                    ['resume', 'Resume / CV'],
+                    ['endorsement', 'Endorsement Letter'],
+                    ['moa', 'Memorandum of Agreement (MOA)'],
+                    ['medical', 'Medical Certificate'],
+                    ['idPicture', 'ID Picture / Valid ID']
+                ];
+                order.forEach(function(pair) {
+                    var id = pair[0];
+                    var title = pair[1];
+                    var fileName = docs[id] || null;
+                    var item = document.createElement('div');
+                    item.className = 'doc-item';
+                    item.innerHTML = '<div class="t">' + title + '</div><div class="d">' + (fileName ? fileName : '—') + '</div>';
+                    docsList.appendChild(item);
+                });
+            }
+
+            // Events
+            if (traineeSearch) {
+                traineeSearch.addEventListener('input', function() {
+                    renderTraineeList();
+                    if (selectedTrainee) renderDetails(selectedTrainee, selectedKey);
+                });
+            }
+
+            if (btnLogin) {
+                btnLogin.addEventListener('click', function() {
+                    loginError.classList.remove('show');
+                    var pass = (document.getElementById('adminPass').value || '').trim();
+                    if (pass !== REQUIRED_ADMIN_PASSWORD) {
+                        loginError.classList.add('show');
+                        return;
+                    }
+                    localStorage.setItem(ADMIN_SESSION_KEY, '1');
+                    location.reload();
+                });
+            }
+
+            if (btnLogout) {
+                btnLogout.addEventListener('click', function() {
+                    localStorage.removeItem(ADMIN_SESSION_KEY);
+                    location.reload();
+                });
+            }
+
+            // Boot
+            var isAuthed = false;
+            try {
+                isAuthed = !!localStorage.getItem(ADMIN_SESSION_KEY);
+            } catch (e) {}
+
+            if (isAuthed) {
+                loginPanel.classList.remove('active');
+                adminPanel.classList.add('active');
+                btnLogout.style.display = 'inline-block';
+                renderTraineeList();
+
+                // Auto select first trainee
+                var trainees = loadTrainees();
+                if (trainees.length > 0) {
+                    var first = trainees[0];
+                    selectedKey = getTraineeKey(first);
+                    renderDetails(first, selectedKey);
+                }
+            } else {
+                loginPanel.classList.add('active');
+                adminPanel.classList.remove('active');
+                btnLogout.style.display = 'none';
+            }
+        })();
+    </script>
+</body>
+</html>
+
