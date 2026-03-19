@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OJT Trainee - Occidental Mindoro State College</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; }
+        .top-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        .top-header .brand { display: flex; align-items: center; gap: 12px; }
+        .top-header .brand img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+        .top-header .brand span { font-weight: 700; font-size: 1rem; }
+        .top-header .brand small { display: block; font-weight: 400; font-size: 0.8rem; opacity: 0.9; }
+        .nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .nav-tabs button {
+            padding: 10px 18px; border: none; border-radius: 8px; background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: background 0.2s;
+        }
+        .nav-tabs button:hover { background: rgba(255,255,255,0.25); }
+        .nav-tabs button.active { background: rgba(255,255,255,0.95); color: #1e3c72; }
+        .nav-tabs .btn-logout { background: rgba(200,60,60,0.9); margin-left: 8px; }
+        .nav-tabs .btn-logout:hover { background: rgba(220,80,80,1); }
+        .main-wrap { max-width: 960px; margin: 0 auto; padding: 28px 24px; }
+        .section { display: none; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 32px; }
+        .section.active { display: block; }
+        .section h2 { color: #1e3c72; font-size: 1.35rem; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #e8eaed; }
+        .profile-layout { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+        .profile-pic-wrap { flex-shrink: 0; text-align: center; }
+        .profile-pic-wrap img { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; border: 4px solid #1e3c72; }
+        .profile-pic-wrap .upload-hint { margin-top: 10px; font-size: 0.85rem; color: #666; }
+        .profile-details { flex: 1; min-width: 240px; }
+        .profile-details .row { display: grid; grid-template-columns: 200px 1fr; gap: 12px 20px; align-items: start; margin-bottom: 14px; }
+        .profile-details .row label { font-weight: 600; color: #444; font-size: 0.9rem; }
+        .profile-details .row span { color: #222; }
+        .details-group { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e8eaed; }
+        .details-group h3 { color: #1e3c72; font-size: 1.05rem; margin-bottom: 14px; }
+        .profile-actions { display: flex; justify-content: flex-end; margin-top: -8px; margin-bottom: 14px; }
+        .btn-edit-profile {
+            padding: 10px 16px; border: none; border-radius: 10px; cursor: pointer;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; font-weight: 800;
+            box-shadow: 0 4px 14px rgba(30,60,114,0.25);
+        }
+        .btn-edit-profile:hover { opacity: 0.95; }
+        .edit-panel {
+            display: none;
+            background: #fafbff;
+            border: 1px solid #e8eaed;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+        .edit-panel.active { display: block; }
+        .edit-panel h3 { color: #1e3c72; font-size: 1.2rem; margin-bottom: 14px; }
+        .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .edit-field { display: flex; flex-direction: column; gap: 6px; }
+        .edit-field label { font-weight: 800; color: #333; font-size: 0.9rem; }
+        .edit-field input, .edit-field select {
+            padding: 10px 12px; border-radius: 10px; border: 1px solid #d7dbe0; font-size: 0.95rem; background: #fff;
+        }
+        .edit-field input:focus, .edit-field select:focus {
+            outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18);
+        }
+        .edit-docs { margin-top: 14px; padding-top: 14px; border-top: 1px solid #e8eaed; }
+        .edit-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+        .btn-primary {
+            border: none; border-radius: 10px; padding: 12px 18px; cursor: pointer; font-weight: 900;
+            background: linear-gradient(135deg, #b45309 0%, #ea580c 100%); color: #fff;
+        }
+        .btn-primary:hover { opacity: 0.95; }
+        .btn-secondary { border: 1px solid #d7dbe0; border-radius: 10px; padding: 12px 18px; cursor: pointer; font-weight: 900; background: #fff; color: #444; }
+        .btn-secondary:hover { background: #f4f6f8; }
+        .placeholder-content { color: #666; padding: 24px 0; }
+        .placeholder-content p { margin-bottom: 12px; }
+        .back-home { display: inline-block; margin-bottom: 16px; color: #1e3c72; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        .back-home:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-home">← Back to Home</a>
+
+    <header class="top-header">
+        <div class="brand">
+            <img id="headerLogo" src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
+            <div>
+                <span>OCCIDENTAL MINDORO STATE COLLEGE</span>
+                <small>Multimedia and Speech Laboratory — OJT Trainee</small>
+            </div>
+        </div>
+        <nav class="nav-tabs">
+            <button type="button" class="nav-btn active" data-section="profile">Profile</button>
+            <button type="button" class="nav-btn" data-section="documents">Documents</button>
+            <button type="button" class="nav-btn" data-section="attendance">Attendance</button>
+            <button type="button" class="nav-btn" data-section="dailylogs">Daily Logs</button>
+            <button type="button" class="btn-logout" id="btnLogout">Log out</button>
+        </nav>
+    </header>
+
+    <main class="main-wrap">
+        <section id="section-profile" class="section active">
+            <h2>Profile Details</h2>
+            <div class="profile-actions">
+                <button type="button" class="btn-edit-profile" id="btnEditProfile">Edit Profile</button>
+            </div>
+
+            <div id="editProfilePanel" class="edit-panel" aria-hidden="true">
+                <h3>Edit Profile</h3>
+                <form id="editProfileForm" onsubmit="return false;">
+                    <div class="edit-grid">
+                        <div class="edit-field">
+                            <label for="editEmail">Valid Email Address</label>
+                            <input type="email" id="editEmail" required>
+                        </div>
+                        <div class="edit-field">
+                            <label for="editUsername">Username & Password (Password not saved)</label>
+                            <input type="text" id="editUsername" required>
+                        </div>
+
+                        <div class="edit-field">
+                            <label>Full Name (First, Middle, Last)</label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+                                <input type="text" id="editFirstName" placeholder="First Name" required style="min-width:0;">
+                                <input type="text" id="editMiddleName" placeholder="Middle Name" style="min-width:0;">
+                                <input type="text" id="editLastName" placeholder="Last Name" required style="min-width:0;">
+                            </div>
+                        </div>
+
+                        <div class="edit-field">
+                            <label for="editStudentId">Student ID Number</label>
+                            <input type="text" id="editStudentId" required>
+                        </div>
+
+                        <div class="edit-field">
+                            <label for="editCourse">Course / Program</label>
+                            <select id="editCourse" required>
+                                <option value="">Select course...</option>
+                                <option value="BSIT">BSIT</option>
+                                <option value="BSBA">BSBA</option>
+                                <option value="BSMA">BSMA</option>
+                                <option value="BEED">BEED</option>
+                                <option value="BSED">BSED</option>
+                                <option value="BPEd">BPEd</option>
+                                <option value="BTTE">BTTE</option>
+                                <option value="BSA">BSA</option>
+                                <option value="BSAF">BSAF</option>
+                                <option value="BSF">BSF</option>
+                                <option value="BSFi">BSFi</option>
+                                <option value="BSHM">BSHM</option>
+                                <option value="BSTM">BSTM</option>
+                                <option value="BSFT">BSFT</option>
+                                <option value="BSCRIM">BSCRIM</option>
+                                <option value="BSIS">BSIS</option>
+                                <option value="BSCE">BSCE</option>
+                                <option value="BSArch">BSArch</option>
+                                <option value="DM">DM</option>
+                            </select>
+                        </div>
+
+                        <div class="edit-field">
+                            <label for="editYearLevel">Year Level</label>
+                            <input type="text" id="editYearLevel" required placeholder="e.g. 4th Year">
+                        </div>
+                    </div>
+
+                    <div class="edit-docs">
+                        <div style="font-weight:900;color:#1e3c72;margin-bottom:10px;">🏫 School Information</div>
+                        <div class="edit-grid">
+                            <div class="edit-field">
+                                <label for="editSchoolName">School Name</label>
+                                <input type="text" id="editSchoolName" required>
+                            </div>
+                            <div class="edit-field">
+                                <label for="editDepartment">Department / College</label>
+                                <input type="text" id="editDepartment" required>
+                            </div>
+                            <div class="edit-field" style="grid-column:1/-1;">
+                                <label for="editCoordinator">OJT Coordinator / Adviser Name</label>
+                                <input type="text" id="editCoordinator" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="edit-docs">
+                        <div style="font-weight:900;color:#1e3c72;margin-bottom:10px;">🏢 OJT / Company Details</div>
+                        <div class="edit-grid">
+                            <div class="edit-field">
+                                <label for="editCompanyName">Company Name</label>
+                                <input type="text" id="editCompanyName" required>
+                            </div>
+                            <div class="edit-field">
+                                <label for="editSupervisor">Supervisor / Mentor Name</label>
+                                <input type="text" id="editSupervisor" required>
+                            </div>
+                            <div class="edit-field" style="grid-column:1/-1;">
+                                <label for="editCompanyAddress">Company Address</label>
+                                <input type="text" id="editCompanyAddress" required>
+                            </div>
+                            <div class="edit-field" style="grid-column:1/-1;">
+                                <label for="editPositionRole">Position / Role Assigned</label>
+                                <input type="text" id="editPositionRole" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="edit-docs">
+                        <div style="font-weight:900;color:#1e3c72;margin-bottom:10px;">📄 Required Documents</div>
+                        <div class="edit-grid">
+                            <div class="edit-field">
+                                <label for="editResume">Resume / CV</label>
+                                <input type="file" id="editResume" accept=".pdf,.doc,.docx,image/*">
+                            </div>
+                            <div class="edit-field">
+                                <label for="editEndorsement">Endorsement Letter</label>
+                                <input type="file" id="editEndorsement" accept=".pdf,.doc,.docx,image/*">
+                            </div>
+                            <div class="edit-field">
+                                <label for="editMOA">MOA</label>
+                                <input type="file" id="editMOA" accept=".pdf,.doc,.docx,image/*">
+                            </div>
+                            <div class="edit-field">
+                                <label for="editMedical">Medical Certificate</label>
+                                <input type="file" id="editMedical" accept=".pdf,.doc,.docx,image/*">
+                            </div>
+                            <div class="edit-field" style="grid-column:1/-1;">
+                                <label for="editIdPicture">ID Picture / Valid ID</label>
+                                <input type="file" id="editIdPicture" accept="image/*">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="edit-docs">
+                        <div style="font-weight:900;color:#1e3c72;margin-bottom:10px;">🔐 Additional Info</div>
+                        <div class="edit-grid">
+                            <div class="edit-field">
+                                <label for="editContactNumber">Contact Number</label>
+                                <input type="text" id="editContactNumber" required>
+                            </div>
+                            <div class="edit-field">
+                                <label for="editEmergencyContact">Emergency Contact Person</label>
+                                <input type="text" id="editEmergencyContact" required>
+                            </div>
+                            <div class="edit-field">
+                                <label for="editTrainingHours">Training Hours Required</label>
+                                <input type="number" id="editTrainingHours" min="0" required>
+                            </div>
+                            <div class="edit-field">
+                                <label for="editStartDate">Start Date</label>
+                                <input type="date" id="editStartDate" required>
+                            </div>
+                            <div class="edit-field" style="grid-column:1/-1;">
+                                <label for="editEndDate">End Date</label>
+                                <input type="date" id="editEndDate" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="edit-actions">
+                        <button type="button" class="btn-secondary" id="btnCancelEdit">Cancel</button>
+                        <button type="button" class="btn-primary" id="btnSaveProfile">Save</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="profile-layout">
+                <div class="profile-pic-wrap">
+                    <img id="profilePicture" src="../images/omsc.png" alt="Profile" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
+                    <p class="upload-hint">Profile picture</p>
+                </div>
+                <div class="profile-details">
+                    <div class="row"><label>Full Name</label><span id="profileFullName">—</span></div>
+                    <div class="row"><label>Valid Email Address</label><span id="profileEmail">—</span></div>
+                    <div class="row"><label>Username</label><span id="profileUsername">—</span></div>
+                    <div class="row"><label>Student ID Number</label><span id="profileStudentId">—</span></div>
+
+                    <div class="details-group">
+                        <h3>School Information</h3>
+                        <div class="row"><label>School Name</label><span id="profileSchoolName">—</span></div>
+                        <div class="row"><label>Department / College</label><span id="profileDepartment">—</span></div>
+                        <div class="row"><label>OJT Coordinator / Adviser Name</label><span id="profileCoordinator">—</span></div>
+                    </div>
+
+                    <div class="details-group">
+                        <h3>OJT / Company Details</h3>
+                        <div class="row"><label>Company Name</label><span id="profileCompanyName">—</span></div>
+                        <div class="row"><label>Company Address</label><span id="profileCompanyAddress">—</span></div>
+                        <div class="row"><label>Supervisor / Mentor Name</label><span id="profileSupervisor">—</span></div>
+                        <div class="row"><label>Position / Role Assigned</label><span id="profilePositionRole">—</span></div>
+                    </div>
+
+                    <div class="details-group">
+                        <h3>Course & Training</h3>
+                        <div class="row"><label>Course / Program</label><span id="profileCourse">—</span></div>
+                        <div class="row"><label>Year Level</label><span id="profileYearLevel">—</span></div>
+                        <div class="row"><label>Training Hours Required</label><span id="profileTrainingHours">—</span></div>
+                        <div class="row"><label>Start Date</label><span id="profileStartDate">—</span></div>
+                        <div class="row"><label>End Date</label><span id="profileEndDate">—</span></div>
+                    </div>
+
+                    <div class="details-group">
+                        <h3>Additional Info</h3>
+                        <div class="row"><label>Contact Number</label><span id="profileContactNumber">—</span></div>
+                        <div class="row"><label>Emergency Contact Person</label><span id="profileEmergencyContact">—</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-documents" class="section">
+            <h2>Documents</h2>
+            <div class="placeholder-content">
+                <p>Your documents and requirements will appear here.</p>
+                <p>Upload or view OJT-related documents (e.g. endorsement, memorandum, certificates).</p>
+            </div>
+        </section>
+
+        <section id="section-attendance" class="section">
+            <h2>Attendance</h2>
+            <div class="placeholder-content">
+                <p>Your attendance records will appear here.</p>
+                <p>Time in / time out and daily attendance summary.</p>
+            </div>
+        </section>
+
+        <section id="section-dailylogs" class="section">
+            <h2>Daily Logs</h2>
+            <div class="placeholder-content">
+                <p>Your daily activity logs will appear here.</p>
+                <p>Record tasks and accomplishments per day.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function() {
+            var navBtns = document.querySelectorAll('.nav-btn[data-section]');
+            var sections = document.querySelectorAll('.section');
+            function showSection(sectionId) {
+                sections.forEach(function(s) { s.classList.remove('active'); });
+                navBtns.forEach(function(b) { b.classList.remove('active'); });
+                var sectionEl = document.getElementById('section-' + sectionId);
+                var btn = document.querySelector('.nav-btn[data-section="' + sectionId + '"]');
+                if (sectionEl) sectionEl.classList.add('active');
+                if (btn) btn.classList.add('active');
+            }
+            navBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-section');
+                    if (id) showSection(id);
+                });
+            });
+            document.getElementById('btnLogout').addEventListener('click', function() {
+                if (confirm('Log out?')) window.location.href = 'index.html';
+            });
+            var stored = null;
+            try {
+                var raw = localStorage.getItem('ojt_trainee_profile');
+                if (raw) stored = JSON.parse(raw);
+            } catch (e) {}
+            if (stored) {
+                if (stored.fullName) document.getElementById('profileFullName').textContent = stored.fullName;
+                if (stored.email) document.getElementById('profileEmail').textContent = stored.email;
+                if (stored.username) document.getElementById('profileUsername').textContent = stored.username;
+                if (stored.studentId) document.getElementById('profileStudentId').textContent = stored.studentId;
+                if (stored.course) document.getElementById('profileCourse').textContent = stored.course;
+                if (stored.yearLevel) document.getElementById('profileYearLevel').textContent = stored.yearLevel;
+                if (stored.schoolName) document.getElementById('profileSchoolName').textContent = stored.schoolName;
+                if (stored.department) document.getElementById('profileDepartment').textContent = stored.department;
+                if (stored.coordinator) document.getElementById('profileCoordinator').textContent = stored.coordinator;
+                if (stored.companyName) document.getElementById('profileCompanyName').textContent = stored.companyName;
+                if (stored.companyAddress) document.getElementById('profileCompanyAddress').textContent = stored.companyAddress;
+                if (stored.supervisor) document.getElementById('profileSupervisor').textContent = stored.supervisor;
+                if (stored.positionRole) document.getElementById('profilePositionRole').textContent = stored.positionRole;
+                if (stored.trainingHours) document.getElementById('profileTrainingHours').textContent = stored.trainingHours;
+                if (stored.startDate) document.getElementById('profileStartDate').textContent = stored.startDate;
+                if (stored.endDate) document.getElementById('profileEndDate').textContent = stored.endDate;
+                if (stored.contactNumber) document.getElementById('profileContactNumber').textContent = stored.contactNumber;
+                if (stored.emergencyContact) document.getElementById('profileEmergencyContact').textContent = stored.emergencyContact;
+                if (stored.pictureUrl) document.getElementById('profilePicture').src = stored.pictureUrl;
+            }
+
+            function splitFullName(fullName) {
+                if (!fullName) return { first: '', middle: '', last: '' };
+                var parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+                if (parts.length === 0) return { first: '', middle: '', last: '' };
+                if (parts.length === 1) return { first: parts[0], middle: '', last: '' };
+                if (parts.length === 2) return { first: parts[0], middle: '', last: parts[1] };
+                return { first: parts[0], middle: parts.slice(1, -1).join(' '), last: parts[parts.length - 1] };
+            }
+
+            function loadEditForm() {
+                if (!stored) return;
+                var nameParts = splitFullName(stored.fullName);
+                var setVal = function(id, value) {
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    el.value = value != null ? String(value) : '';
+                };
+
+                setVal('editEmail', stored.email);
+                setVal('editUsername', stored.username);
+                setVal('editFirstName', nameParts.first);
+                setVal('editMiddleName', nameParts.middle);
+                setVal('editLastName', nameParts.last);
+                setVal('editStudentId', stored.studentId);
+                setVal('editCourse', stored.course);
+                setVal('editYearLevel', stored.yearLevel);
+                setVal('editSchoolName', stored.schoolName);
+                setVal('editDepartment', stored.department);
+                setVal('editCoordinator', stored.coordinator);
+                setVal('editCompanyName', stored.companyName);
+                setVal('editCompanyAddress', stored.companyAddress);
+                setVal('editSupervisor', stored.supervisor);
+                setVal('editPositionRole', stored.positionRole);
+                setVal('editContactNumber', stored.contactNumber);
+                setVal('editEmergencyContact', stored.emergencyContact);
+                setVal('editTrainingHours', stored.trainingHours);
+                setVal('editStartDate', stored.startDate);
+                setVal('editEndDate', stored.endDate);
+            }
+
+            var btnEditProfile = document.getElementById('btnEditProfile');
+            var editPanel = document.getElementById('editProfilePanel');
+            var btnCancelEdit = document.getElementById('btnCancelEdit');
+            var btnSaveProfile = document.getElementById('btnSaveProfile');
+
+            if (btnEditProfile && editPanel) {
+                btnEditProfile.addEventListener('click', function() {
+                    if (!stored) {
+                        alert('Please create your account first.');
+                        return;
+                    }
+                    editPanel.classList.toggle('active');
+                    var isActive = editPanel.classList.contains('active');
+                    editPanel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+                    if (isActive) loadEditForm();
+                });
+            }
+
+            if (btnCancelEdit && editPanel) {
+                btnCancelEdit.addEventListener('click', function() {
+                    editPanel.classList.remove('active');
+                    editPanel.setAttribute('aria-hidden', 'true');
+                });
+            }
+
+            if (btnSaveProfile) {
+                btnSaveProfile.addEventListener('click', function() {
+                    if (!stored) return;
+                    var first = document.getElementById('editFirstName')?.value?.trim() || '';
+                    var middle = document.getElementById('editMiddleName')?.value?.trim() || '';
+                    var last = document.getElementById('editLastName')?.value?.trim() || '';
+                    var fullName = [first, middle, last].filter(Boolean).join(' ');
+
+                    var get = function(id) {
+                        var el = document.getElementById(id);
+                        return el ? (el.value != null ? el.value : '') : '';
+                    };
+
+                    var updated = {
+                        fullName: fullName || stored.fullName,
+                        email: get('editEmail'),
+                        username: get('editUsername'),
+                        studentId: get('editStudentId'),
+                        course: get('editCourse'),
+                        yearLevel: get('editYearLevel'),
+                        schoolName: get('editSchoolName'),
+                        department: get('editDepartment'),
+                        coordinator: get('editCoordinator'),
+                        companyName: get('editCompanyName'),
+                        companyAddress: get('editCompanyAddress'),
+                        supervisor: get('editSupervisor'),
+                        positionRole: get('editPositionRole'),
+                        contactNumber: get('editContactNumber'),
+                        emergencyContact: get('editEmergencyContact'),
+                        trainingHours: get('editTrainingHours'),
+                        startDate: get('editStartDate'),
+                        endDate: get('editEndDate'),
+                        pictureUrl: stored.pictureUrl || null
+                    };
+
+                    // Save document file names (prototype). Actual upload not wired.
+                    var docInputToName = function(id) {
+                        var el = document.getElementById(id);
+                        if (!el || !el.files || !el.files[0]) return null;
+                        return el.files[0].name;
+                    };
+                    var docs = {
+                        resume: docInputToName('editResume'),
+                        endorsement: docInputToName('editEndorsement'),
+                        moa: docInputToName('editMOA'),
+                        medical: docInputToName('editMedical'),
+                        idPicture: docInputToName('editIdPicture')
+                    };
+                    try {
+                        localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
+                        localStorage.setItem('ojt_trainee_documents', JSON.stringify(docs));
+                    } catch (e) {}
+
+                    stored = updated;
+
+                    // Update Profile Details UI
+                    if (updated.fullName) document.getElementById('profileFullName').textContent = updated.fullName;
+                    if (updated.email) document.getElementById('profileEmail').textContent = updated.email;
+                    if (updated.username) document.getElementById('profileUsername').textContent = updated.username;
+                    if (updated.studentId) document.getElementById('profileStudentId').textContent = updated.studentId;
+                    if (updated.course) document.getElementById('profileCourse').textContent = updated.course;
+                    if (updated.yearLevel) document.getElementById('profileYearLevel').textContent = updated.yearLevel;
+                    if (updated.schoolName) document.getElementById('profileSchoolName').textContent = updated.schoolName;
+                    if (updated.department) document.getElementById('profileDepartment').textContent = updated.department;
+                    if (updated.coordinator) document.getElementById('profileCoordinator').textContent = updated.coordinator;
+                    if (updated.companyName) document.getElementById('profileCompanyName').textContent = updated.companyName;
+                    if (updated.companyAddress) document.getElementById('profileCompanyAddress').textContent = updated.companyAddress;
+                    if (updated.supervisor) document.getElementById('profileSupervisor').textContent = updated.supervisor;
+                    if (updated.positionRole) document.getElementById('profilePositionRole').textContent = updated.positionRole;
+                    if (updated.trainingHours) document.getElementById('profileTrainingHours').textContent = updated.trainingHours;
+                    if (updated.startDate) document.getElementById('profileStartDate').textContent = updated.startDate;
+                    if (updated.endDate) document.getElementById('profileEndDate').textContent = updated.endDate;
+                    if (updated.contactNumber) document.getElementById('profileContactNumber').textContent = updated.contactNumber;
+                    if (updated.emergencyContact) document.getElementById('profileEmergencyContact').textContent = updated.emergencyContact;
+                    if (updated.pictureUrl) document.getElementById('profilePicture').src = updated.pictureUrl;
+
+                    if (editPanel) {
+                        editPanel.classList.remove('active');
+                        editPanel.setAttribute('aria-hidden', 'true');
+                    }
+                    alert('Profile updated!');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
