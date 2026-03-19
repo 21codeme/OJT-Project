@@ -211,7 +211,8 @@
 
     <script>
         (function() {
-            var REQUIRED_ADMIN_PASSWORD = 'Comlab2026@omsc';
+            var REQUIRED_ADMIN_USERNAME = 'admin';
+            var REQUIRED_ADMIN_PASSWORD = 'admin123';
             var ADMIN_SESSION_KEY = 'ojt_admin_session';
             var DB_KEY = 'ojt_trainees_db';
             var DOCS_DB_KEY = 'ojt_trainee_documents_db';
@@ -394,8 +395,9 @@
             if (btnLogin) {
                 btnLogin.addEventListener('click', function() {
                     loginError.classList.remove('show');
+                    var username = (document.getElementById('adminUser').value || '').trim();
                     var pass = (document.getElementById('adminPass').value || '').trim();
-                    if (pass !== REQUIRED_ADMIN_PASSWORD) {
+                    if (username !== REQUIRED_ADMIN_USERNAME || pass !== REQUIRED_ADMIN_PASSWORD) {
                         loginError.classList.add('show');
                         return;
                     }
