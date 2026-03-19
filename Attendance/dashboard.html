@@ -1203,7 +1203,6 @@
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
             }
             loadRecordsFromSupabase().then(function() {
-                initFillForDate();
                 refreshAttendanceUI();
             });
             setInterval(function() {
