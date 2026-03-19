@@ -23,12 +23,13 @@
         .brand span { font-weight: 800; }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
             padding: 22px 24px 60px;
         }
 
-        .panel { display: none; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 20px; }
+        .panel { display: none; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 20px; min-height: calc(100vh - 100px); }
         .panel.active { display: block; }
 
         .login-grid { max-width: 520px; margin: 0 auto; }
@@ -50,7 +51,7 @@
         .error { color: #c00; margin-top: 10px; display: none; font-weight: 700; }
         .error.show { display: block; }
 
-        .admin-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+        .admin-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; min-height: calc(100vh - 160px); align-items: stretch; }
         .sidebar {
             border: 1px solid #e8eaed;
             border-radius: 14px;
@@ -61,7 +62,7 @@
         .search { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7dbe0; }
         .search:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18); }
 
-        .trainee-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow-y: auto; }
+        .trainee-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 220px); overflow-y: auto; }
         .trainee-item {
             display: flex; align-items: center; gap: 10px;
             border: 1px solid #e8eaed; border-radius: 12px; padding: 10px;
@@ -79,6 +80,8 @@
             border-radius: 14px;
             padding: 16px;
             background: #fff;
+            min-height: 0;
+            overflow: auto;
         }
         .details-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
         .details-title { display: flex; gap: 14px; align-items: center; }
@@ -112,10 +115,21 @@
 
         .att-table td { padding: 8px; border-bottom: 1px solid #e8eaed; font-size: 0.9rem; }
         .att-table tbody tr:hover { background: #f7f8fa; }
-        .att-table .photo-cell img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; vertical-align: middle; }
+        .att-table .photo-cell { white-space: nowrap; }
+        .att-table .photo-cell .thumb-wrap { display: inline-block; margin-right: 6px; cursor: pointer; border: 2px solid transparent; border-radius: 8px; padding: 2px; }
+        .att-table .photo-cell .thumb-wrap:hover { border-color: #1e3c72; }
+        .att-table .photo-cell .thumb-wrap img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; vertical-align: middle; display: block; }
+        .att-table .photo-cell .thumb-wrap span { font-size: 0.7rem; color: #555; display: block; text-align: center; }
+        #photoPreviewModal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        #photoPreviewModal.show { display: flex; }
+        #photoPreviewModal .modal-inner { max-width: 95%; max-height: 95%; background: #fff; border-radius: 12px; padding: 12px; position: relative; }
+        #photoPreviewModal .modal-inner img { max-width: 90vw; max-height: 85vh; display: block; border-radius: 8px; }
+        #photoPreviewModal .modal-inner .modal-close { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #1e3c72; color: #fff; font-size: 1.2rem; cursor: pointer; line-height: 1; }
+        #photoPreviewModal .modal-inner .modal-close:hover { background: #2a5298; }
+        #photoPreviewModal .modal-caption { margin-top: 8px; font-weight: 700; color: #333; font-size: 0.9rem; }
 
         @media (max-width: 980px) {
-            .admin-layout { grid-template-columns: 1fr; }
+            .admin-layout { grid-template-columns: 1fr; min-height: auto; }
             .trainee-list { max-height: 320px; }
         }
     </style>
@@ -218,6 +232,7 @@
                                                 <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">O.T. In</th>
                                                 <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">O.T. Out</th>
                                                 <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Photo</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Total Hours</th>
                                             </tr>
                                         </thead>
                                         <tbody id="attendanceTableBody"></tbody>
@@ -232,6 +247,14 @@
                     </div>
                 </section>
             </div>
+        </div>
+    </div>
+
+    <div id="photoPreviewModal" aria-hidden="true">
+        <div class="modal-inner">
+            <button type="button" class="modal-close" id="photoModalClose" aria-label="Close">&times;</button>
+            <img id="photoPreviewImg" src="" alt="Preview">
+            <div class="modal-caption" id="photoPreviewCaption"></div>
         </div>
     </div>
 
@@ -576,6 +599,36 @@
                     }
                     emptyEl.style.display = 'none';
                     wrapEl.style.display = 'block';
+                    function timeToMinutes(t) {
+                        if (!t || typeof t !== 'string') return 0;
+                        var parts = t.trim().split(':');
+                        if (parts.length < 2) return 0;
+                        var h = parseInt(parts[0], 10) || 0;
+                        var m = parseInt(parts[1], 10) || 0;
+                        return h * 60 + m;
+                    }
+                    function dayHours(row) {
+                        var total = 0;
+                        var amIn = timeToMinutes(row.am_in_time);
+                        var amOut = timeToMinutes(row.am_out_time);
+                        if (amIn && amOut) total += Math.max(0, (amOut - amIn) / 60);
+                        var pmIn = timeToMinutes(row.pm_in_time);
+                        var pmOut = timeToMinutes(row.pm_out_time);
+                        if (pmIn && pmOut) total += Math.max(0, (pmOut - pmIn) / 60);
+                        var otIn = timeToMinutes(row.ot_in_time);
+                        var otOut = timeToMinutes(row.ot_out_time);
+                        if (otIn && otOut) total += Math.max(0, (otOut - otIn) / 60);
+                        return Math.round(total * 10) / 10;
+                    }
+                    var photoModal = document.getElementById('photoPreviewModal');
+                    var photoModalImg = document.getElementById('photoPreviewImg');
+                    var photoModalCaption = document.getElementById('photoPreviewCaption');
+                    function showPhotoPreview(src, label) {
+                        if (!photoModalImg) return;
+                        photoModalImg.src = src || '';
+                        if (photoModalCaption) photoModalCaption.textContent = label || '';
+                        if (photoModal) photoModal.classList.add('show');
+                    }
                     rows.forEach(function(r) {
                         var tr = document.createElement('tr');
                         var amIn = r.am_in_time || '—';
@@ -584,9 +637,61 @@
                         var pmOut = r.pm_out_time || '—';
                         var otIn = r.ot_in_time || '—';
                         var otOut = r.ot_out_time || '—';
-                        var photo = r.am_in_photo || r.pm_in_photo || r.ot_in_photo || '';
-                        var photoHtml = photo ? '<img src="' + photo + '" alt="">' : '—';
-                        tr.innerHTML = '<td>' + (r.date || '—') + '</td><td>' + amIn + '</td><td>' + amOut + '</td><td>' + pmIn + '</td><td>' + pmOut + '</td><td>' + otIn + '</td><td>' + otOut + '</td><td class="photo-cell">' + photoHtml + '</td>';
+                        var totalHrs = dayHours(r);
+                        var totalHrsText = totalHrs > 0 ? totalHrs + ' hrs' : '—';
+                        var amPhoto = r.am_in_photo || '';
+                        var pmPhoto = r.pm_in_photo || '';
+                        var otPhoto = r.ot_in_photo || '';
+                        var photoCell = document.createElement('td');
+                        photoCell.className = 'photo-cell';
+                        if (amPhoto) {
+                            var w1 = document.createElement('span');
+                            w1.className = 'thumb-wrap';
+                            w1.title = 'AM In – click to enlarge';
+                            var img1 = document.createElement('img');
+                            img1.src = amPhoto;
+                            img1.alt = 'AM';
+                            w1.appendChild(img1);
+                            w1.appendChild(document.createElement('span')).textContent = 'AM';
+                            w1.onclick = function() { showPhotoPreview(amPhoto, 'AM In – ' + (r.date || '')); };
+                            photoCell.appendChild(w1);
+                        }
+                        if (pmPhoto) {
+                            var w2 = document.createElement('span');
+                            w2.className = 'thumb-wrap';
+                            w2.title = 'PM In – click to enlarge';
+                            var img2 = document.createElement('img');
+                            img2.src = pmPhoto;
+                            img2.alt = 'PM';
+                            w2.appendChild(img2);
+                            w2.appendChild(document.createElement('span')).textContent = 'PM';
+                            w2.onclick = function() { showPhotoPreview(pmPhoto, 'PM In – ' + (r.date || '')); };
+                            photoCell.appendChild(w2);
+                        }
+                        if (otPhoto) {
+                            var w3 = document.createElement('span');
+                            w3.className = 'thumb-wrap';
+                            w3.title = 'O.T. In – click to enlarge';
+                            var img3 = document.createElement('img');
+                            img3.src = otPhoto;
+                            img3.alt = 'O.T.';
+                            w3.appendChild(img3);
+                            w3.appendChild(document.createElement('span')).textContent = 'O.T.';
+                            w3.onclick = function() { showPhotoPreview(otPhoto, 'O.T. In – ' + (r.date || '')); };
+                            photoCell.appendChild(w3);
+                        }
+                        if (!amPhoto && !pmPhoto && !otPhoto) {
+                            photoCell.textContent = '—';
+                        }
+                        tr.appendChild(document.createElement('td')).textContent = r.date || '—';
+                        tr.appendChild(document.createElement('td')).textContent = amIn;
+                        tr.appendChild(document.createElement('td')).textContent = amOut;
+                        tr.appendChild(document.createElement('td')).textContent = pmIn;
+                        tr.appendChild(document.createElement('td')).textContent = pmOut;
+                        tr.appendChild(document.createElement('td')).textContent = otIn;
+                        tr.appendChild(document.createElement('td')).textContent = otOut;
+                        tr.appendChild(photoCell);
+                        tr.appendChild(document.createElement('td')).textContent = totalHrsText;
                         tbody.appendChild(tr);
                     });
                 } catch (e) {
@@ -635,6 +740,13 @@
                     location.reload();
                 });
             }
+
+            (function setupPhotoModal() {
+                var photoModal = document.getElementById('photoPreviewModal');
+                var closeBtn = document.getElementById('photoModalClose');
+                if (closeBtn) closeBtn.addEventListener('click', function() { if (photoModal) photoModal.classList.remove('show'); });
+                if (photoModal) photoModal.addEventListener('click', function(e) { if (e.target === photoModal) photoModal.classList.remove('show'); });
+            })();
 
             if (btnReopen) {
                 btnReopen.addEventListener('click', async function() {
