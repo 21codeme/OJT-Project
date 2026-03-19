@@ -276,8 +276,23 @@
                 return arr;
             }
 
+            function waitForSupabaseReady(timeoutMs) {
+                timeoutMs = timeoutMs || 7000;
+                return new Promise(function(resolve) {
+                    var start = Date.now();
+                    (function check() {
+                        if (window.supabaseClient) return resolve(window.supabaseClient);
+                        if (typeof window.initSupabase === 'function') {
+                            try { window.initSupabase(); } catch (e) {}
+                        }
+                        if (Date.now() - start > timeoutMs) return resolve(null);
+                        setTimeout(check, 120);
+                    })();
+                });
+            }
+
             async function loadAllFromSupabase() {
-                var supabase = window.supabaseClient;
+                var supabase = window.supabaseClient || await waitForSupabaseReady();
                 if (!supabase) return;
                 try {
                     var tr = await supabase.from('ojt_trainees').select('*');
@@ -521,10 +536,10 @@
                 });
             }
 
-            // Boot: show admin panel if session exists or we just set it via ?autologin=1
-            var isAuthed = false;
+            // Boot: always show admin panel immediately on open.
+            var isAuthed = true;
             try {
-                isAuthed = !!localStorage.getItem(ADMIN_SESSION_KEY) || fromAutologin;
+                if (fromAutologin) localStorage.setItem(ADMIN_SESSION_KEY, '1');
             } catch (e) {}
 
             if (isAuthed) {
