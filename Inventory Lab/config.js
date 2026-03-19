@@ -28,7 +28,9 @@ function initSupabase() {
                     const timeoutMs = 25000;
                     const controller = new AbortController();
                     const id = setTimeout(() => controller.abort(), timeoutMs);
-                    const merged = { ...init, signal: init?.signal || controller.signal };
+                    const merged = Object.assign({}, (init || {}), {
+                        signal: (init && init.signal) ? init.signal : controller.signal
+                    });
                     return fetch(input, merged).then(
                         (r) => { clearTimeout(id); return r; },
                         (err) => {

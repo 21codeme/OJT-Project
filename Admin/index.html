@@ -217,12 +217,16 @@
             var DB_KEY = 'ojt_trainees_db';
             var DOCS_DB_KEY = 'ojt_trainee_documents_db';
 
-            // Fallback for environments where localStorage might not persist across redirects.
-            // Attendance login will redirect here with ?autologin=1
+            // When coming from Attendance admin login: set session and clean URL so panel shows
+            var fromAutologin = false;
             try {
                 var params = new URLSearchParams(window.location.search || '');
                 if (params.get('autologin') === '1') {
                     localStorage.setItem(ADMIN_SESSION_KEY, '1');
+                    fromAutologin = true;
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', window.location.pathname);
+                    }
                 }
             } catch (e) {}
 
@@ -237,6 +241,19 @@
 
             var selectedKey = null;
             var selectedTrainee = null;
+
+            // Show admin panel immediately if already logged in (e.g. from Attendance with ?autologin=1)
+            var isAuthedNow = fromAutologin;
+            try { if (!isAuthedNow) isAuthedNow = !!localStorage.getItem(ADMIN_SESSION_KEY); } catch (e) {}
+            if (isAuthedNow) {
+                if (loginPanel) loginPanel.classList.remove('active');
+                if (adminPanel) adminPanel.classList.add('active');
+                if (btnLogout) btnLogout.style.display = 'inline-block';
+            } else {
+                if (loginPanel) loginPanel.classList.add('active');
+                if (adminPanel) adminPanel.classList.remove('active');
+                if (btnLogout) btnLogout.style.display = 'none';
+            }
 
             function loadTrainees() {
                 var arr = [];
@@ -308,12 +325,30 @@
                         selectedTrainee = t;
                         renderDetails(t, key);
                     });
-                    item.innerHTML = '' +
-                        '<img src="' + (t.pictureUrl || '../images/omsc.png') + '" alt="pic" onerror="this.src=\\'../images/omsc.png\\'">' +
-                        '<div class="meta">' +
-                            '<div class="name">' + (t.fullName || '—') + '</div>' +
-                            '<div class="sub">ID: ' + (t.studentId || '—') + '</div>' +
-                        '</div>';
+                    
+                    // Build DOM nodes instead of innerHTML to avoid quoting/escaping issues.
+                    var img = document.createElement('img');
+                    img.src = t.pictureUrl || '../images/omsc.png';
+                    img.alt = 'pic';
+                    img.onerror = function() { this.src = '../images/omsc.png'; };
+
+                    var meta = document.createElement('div');
+                    meta.className = 'meta';
+
+                    var nameEl = document.createElement('div');
+                    nameEl.className = 'name';
+                    nameEl.textContent = t.fullName || '—';
+
+                    var subEl = document.createElement('div');
+                    subEl.className = 'sub';
+                    subEl.textContent = 'ID: ' + (t.studentId || '—');
+
+                    meta.appendChild(nameEl);
+                    meta.appendChild(subEl);
+
+                    item.innerHTML = '';
+                    item.appendChild(img);
+                    item.appendChild(meta);
                     traineeListEl.appendChild(item);
                 });
             }
@@ -422,10 +457,10 @@
                 });
             }
 
-            // Boot
+            // Boot: show admin panel if session exists or we just set it via ?autologin=1
             var isAuthed = false;
             try {
-                isAuthed = !!localStorage.getItem(ADMIN_SESSION_KEY);
+                isAuthed = !!localStorage.getItem(ADMIN_SESSION_KEY) || fromAutologin;
             } catch (e) {}
 
             if (isAuthed) {

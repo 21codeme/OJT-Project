@@ -1817,7 +1817,8 @@ function setupSheetTabMenu(tab, sheetId) {
         }
     });
     
-    dropdown.querySelector('.rename-option')?.addEventListener('click', async function(e) {
+    var renameOpt = dropdown.querySelector('.rename-option');
+    if (renameOpt) renameOpt.addEventListener('click', async function(e) {
         e.stopPropagation();
         dropdown.classList.remove('show');
         dropdown.removeAttribute('style');
@@ -1852,7 +1853,8 @@ function setupSheetTabMenu(tab, sheetId) {
         }
     });
     
-    dropdown.querySelector('.delete-option')?.addEventListener('click', function(e) {
+    var deleteOpt = dropdown.querySelector('.delete-option');
+    if (deleteOpt) deleteOpt.addEventListener('click', function(e) {
         e.stopPropagation();
         dropdown.classList.remove('show');
         dropdown.removeAttribute('style');
@@ -2175,7 +2177,10 @@ async function syncToSupabase() {
             } else {
                 const cells = Array.from(row.querySelectorAll('td.editable'));
                 cells.sort((a, b) => (parseInt(a.getAttribute('data-column') || '0', 10) - parseInt(b.getAttribute('data-column') || '0', 10)));
-                const vals = cells.map(c => (c.querySelector('input')?.value || '').trim());
+                const vals = cells.map(c => {
+                    const input = c ? c.querySelector('input') : null;
+                    return ((input && input.value != null ? input.value : '') + '').trim();
+                });
                 // Rebuild 10 columns when row has merged cells (7 or 8 editable cells)
                 let rowData = vals;
                 if (vals.length === 7) {
@@ -2459,7 +2464,7 @@ async function loadFromSupabase() {
                 if (!bySheet[sid]) bySheet[sid] = { id: sid, name: item.sheet_name || 'Sheet 1', items: [] };
                 bySheet[sid].items.push(item);
             });
-            Object.values(bySheet).forEach(s => s.items.sort((a, b) => (a.row_index ?? 0) - (b.row_index ?? 0)));
+            Object.values(bySheet).forEach(s => s.items.sort((a, b) => ((a && a.row_index != null) ? a.row_index : 0) - ((b && b.row_index != null) ? b.row_index : 0)));
             sheetsToLoad = Object.values(bySheet);
         }
         

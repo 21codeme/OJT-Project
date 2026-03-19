@@ -236,31 +236,12 @@
 
     <script>
         (function() {
-            var images = [
-                "../1. DRONE 2024/DJI_0565-2.jpg",
-                "../1. DRONE 2024/DJI_0570-2.jpg",
-                "../1. DRONE 2024/DJI_0574-2.jpg",
-                "../1. DRONE 2024/DJI_0578-2.jpg",
-                "../1. DRONE 2024/DJI_0582-2.jpg",
-                "../1. DRONE 2024/DJI_0587-2.jpg",
-                "../1. DRONE 2024/DJI_0592-2.jpg"
-            ];
+            // Use gradient background only (no external images) to avoid 404 on deploy
             var container = document.getElementById('slideshow');
-            images.forEach(function(src, i) {
-                var img = document.createElement('img');
-                img.src = src;
-                img.alt = 'Background ' + (i + 1);
-                if (i === 0) img.classList.add('active');
-                container.appendChild(img);
-            });
-            var idx = 0;
-            setInterval(function() {
-                var all = container.querySelectorAll('img');
-                if (all.length === 0) return;
-                all[idx].classList.remove('active');
-                idx = (idx + 1) % all.length;
-                all[idx].classList.add('active');
-            }, 4000);
+            if (container) {
+                container.style.background = 'linear-gradient(135deg, #1e3c72 0%, #2a5298 40%, #3d6cb8 70%, #5a8fd4 100%)';
+                container.style.backgroundSize = 'cover';
+            }
         })();
         (function() {
             var loginPanel = document.getElementById('loginPanel');

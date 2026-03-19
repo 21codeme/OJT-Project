@@ -420,108 +420,13 @@
             }
 
             var btnEditProfile = document.getElementById('btnEditProfile');
-            var editPanel = document.getElementById('editProfilePanel');
-            var btnCancelEdit = document.getElementById('btnCancelEdit');
-            var btnSaveProfile = document.getElementById('btnSaveProfile');
-
-            if (btnEditProfile && editPanel) {
+            if (btnEditProfile) {
                 btnEditProfile.addEventListener('click', function() {
                     if (!stored) {
                         alert('Please create your account first.');
                         return;
                     }
                     window.location.href = 'edit-profile.html';
-                });
-            }
-
-            if (btnCancelEdit && editPanel) {
-                btnCancelEdit.addEventListener('click', function() {
-                    editPanel.classList.remove('active');
-                    editPanel.setAttribute('aria-hidden', 'true');
-                });
-            }
-
-            if (btnSaveProfile) {
-                btnSaveProfile.addEventListener('click', function() {
-                    if (!stored) return;
-                    var first = document.getElementById('editFirstName')?.value?.trim() || '';
-                    var middle = document.getElementById('editMiddleName')?.value?.trim() || '';
-                    var last = document.getElementById('editLastName')?.value?.trim() || '';
-                    var fullName = [first, middle, last].filter(Boolean).join(' ');
-
-                    var get = function(id) {
-                        var el = document.getElementById(id);
-                        return el ? (el.value != null ? el.value : '') : '';
-                    };
-
-                    var updated = {
-                        fullName: fullName || stored.fullName,
-                        email: get('editEmail'),
-                        username: get('editUsername'),
-                        studentId: get('editStudentId'),
-                        course: get('editCourse'),
-                        yearLevel: get('editYearLevel'),
-                        schoolName: get('editSchoolName'),
-                        department: get('editDepartment'),
-                        coordinator: get('editCoordinator'),
-                        companyName: get('editCompanyName'),
-                        companyAddress: get('editCompanyAddress'),
-                        supervisor: get('editSupervisor'),
-                        positionRole: get('editPositionRole'),
-                        contactNumber: get('editContactNumber'),
-                        emergencyContact: get('editEmergencyContact'),
-                        trainingHours: get('editTrainingHours'),
-                        startDate: get('editStartDate'),
-                        endDate: get('editEndDate'),
-                        pictureUrl: stored.pictureUrl || null
-                    };
-
-                    // Save document file names (prototype). Actual upload not wired.
-                    var docInputToName = function(id) {
-                        var el = document.getElementById(id);
-                        if (!el || !el.files || !el.files[0]) return null;
-                        return el.files[0].name;
-                    };
-                    var docs = {
-                        resume: docInputToName('editResume'),
-                        endorsement: docInputToName('editEndorsement'),
-                        moa: docInputToName('editMOA'),
-                        medical: docInputToName('editMedical'),
-                        idPicture: docInputToName('editIdPicture')
-                    };
-                    try {
-                        localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
-                        localStorage.setItem('ojt_trainee_documents', JSON.stringify(docs));
-                    } catch (e) {}
-
-                    stored = updated;
-
-                    // Update Profile Details UI
-                    if (updated.fullName) document.getElementById('profileFullName').textContent = updated.fullName;
-                    if (updated.email) document.getElementById('profileEmail').textContent = updated.email;
-                    if (updated.username) document.getElementById('profileUsername').textContent = updated.username;
-                    if (updated.studentId) document.getElementById('profileStudentId').textContent = updated.studentId;
-                    if (updated.course) document.getElementById('profileCourse').textContent = updated.course;
-                    if (updated.yearLevel) document.getElementById('profileYearLevel').textContent = updated.yearLevel;
-                    if (updated.schoolName) document.getElementById('profileSchoolName').textContent = updated.schoolName;
-                    if (updated.department) document.getElementById('profileDepartment').textContent = updated.department;
-                    if (updated.coordinator) document.getElementById('profileCoordinator').textContent = updated.coordinator;
-                    if (updated.companyName) document.getElementById('profileCompanyName').textContent = updated.companyName;
-                    if (updated.companyAddress) document.getElementById('profileCompanyAddress').textContent = updated.companyAddress;
-                    if (updated.supervisor) document.getElementById('profileSupervisor').textContent = updated.supervisor;
-                    if (updated.positionRole) document.getElementById('profilePositionRole').textContent = updated.positionRole;
-                    if (updated.trainingHours) document.getElementById('profileTrainingHours').textContent = updated.trainingHours;
-                    if (updated.startDate) document.getElementById('profileStartDate').textContent = updated.startDate;
-                    if (updated.endDate) document.getElementById('profileEndDate').textContent = updated.endDate;
-                    if (updated.contactNumber) document.getElementById('profileContactNumber').textContent = updated.contactNumber;
-                    if (updated.emergencyContact) document.getElementById('profileEmergencyContact').textContent = updated.emergencyContact;
-                    if (updated.pictureUrl) document.getElementById('profilePicture').src = updated.pictureUrl;
-
-                    if (editPanel) {
-                        editPanel.classList.remove('active');
-                        editPanel.setAttribute('aria-hidden', 'true');
-                    }
-                    alert('Profile updated!');
                 });
             }
         })();
