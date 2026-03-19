@@ -42,6 +42,8 @@
         .field label { font-weight: 800; color: #333; font-size: 0.92rem; }
         .field input, .field select { padding: 12px 12px; border: 1px solid #d7dbe0; border-radius: 10px; font-size: 0.98rem; background: #fff; }
         .field input:focus, .field select:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18); }
+        .field input[readonly] { background: #f0f2f5; color: #444; }
+        .hidden { display: none !important; }
 
         .full { grid-column: 1 / -1; }
         .section-title {
@@ -144,7 +146,14 @@
 
                     <div class="field">
                         <label for="editYearLevel">Year Level</label>
-                        <input type="text" id="editYearLevel" required placeholder="e.g. 4th Year">
+                        <select id="editYearLevel" required>
+                            <option value="">Select year...</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                            <option value="5th Year">5th Year</option>
+                        </select>
                     </div>
                 </div>
 
@@ -152,11 +161,19 @@
                 <div class="form-grid">
                     <div class="field">
                         <label for="editSchoolName">School Name</label>
-                        <input type="text" id="editSchoolName" required>
+                        <input type="text" id="editSchoolName" value="Occidental Mindoro State College" readonly>
                     </div>
                     <div class="field">
                         <label for="editDepartment">Department / College</label>
-                        <input type="text" id="editDepartment" required>
+                        <select id="editDepartment" required>
+                            <option value="">Select department...</option>
+                            <option value="BSIT Department">BSIT Department</option>
+                            <option value="Multimedia and Speech Laboratory">Multimedia and Speech Laboratory</option>
+                            <option value="College of Engineering">College of Engineering</option>
+                            <option value="College of Teacher Education">College of Teacher Education</option>
+                            <option value="Others">Others</option>
+                        </select>
+                        <input type="text" id="editDepartmentOther" class="hidden" placeholder="Enter your Department / College">
                     </div>
                     <div class="field full">
                         <label for="editCoordinator">OJT Coordinator / Adviser Name (if required)</label>
@@ -261,6 +278,36 @@
                 if (!el) return;
                 el.value = value != null ? String(value) : '';
             }
+            function setDepartmentValue(value) {
+                var select = document.getElementById('editDepartment');
+                var other = document.getElementById('editDepartmentOther');
+                if (!select || !other) return;
+                var v = value != null ? String(value).trim() : '';
+                var known = ['BSIT Department', 'Multimedia and Speech Laboratory', 'College of Engineering', 'College of Teacher Education'];
+                if (known.indexOf(v) >= 0) {
+                    select.value = v;
+                    other.classList.add('hidden');
+                    other.required = false;
+                    other.value = '';
+                } else if (v) {
+                    select.value = 'Others';
+                    other.classList.remove('hidden');
+                    other.required = true;
+                    other.value = v;
+                } else {
+                    select.value = '';
+                    other.classList.add('hidden');
+                    other.required = false;
+                    other.value = '';
+                }
+            }
+            function getDepartmentValue() {
+                var select = document.getElementById('editDepartment');
+                var other = document.getElementById('editDepartmentOther');
+                if (!select) return '';
+                if (select.value === 'Others') return other ? (other.value || '').trim() : '';
+                return (select.value || '').trim();
+            }
 
             if (!stored) {
                 alert('Please create your account first.');
@@ -278,7 +325,7 @@
             setVal('editCourse', stored.course);
             setVal('editYearLevel', stored.yearLevel);
             setVal('editSchoolName', stored.schoolName);
-            setVal('editDepartment', stored.department);
+            setDepartmentValue(stored.department);
             setVal('editCoordinator', stored.coordinator);
             setVal('editCompanyName', stored.companyName);
             setVal('editCompanyAddress', stored.companyAddress);
@@ -296,6 +343,16 @@
             document.getElementById('btnCancel').addEventListener('click', function() {
                 window.location.href = 'dashboard.html';
             });
+            var depSelect = document.getElementById('editDepartment');
+            var depOther = document.getElementById('editDepartmentOther');
+            if (depSelect && depOther) {
+                depSelect.addEventListener('change', function() {
+                    var isOthers = depSelect.value === 'Others';
+                    depOther.classList.toggle('hidden', !isOthers);
+                    depOther.required = isOthers;
+                    if (!isOthers) depOther.value = '';
+                });
+            }
 
             function fileName(id) {
                 var el = document.getElementById(id);
@@ -330,7 +387,7 @@
                     course: (document.getElementById('editCourse').value || '').trim(),
                     yearLevel: (document.getElementById('editYearLevel').value || '').trim(),
                     schoolName: (document.getElementById('editSchoolName').value || '').trim(),
-                    department: (document.getElementById('editDepartment').value || '').trim(),
+                    department: getDepartmentValue(),
                     coordinator: (document.getElementById('editCoordinator').value || '').trim(),
                     companyName: (document.getElementById('editCompanyName').value || '').trim(),
                     companyAddress: (document.getElementById('editCompanyAddress').value || '').trim(),
