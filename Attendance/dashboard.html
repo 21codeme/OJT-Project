@@ -628,13 +628,9 @@
             var timeInTimeInput = document.getElementById('timeInTimeInput');
             var recordsCache = [];
             var reopenedDates = {};
-            var fillForDateEl = document.getElementById('fillForDate');
+            var selectedDateKey = null;
             function getSelectedDateKey() {
-                if (fillForDateEl && fillForDateEl.value) return fillForDateEl.value;
-                return dateKey(new Date());
-            }
-            function initFillForDate() {
-                if (fillForDateEl && !fillForDateEl.value) fillForDateEl.value = dateKey(new Date());
+                return selectedDateKey || dateKey(new Date());
             }
 
             function getRecords() {
@@ -714,9 +710,6 @@
                 var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
                 return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
             }
-            if (fillForDateEl) {
-                fillForDateEl.addEventListener('change', function() { refreshAttendanceUI(); });
-            }
             function timeStr(d) {
                 return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
             }
@@ -760,6 +753,7 @@
                 var startDay = first.getDay();
                 var daysInMonth = last.getDate();
                 var todayKey = dateKey(new Date());
+                if (!selectedDateKey) selectedDateKey = todayKey;
                 grid.innerHTML = '';
                 for (var i = 0; i < 7; i++) {
                     var h = document.createElement('div');
@@ -781,6 +775,7 @@
                     var cell = document.createElement('div');
                     cell.className = 'cal-cell';
                     if (key === todayKey) cell.classList.add('today');
+                    if (key === selectedDateKey) cell.classList.add('selected');
                     if (hasAny(rec)) cell.classList.add('has-record');
                     var dayNum = document.createElement('div');
                     dayNum.className = 'day-num';
@@ -799,6 +794,12 @@
                         dayTimes.textContent = parts.join(' · ');
                         cell.appendChild(dayTimes);
                     }
+                    (function(selKey) {
+                        cell.addEventListener('click', function() {
+                            selectedDateKey = selKey;
+                            refreshAttendanceUI();
+                        });
+                    })(key);
                     grid.appendChild(cell);
                 }
                 var totalCells = 7 + startDay + daysInMonth;
