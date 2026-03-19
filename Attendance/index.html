@@ -50,6 +50,10 @@
         .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .section-title { margin: 14px 0 8px; font-size: 1rem; font-weight: 800; color: #1e3c72; }
+        .admin-box { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.08); }
+        .admin-box h3 { font-size: 0.95rem; color: #333; margin-bottom: 10px; }
+        .admin-fields .form-group { margin-bottom: 12px; }
+        .error-inline { color: #c00; font-size: 0.85rem; margin-top: 8px; display: none; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -79,6 +83,22 @@
             </form>
             <div class="divider">— o —</div>
             <a href="#" id="showCreateAccount" class="create-link">Create account</a>
+
+            <div class="admin-box">
+                <h3>Admin login</h3>
+                <div class="admin-fields">
+                    <div class="form-group">
+                        <label for="adminUser">Username</label>
+                        <input type="text" id="adminUser" name="adminUser" placeholder="admin" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPass">Password</label>
+                        <input type="password" id="adminPass" name="adminPass" placeholder="admin123" autocomplete="current-password">
+                    </div>
+                    <button type="button" class="btn-login" id="btnAdminLogin" style="margin-top: 0;">Log in as admin</button>
+                    <div id="adminLoginError" class="error-inline">Incorrect admin username/password.</div>
+                </div>
+            </div>
         </div>
 
         <div id="createPanel" class="panel">
@@ -270,6 +290,13 @@
             var createForm = document.getElementById('createForm');
             var loginError = document.getElementById('loginError');
             var createError = document.getElementById('createError');
+            var adminUserEl = document.getElementById('adminUser');
+            var adminPassEl = document.getElementById('adminPass');
+            var btnAdminLogin = document.getElementById('btnAdminLogin');
+            var adminLoginErrorEl = document.getElementById('adminLoginError');
+
+            var REQUIRED_ADMIN_USERNAME = 'admin';
+            var REQUIRED_ADMIN_PASSWORD = 'admin123';
 
             showCreate.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -425,6 +452,21 @@
                     saveAndRedirect(null);
                 }
             });
+
+            if (btnAdminLogin) {
+                btnAdminLogin.addEventListener('click', function() {
+                    if (!adminUserEl || !adminPassEl) return;
+                    if (adminLoginErrorEl) adminLoginErrorEl.style.display = 'none';
+                    var u = (adminUserEl.value || '').trim();
+                    var p = (adminPassEl.value || '').trim();
+                    if (u !== REQUIRED_ADMIN_USERNAME || p !== REQUIRED_ADMIN_PASSWORD) {
+                        if (adminLoginErrorEl) adminLoginErrorEl.style.display = 'block';
+                        return;
+                    }
+                    try { localStorage.setItem('ojt_admin_session', '1'); } catch (err) {}
+                    window.location.href = '../Admin/index.html';
+                });
+            }
         })();
     </script>
 </body>
