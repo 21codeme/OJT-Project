@@ -370,13 +370,19 @@
                     return;
                 }
 
-                // Trainee login: fetch from Supabase by email or username
+                // Trainee login: fetch from Supabase by email or username and verify password
                 var supabase = window.supabaseClient;
                 if (supabase) {
                     var r = await supabase.from('ojt_trainees').select('*').eq('email', usernameOrEmail).maybeSingle();
                     if (!r.data) r = await supabase.from('ojt_trainees').select('*').eq('username', usernameOrEmail).maybeSingle();
                     if (r.data && r.data.id) {
                         var row = r.data;
+                        var storedPass = row.password_hash || '';
+                        if (storedPass && storedPass !== pass) {
+                            loginError.textContent = 'Maling email o password.';
+                            loginError.classList.add('show');
+                            return;
+                        }
                         var profile = {
                             id: row.id,
                             fullName: row.full_name || '—',
@@ -503,9 +509,9 @@
                     pictureFile = document.getElementById('createPicture').files[0] || null;
                 } catch (e) {}
                 
-                function toSupabaseRow(pictureUrl) {
+                function toSupabaseRow(pictureUrl, passwordValue) {
                     if (pictureUrl) profile.pictureUrl = pictureUrl;
-                    return {
+                    var row = {
                         email: profile.email,
                         username: profile.username,
                         full_name: profile.fullName,
@@ -526,13 +532,15 @@
                         end_date: profile.endDate,
                         picture_url: profile.pictureUrl || null
                     };
+                    if (passwordValue) row.password_hash = passwordValue;
+                    return row;
                 }
 
-                async function saveAndRedirect(pictureUrl) {
+                async function saveAndRedirect(pictureUrl, passwordValue) {
                     if (pictureUrl) profile.pictureUrl = pictureUrl;
                     var supabase = window.supabaseClient;
                     if (supabase) {
-                        var row = toSupabaseRow(pictureUrl);
+                        var row = toSupabaseRow(pictureUrl, passwordValue);
                         var ins = await supabase.from('ojt_trainees').insert(row).select('id').single();
                         if (ins.error) {
                             if (ins.error.code === '23505') createError.textContent = 'Email or account already exists.';
@@ -569,10 +577,10 @@
 
                 if (pictureFile) {
                     var reader = new FileReader();
-                    reader.onload = function() { saveAndRedirect(reader.result); };
+                    reader.onload = function() { saveAndRedirect(reader.result, pass); };
                     reader.readAsDataURL(pictureFile);
                 } else {
-                    saveAndRedirect(null);
+                    saveAndRedirect(null, pass);
                 }
             });
 

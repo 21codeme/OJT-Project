@@ -23,11 +23,16 @@ CREATE TABLE IF NOT EXISTS ojt_trainees (
     start_date TEXT,
     end_date TEXT,
     picture_url TEXT,
+    password_hash TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add password column if table already exists (run once)
+ALTER TABLE ojt_trainees ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
 ALTER TABLE ojt_trainees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_trainees" ON ojt_trainees;
 CREATE POLICY "Allow all on ojt_trainees" ON ojt_trainees FOR ALL USING (true) WITH CHECK (true);
 
 -- 2) OJT Trainee Documents (uploaded files per trainee)
@@ -42,6 +47,7 @@ CREATE TABLE IF NOT EXISTS ojt_trainee_documents (
 );
 
 ALTER TABLE ojt_trainee_documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_trainee_documents" ON ojt_trainee_documents;
 CREATE POLICY "Allow all on ojt_trainee_documents" ON ojt_trainee_documents FOR ALL USING (true) WITH CHECK (true);
 
 -- 3) OJT Attendance (one row per trainee per day)
@@ -64,6 +70,7 @@ CREATE TABLE IF NOT EXISTS ojt_attendance (
 );
 
 ALTER TABLE ojt_attendance ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_attendance" ON ojt_attendance;
 CREATE POLICY "Allow all on ojt_attendance" ON ojt_attendance FOR ALL USING (true) WITH CHECK (true);
 
 -- 4) OJT Admin (optional — default admin for login)
@@ -75,6 +82,7 @@ CREATE TABLE IF NOT EXISTS ojt_admin (
 );
 
 ALTER TABLE ojt_admin ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_admin" ON ojt_admin;
 CREATE POLICY "Allow all on ojt_admin" ON ojt_admin FOR ALL USING (true) WITH CHECK (true);
 
 -- Insert default admin (password admin123 — store as plain for prototype; use hash in production)
