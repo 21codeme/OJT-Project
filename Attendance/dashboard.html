@@ -940,7 +940,9 @@
                 if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
             }
             function refreshAttendanceUI() {
-                loadReopenedDates().then(function() {
+                loadRecordsFromSupabase().then(function() {
+                    return loadReopenedDates();
+                }).then(function() {
                     updateTodayStatus();
                     setButtonsState();
                     renderCalendar();
