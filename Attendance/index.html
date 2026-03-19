@@ -165,7 +165,9 @@
                         <option value="BSCE">BSCE</option>
                         <option value="BSArch">BSArch</option>
                         <option value="DM">DM</option>
+                        <option value="Others">Others</option>
                         </select>
+                        <input type="text" id="createCourseOther" class="hidden" placeholder="Enter your Course / Program">
                     </div>
                     <div class="form-group" style="margin-bottom:0;">
                         <label for="createYearLevel">Year Level</label>
@@ -315,6 +317,72 @@
             togglePassword('createPassword', 'createPasswordToggle');
             togglePassword('createConfirm', 'createConfirmToggle');
 
+            var createCourseEl = document.getElementById('createCourse');
+            var createCourseOtherEl = document.getElementById('createCourseOther');
+            var customCoursesKey = 'ojt_custom_courses';
+            function addCourseOptionIfMissing(courseName) {
+                if (!createCourseEl || !courseName) return;
+                var normalized = String(courseName).trim();
+                if (!normalized) return;
+                var opts = createCourseEl.options;
+                var i = 0;
+                for (i = 0; i < opts.length; i++) {
+                    if ((opts[i].value || '').toLowerCase() === normalized.toLowerCase()) return;
+                }
+                var customOpt = document.createElement('option');
+                customOpt.value = normalized;
+                customOpt.textContent = normalized;
+                var othersOpt = createCourseEl.querySelector('option[value="Others"]');
+                if (othersOpt) createCourseEl.insertBefore(customOpt, othersOpt);
+                else createCourseEl.appendChild(customOpt);
+            }
+            function loadCustomCourses() {
+                try {
+                    var raw = localStorage.getItem(customCoursesKey);
+                    if (!raw) return;
+                    var arr = JSON.parse(raw);
+                    if (!Array.isArray(arr)) return;
+                    for (var i = 0; i < arr.length; i++) addCourseOptionIfMissing(arr[i]);
+                } catch (err) {}
+            }
+            function saveCustomCourse(courseName) {
+                var normalized = String(courseName || '').trim();
+                if (!normalized) return;
+                addCourseOptionIfMissing(normalized);
+                try {
+                    var raw = localStorage.getItem(customCoursesKey);
+                    var arr = raw ? JSON.parse(raw) : [];
+                    if (!Array.isArray(arr)) arr = [];
+                    var exists = false;
+                    for (var i = 0; i < arr.length; i++) {
+                        if ((arr[i] || '').toLowerCase() === normalized.toLowerCase()) { exists = true; break; }
+                    }
+                    if (!exists) {
+                        arr.push(normalized);
+                        localStorage.setItem(customCoursesKey, JSON.stringify(arr));
+                    }
+                } catch (err) {}
+            }
+            function syncCreateCourseOther() {
+                if (!createCourseEl || !createCourseOtherEl) return;
+                var isOthers = createCourseEl.value === 'Others';
+                createCourseOtherEl.classList.toggle('hidden', !isOthers);
+                createCourseOtherEl.required = isOthers;
+                if (!isOthers) createCourseOtherEl.value = '';
+            }
+            function getCreateCourseValue() {
+                if (!createCourseEl) return '';
+                if (createCourseEl.value === 'Others') {
+                    return (createCourseOtherEl && createCourseOtherEl.value) ? createCourseOtherEl.value.trim() : '';
+                }
+                return (createCourseEl.value || '').trim();
+            }
+            if (createCourseEl) {
+                loadCustomCourses();
+                createCourseEl.addEventListener('change', syncCreateCourseOther);
+                syncCreateCourseOther();
+            }
+
             var createDepartmentEl = document.getElementById('createDepartment');
             var createDepartmentOtherEl = document.getElementById('createDepartmentOther');
             function syncCreateDepartmentOther() {
@@ -437,8 +505,8 @@
                 var confirmVal = document.getElementById('createConfirm').value;
                 var firstName = document.getElementById('createFirstName').value.trim();
                 var lastName = document.getElementById('createLastName').value.trim();
-                var course = document.getElementById('createCourse').value;
-                var yearLevel = document.getElementById('createYearLevel').value.trim();
+                var course = getCreateCourseValue();
+                var yearLevel = document.getElementById('createYearLevel').value;
                 var studentId = document.getElementById('createStudentId').value.trim();
                 var schoolName = document.getElementById('createSchoolName').value.trim();
                 var department = getCreateDepartmentValue();
@@ -452,6 +520,21 @@
                 var trainingHours = document.getElementById('createTrainingHours').value;
                 var startDate = document.getElementById('createStartDate').value;
                 var endDate = document.getElementById('createEndDate').value;
+                if (!email) {
+                    createError.textContent = 'Please enter Valid Email Address.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!username) {
+                    createError.textContent = 'Please enter Username.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!pass) {
+                    createError.textContent = 'Please enter Password.';
+                    createError.classList.add('show');
+                    return;
+                }
                 if (pass !== confirmVal) {
                     createError.textContent = 'Password at confirm password ay hindi match.';
                     createError.classList.add('show');
@@ -462,23 +545,83 @@
                     createError.classList.add('show');
                     return;
                 }
-                if (!firstName || !lastName) {
-                    createError.textContent = 'Please enter First Name and Last Name.';
+                if (!firstName) {
+                    createError.textContent = 'Please enter First Name.';
                     createError.classList.add('show');
                     return;
                 }
-                if (!course || !yearLevel) {
-                    createError.textContent = 'Please enter Course/Program and Year Level.';
+                if (!lastName) {
+                    createError.textContent = 'Please enter Last Name.';
                     createError.classList.add('show');
                     return;
                 }
-                if (!studentId || !schoolName || !department || !coordinator || !companyName || !companyAddress || !supervisor || !positionRole) {
-                    createError.textContent = 'Please complete your Student ID and School/Company details.';
+                if (!course) {
+                    createError.textContent = createCourseEl && createCourseEl.value === 'Others'
+                        ? 'Please enter Course / Program (Others).'
+                        : 'Please select Course / Program.';
                     createError.classList.add('show');
                     return;
                 }
-                if (!contactNumber || !emergencyContact || !trainingHours || !startDate || !endDate) {
-                    createError.textContent = 'Please complete your Additional Info and OJT schedule.';
+                if (createCourseEl && createCourseEl.value === 'Others') saveCustomCourse(course);
+                if (!yearLevel) {
+                    createError.textContent = 'Please select Year Level.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!studentId) {
+                    createError.textContent = 'Please enter Student ID Number.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!department) {
+                    createError.textContent = createDepartmentEl && createDepartmentEl.value === 'Others'
+                        ? 'Please enter Department / College (Others).'
+                        : 'Please select Department / College.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!coordinator) {
+                    createError.textContent = 'Please enter OJT Coordinator / Adviser Name.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!companyName) {
+                    createError.textContent = 'Please enter Company Name.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!companyAddress) {
+                    createError.textContent = 'Please enter Company Address.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!supervisor) {
+                    createError.textContent = 'Please enter Supervisor / Mentor Name.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!positionRole) {
+                    createError.textContent = 'Please enter Position / Role Assigned.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!contactNumber) {
+                    createError.textContent = 'Please enter Contact Number.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!emergencyContact) {
+                    createError.textContent = 'Please enter Emergency Contact Person.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!trainingHours || trainingHours === '' || Number(trainingHours) < 0) {
+                    createError.textContent = 'Please enter Training Hours Required.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!startDate) {
+                    createError.textContent = 'Please select Start Date of OJT.';
                     createError.classList.add('show');
                     return;
                 }
