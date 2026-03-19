@@ -110,6 +110,10 @@
         .doc-item .t { font-weight: 900; color: #1e3c72; }
         .doc-item .d { color: #555; font-weight: 700; margin-top: 3px; }
 
+        .att-table td { padding: 8px; border-bottom: 1px solid #e8eaed; font-size: 0.9rem; }
+        .att-table tbody tr:hover { background: #f7f8fa; }
+        .att-table .photo-cell img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; vertical-align: middle; }
+
         @media (max-width: 980px) {
             .admin-layout { grid-template-columns: 1fr; }
             .trainee-list { max-height: 320px; }
@@ -122,7 +126,8 @@
             <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
             <span>OJT Admin</span>
         </div>
-        <div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn btn-primary" type="button" id="btnReopen" style="display:none;" title="Re-open attendance buttons for selected trainee for today">Re-open</button>
             <button class="btn btn-secondary" type="button" id="btnLogout" style="display:none;">Log out</button>
         </div>
     </header>
@@ -199,11 +204,30 @@
                         </div>
 
                         <div class="tab-content" data-content="attendance" style="display:none;">
-                            <p class="muted">Attendance tracking is not implemented in this prototype admin page yet.</p>
+                            <div class="attendance-wrap">
+                                <p class="muted" id="attendanceEmpty" style="margin-bottom:10px;">No attendance records yet.</p>
+                                <div id="attendanceTableWrap" style="display:none; overflow-x:auto;">
+                                    <table class="att-table" style="width:100%; border-collapse:collapse;">
+                                        <thead>
+                                            <tr>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Date</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">AM In</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">AM Out</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">PM In</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">PM Out</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">O.T. In</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">O.T. Out</th>
+                                                <th style="padding:8px; text-align:left; border-bottom:2px solid #1e3c72;">Photo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="attendanceTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="tab-content" data-content="dailylogs" style="display:none;">
-                            <p class="muted">Daily logs is not implemented in this prototype admin page yet.</p>
+                            <p class="muted">Daily logs will appear here when the trainee records them. This feature can be added in a future update.</p>
                         </div>
                     </div>
                 </section>
@@ -237,6 +261,7 @@
             var btnLogin = document.getElementById('btnLogin');
             var loginError = document.getElementById('loginError');
             var btnLogout = document.getElementById('btnLogout');
+            var btnReopen = document.getElementById('btnReopen');
 
             var traineeSearch = document.getElementById('traineeSearch');
             var traineeListEl = document.getElementById('traineeList');
@@ -253,10 +278,12 @@
                 if (loginPanel) loginPanel.classList.remove('active');
                 if (adminPanel) adminPanel.classList.add('active');
                 if (btnLogout) btnLogout.style.display = 'inline-block';
+                if (btnReopen) btnReopen.style.display = 'inline-block';
             } else {
                 if (loginPanel) loginPanel.classList.add('active');
                 if (adminPanel) adminPanel.classList.remove('active');
                 if (btnLogout) btnLogout.style.display = 'none';
+                if (btnReopen) btnReopen.style.display = 'none';
             }
 
             function loadTrainees() {
@@ -327,15 +354,18 @@
                     if (Array.isArray(dr.data)) {
                         dr.data.forEach(function(d) {
                             if (!d || !d.trainee_id) return;
-                            if (!docsMapCache[d.trainee_id]) docsMapCache[d.trainee_id] = {};
-                            docsMapCache[d.trainee_id][d.doc_type] = d.file_name || '—';
+                            var tid = String(d.trainee_id);
+                            if (!docsMapCache[tid]) docsMapCache[tid] = {};
+                            docsMapCache[tid][d.doc_type] = d.file_name || '—';
                         });
                     }
                 } catch (e) {}
             }
 
             function getTraineeKey(t) {
-                return t && (t.id || t.studentId || t.username || t.email) ? (t.id || t.studentId || t.username || t.email) : null;
+                if (!t) return null;
+                var k = t.id || t.studentId || t.username || t.email;
+                return k != null ? String(k) : null;
             }
 
             function setTab(tabName) {
@@ -354,6 +384,8 @@
                 btn.addEventListener('click', function() {
                     setTab(this.getAttribute('data-tab'));
                     renderDocsIfNeeded();
+                    var tab = this.getAttribute('data-tab');
+                    if (tab === 'attendance') renderAttendanceIfNeeded();
                 });
             });
 
@@ -446,6 +478,23 @@
                 document.getElementById('kvEndDate').textContent = t.endDate || '—';
 
                 renderDocsIfNeeded(true);
+                var activeTab = document.querySelector('.tabs .tab-btn.active');
+                if (activeTab && activeTab.getAttribute('data-tab') === 'attendance') renderAttendanceIfNeeded();
+            }
+
+            async function fetchDocumentsForTrainee(traineeId) {
+                var supabase = window.supabaseClient || await waitForSupabaseReady();
+                if (!supabase || !traineeId) return;
+                try {
+                    var res = await supabase.from('ojt_trainee_documents').select('*').eq('trainee_id', traineeId);
+                    if (Array.isArray(res.data)) {
+                        var tid = String(traineeId);
+                        if (!docsMapCache[tid]) docsMapCache[tid] = {};
+                        res.data.forEach(function(d) {
+                            if (d && d.doc_type) docsMapCache[tid][d.doc_type] = d.file_name || '—';
+                        });
+                    }
+                } catch (e) {}
             }
 
             function renderDocsIfNeeded(force) {
@@ -462,36 +511,87 @@
                     return;
                 }
 
-                var docsMap = (docsMapCache && typeof docsMapCache === 'object') ? docsMapCache : {};
-                if (!docsMap || typeof docsMap !== 'object' || Object.keys(docsMap).length === 0) {
-                    var docsRaw = localStorage.getItem(DOCS_DB_KEY);
-                    try { if (docsRaw) docsMap = JSON.parse(docsRaw); } catch (e) {}
-                    if (!docsMap || typeof docsMap !== 'object') docsMap = {};
-                }
+                var traineeId = selectedTrainee.id || selectedKey;
+                fetchDocumentsForTrainee(traineeId).then(function() {
+                    renderDocsInner();
+                }).catch(function() {
+                    renderDocsInner();
+                });
 
-                var docs = docsMap[selectedKey] || null;
-                if (!docs || typeof docs !== 'object') {
-                    docsEmpty.style.display = 'block';
+                function renderDocsInner() {
+                    var docsMap = (docsMapCache && typeof docsMapCache === 'object') ? docsMapCache : {};
+                    if (!docsMap || typeof docsMap !== 'object') docsMap = {};
+                    var docs = (selectedKey && docsMap[selectedKey]) || (selectedKey && docsMap[String(selectedKey)]) || null;
+                    if (!docs || typeof docs !== 'object') {
+                        try {
+                            var docsRaw = localStorage.getItem(DOCS_DB_KEY);
+                            if (docsRaw) { var localMap = JSON.parse(docsRaw); if (localMap && typeof localMap === 'object') docs = localMap[selectedKey] || localMap[String(selectedKey)] || null; }
+                        } catch (e) {}
+                    }
+                    if (!docs || typeof docs !== 'object') {
+                        docsEmpty.style.display = 'block';
+                        return;
+                    }
+                    docsEmpty.style.display = 'none';
+                    var order = [
+                        ['resume', 'Resume / CV'],
+                        ['endorsement', 'Endorsement Letter'],
+                        ['moa', 'Memorandum of Agreement (MOA)'],
+                        ['medical', 'Medical Certificate'],
+                        ['idPicture', 'ID Picture / Valid ID']
+                    ];
+                    order.forEach(function(pair) {
+                        var id = pair[0];
+                        var title = pair[1];
+                        var fileName = docs[id] || null;
+                        var item = document.createElement('div');
+                        item.className = 'doc-item';
+                        item.innerHTML = '<div class="t">' + title + '</div><div class="d">' + (fileName ? fileName : '—') + '</div>';
+                        docsList.appendChild(item);
+                    });
+                }
+            }
+
+            async function renderAttendanceIfNeeded() {
+                var emptyEl = document.getElementById('attendanceEmpty');
+                var wrapEl = document.getElementById('attendanceTableWrap');
+                var tbody = document.getElementById('attendanceTableBody');
+                if (!emptyEl || !wrapEl || !tbody) return;
+                tbody.innerHTML = '';
+                emptyEl.style.display = 'block';
+                wrapEl.style.display = 'none';
+                if (!selectedTrainee || !selectedKey) return;
+                var traineeId = selectedTrainee.id || selectedKey;
+                var supabase = window.supabaseClient || await waitForSupabaseReady();
+                if (!supabase) {
+                    emptyEl.textContent = 'Could not load attendance. Check connection.';
                     return;
                 }
-                docsEmpty.style.display = 'none';
-
-                var order = [
-                    ['resume', 'Resume / CV'],
-                    ['endorsement', 'Endorsement Letter'],
-                    ['moa', 'Memorandum of Agreement (MOA)'],
-                    ['medical', 'Medical Certificate'],
-                    ['idPicture', 'ID Picture / Valid ID']
-                ];
-                order.forEach(function(pair) {
-                    var id = pair[0];
-                    var title = pair[1];
-                    var fileName = docs[id] || null;
-                    var item = document.createElement('div');
-                    item.className = 'doc-item';
-                    item.innerHTML = '<div class="t">' + title + '</div><div class="d">' + (fileName ? fileName : '—') + '</div>';
-                    docsList.appendChild(item);
-                });
+                try {
+                    var res = await supabase.from('ojt_attendance').select('*').eq('trainee_id', traineeId).order('date', { ascending: false });
+                    var rows = Array.isArray(res.data) ? res.data : [];
+                    if (rows.length === 0) {
+                        emptyEl.textContent = 'No attendance records yet.';
+                        return;
+                    }
+                    emptyEl.style.display = 'none';
+                    wrapEl.style.display = 'block';
+                    rows.forEach(function(r) {
+                        var tr = document.createElement('tr');
+                        var amIn = r.am_in_time || '—';
+                        var amOut = r.am_out_time || '—';
+                        var pmIn = r.pm_in_time || '—';
+                        var pmOut = r.pm_out_time || '—';
+                        var otIn = r.ot_in_time || '—';
+                        var otOut = r.ot_out_time || '—';
+                        var photo = r.am_in_photo || r.pm_in_photo || r.ot_in_photo || '';
+                        var photoHtml = photo ? '<img src="' + photo + '" alt="">' : '—';
+                        tr.innerHTML = '<td>' + (r.date || '—') + '</td><td>' + amIn + '</td><td>' + amOut + '</td><td>' + pmIn + '</td><td>' + pmOut + '</td><td>' + otIn + '</td><td>' + otOut + '</td><td class="photo-cell">' + photoHtml + '</td>';
+                        tbody.appendChild(tr);
+                    });
+                } catch (e) {
+                    emptyEl.textContent = 'Could not load attendance. Try again.';
+                }
             }
 
             // Events
@@ -536,6 +636,34 @@
                 });
             }
 
+            if (btnReopen) {
+                btnReopen.addEventListener('click', async function() {
+                    if (!selectedTrainee || !selectedKey) {
+                        alert('Select a trainee first.');
+                        return;
+                    }
+                    var today = new Date();
+                    var dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                    var traineeId = selectedTrainee.id || selectedKey;
+                    var supabase = window.supabaseClient || await waitForSupabaseReady();
+                    if (!supabase) {
+                        alert('Could not connect. Try again.');
+                        return;
+                    }
+                    try {
+                        var res = await supabase.from('ojt_attendance_reopen').upsert(
+                            { trainee_id: traineeId, date: dateStr },
+                            { onConflict: 'trainee_id,date' }
+                        );
+                        if (res.error) throw res.error;
+                        var name = selectedTrainee.fullName || selectedTrainee.email || 'Trainee';
+                        alert('Attendance reopened for ' + name + ' for today (' + dateStr + '). The trainee can use the buttons again for this day.');
+                    } catch (e) {
+                        alert('Failed to re-open. Try again.');
+                    }
+                });
+            }
+
             // Boot: always show admin panel immediately on open.
             var isAuthed = true;
             try {
@@ -546,6 +674,7 @@
                 loginPanel.classList.remove('active');
                 adminPanel.classList.add('active');
                 btnLogout.style.display = 'inline-block';
+                if (btnReopen) btnReopen.style.display = 'inline-block';
                 loadAllFromSupabase().then(function() {
                     renderTraineeList();
                     var trainees = loadTrainees();
@@ -559,6 +688,7 @@
                 loginPanel.classList.add('active');
                 adminPanel.classList.remove('active');
                 btnLogout.style.display = 'none';
+                if (btnReopen) btnReopen.style.display = 'none';
             }
         })();
     </script>

@@ -602,6 +602,7 @@
             var calYear, calMonth;
             var timeInModalSession = null;
             var recordsCache = [];
+            var reopenedDates = {};
 
             function getRecords() {
                 return recordsCache || [];
@@ -657,6 +658,21 @@
                     recordsCache = raw ? JSON.parse(raw) : [];
                 } catch (e) { recordsCache = []; }
                 if (!Array.isArray(recordsCache)) recordsCache = [];
+            }
+            function loadReopenedDates() {
+                return new Promise(function(resolve) {
+                    reopenedDates = {};
+                    var supabase = window.supabaseClient;
+                    if (!supabase || !traineeId) { resolve(); return; }
+                    supabase.from('ojt_attendance_reopen').select('date').eq('trainee_id', traineeId).then(function(res) {
+                        if (res && res.data && Array.isArray(res.data)) {
+                            res.data.forEach(function(row) {
+                                if (row && row.date) reopenedDates[row.date] = true;
+                            });
+                        }
+                        resolve();
+                    }).catch(function() { resolve(); });
+                });
             }
             function dateKey(d) {
                 var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
@@ -786,6 +802,7 @@
 
             function setButtonsState() {
                 var todayKey = dateKey(new Date());
+                var reopenedToday = !!reopenedDates[todayKey];
                 var records = getRecords();
                 var rec = normalizeRec(findRecord(records, todayKey));
                 var btnInAM = document.getElementById('btnTimeInAM');
@@ -794,10 +811,10 @@
                 var btnOutPM = document.getElementById('btnTimeOutPM');
                 var btnInOT = document.getElementById('btnTimeInOT');
                 var btnOutOT = document.getElementById('btnTimeOutOT');
-                var canInAM = isTimeInAMWindow() && !(rec && amInTime(rec));
-                var canOutAM = isTimeOutAMWindow() && rec && amInTime(rec) && !rec.amOut;
-                var canInPM = isTimeInPMWindow() && !(rec && pmInTime(rec));
-                var canOutPM = isTimeOutPMWindow() && rec && pmInTime(rec) && !rec.pmOut;
+                var canInAM = (isTimeInAMWindow() || reopenedToday) && !(rec && amInTime(rec));
+                var canOutAM = (isTimeOutAMWindow() || reopenedToday) && rec && amInTime(rec) && !rec.amOut;
+                var canInPM = (isTimeInPMWindow() || reopenedToday) && !(rec && pmInTime(rec));
+                var canOutPM = (isTimeOutPMWindow() || reopenedToday) && rec && pmInTime(rec) && !rec.pmOut;
                 if (btnInAM) btnInAM.disabled = !canInAM;
                 if (btnOutAM) btnOutAM.disabled = !canOutAM;
                 if (btnInPM) btnInPM.disabled = !canInPM;
@@ -877,11 +894,13 @@
                 if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
             }
             function refreshAttendanceUI() {
-                updateTodayStatus();
-                setButtonsState();
-                renderCalendar();
-                renderTable();
-                updateTrainingHoursSummary();
+                loadReopenedDates().then(function() {
+                    updateTodayStatus();
+                    setButtonsState();
+                    renderCalendar();
+                    renderTable();
+                    updateTrainingHoursSummary();
+                });
             }
 
             var now = new Date();
