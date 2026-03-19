@@ -95,6 +95,9 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 24px rgba(0,0,0,0.4);
         }
+        .btn-attendance {
+            background: linear-gradient(135deg, #b45309 0%, #ea580c 100%);
+        }
         .btn-schedule {
             background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
         }
@@ -345,6 +348,7 @@
         <p>Multimedia and Speech Laboratory</p>
         <div class="buttons">
             <a href="#" class="btn" id="btnInventoryMain" data-href="Inventory%20Lab/Inventory.html">Inventory</a>
+            <a href="#" class="btn btn-attendance" id="btnAttendanceMain" data-href="Attendance/index.html">Attendance</a>
             <a href="#" class="btn btn-schedule" id="btnScheduleMain" data-href="Class%20Schedule/index.html">Class Schedule</a>
         </div>
     </div>
@@ -385,6 +389,10 @@
         document.getElementById('btnInventoryMain').addEventListener('click', function(e) {
             e.preventDefault();
             openPasswordModal(this.getAttribute('data-href'));
+        });
+        document.getElementById('btnAttendanceMain').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = document.getElementById('btnAttendanceMain').getAttribute('data-href');
         });
         document.getElementById('btnScheduleMain').addEventListener('click', function(e) {
             e.preventDefault();

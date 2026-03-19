@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - Occidental Mindoro State College</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow-x: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .slideshow { position: fixed; inset: 0; z-index: 0; }
+        .slideshow img {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+            opacity: 0; transition: opacity 1.2s ease-in-out;
+        }
+        .slideshow img.active { opacity: 1; z-index: 1; }
+        .overlay {
+            position: fixed; inset: 0; z-index: 1;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%);
+            pointer-events: none;
+        }
+        .page-content {
+            position: relative; z-index: 2; min-height: 100vh; padding: 24px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .back { position: absolute; top: 24px; left: 24px; color: #fff; text-decoration: none; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+        .back:hover { text-decoration: underline; }
+        .container { width: 100%; max-width: 620px; background: #fff; padding: 40px 48px; border-radius: 14px; box-shadow: 0 6px 32px rgba(0,0,0,0.25); }
+        .logo-wrap { text-align: center; margin-bottom: 28px; }
+        .logo-wrap img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+        h1 { color: #1e3c72; font-size: 1.25rem; text-align: center; margin-bottom: 6px; }
+        .sub { color: #666; font-size: 0.95rem; text-align: center; margin-bottom: 28px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; color: #333; font-weight: 600; font-size: 0.95rem; }
+        .form-group input, .form-group select { width: 100%; padding: 14px 16px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; background: #fff; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.2); }
+        .btn-login { width: 100%; padding: 16px; background: linear-gradient(135deg, #b45309 0%, #ea580c 100%); color: #fff; border: none; border-radius: 8px; font-size: 1.05rem; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .btn-login:hover { opacity: 0.95; }
+        .divider { text-align: center; margin: 24px 0; color: #888; font-size: 0.9rem; }
+        .create-link { display: block; text-align: center; color: #1e3c72; font-weight: 600; text-decoration: none; font-size: 0.95rem; }
+        .create-link:hover { text-decoration: underline; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .btn-back-text { background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; margin-bottom: 20px; padding: 0; }
+        .btn-back-text:hover { color: #1e3c72; text-decoration: underline; }
+        .error-msg { color: #c00; font-size: 0.85rem; margin-top: 6px; display: none; }
+        .error-msg.show { display: block; }
+        .hint { font-size: 0.82rem; color: #666; margin-top: 4px; }
+        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    </style>
+</head>
+<body>
+    <div class="slideshow" id="slideshow"></div>
+    <div class="overlay"></div>
+    <div class="page-content">
+    <a href="../index.html" class="back">← Back to Home</a>
+
+    <div class="container">
+        <div id="loginPanel" class="panel active">
+            <div class="logo-wrap">
+                <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
+            </div>
+            <h1>OCCIDENTAL MINDORO STATE COLLEGE</h1>
+            <p class="sub">Multimedia and Speech Laboratory — Attendance</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email o Username</label>
+                    <input type="text" id="loginEmail" name="email" placeholder="Email o username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" name="password" placeholder="Password" autocomplete="current-password" required>
+                </div>
+                <p id="loginError" class="error-msg">Maling email o password.</p>
+                <button type="submit" class="btn-login">Log in</button>
+            </form>
+            <div class="divider">— o —</div>
+            <a href="#" id="showCreateAccount" class="create-link">Create account</a>
+        </div>
+
+        <div id="createPanel" class="panel">
+            <button type="button" class="btn-back-text" id="backToLogin">← Back to Log in</button>
+            <div class="logo-wrap">
+                <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
+            </div>
+            <h1>Create account</h1>
+            <p class="sub">Multimedia and Speech Laboratory — Attendance</p>
+            <form id="createForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <div class="row-3">
+                        <input type="text" id="createFirstName" name="firstName" placeholder="First Name" required>
+                        <input type="text" id="createMiddleName" name="middleName" placeholder="Middle Name">
+                        <input type="text" id="createLastName" name="lastName" placeholder="Last Name" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="createEmail">Valid Email Address</label>
+                    <input type="email" id="createEmail" name="email" placeholder="e.g. name@omsc.edu.ph" autocomplete="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="createUsername">Username</label>
+                    <input type="text" id="createUsername" name="username" placeholder="Username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="createPassword">Password</label>
+                    <input type="password" id="createPassword" name="password" placeholder="Password" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="createConfirm">Confirm password</label>
+                    <input type="password" id="createConfirm" name="confirm" placeholder="Confirm password" required>
+                </div>
+                <div class="form-group">
+                    <label for="createCourse">Course / Program</label>
+                    <select id="createCourse" name="course" required>
+                        <option value="">Select course...</option>
+                        <option value="BSIT">BSIT</option>
+                        <option value="BSBA">BSBA</option>
+                        <option value="BSMA">BSMA</option>
+                        <option value="BEED">BEED</option>
+                        <option value="BSED">BSED</option>
+                        <option value="BPEd">BPEd</option>
+                        <option value="BTTE">BTTE</option>
+                        <option value="BSA">BSA</option>
+                        <option value="BSAF">BSAF</option>
+                        <option value="BSF">BSF</option>
+                        <option value="BSFi">BSFi</option>
+                        <option value="BSHM">BSHM</option>
+                        <option value="BSTM">BSTM</option>
+                        <option value="BSFT">BSFT</option>
+                        <option value="BSCRIM">BSCRIM</option>
+                        <option value="BSIS">BSIS</option>
+                        <option value="BSCE">BSCE</option>
+                        <option value="BSArch">BSArch</option>
+                        <option value="DM">DM</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="createYearLevel">Year Level</label>
+                    <input type="text" id="createYearLevel" name="yearLevel" placeholder="e.g. 4th Year" required>
+                </div>
+                <p id="createError" class="error-msg"></p>
+                <button type="submit" class="btn-login">Create account</button>
+            </form>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        (function() {
+            var images = [
+                "../1. DRONE 2024/DJI_0565-2.jpg",
+                "../1. DRONE 2024/DJI_0570-2.jpg",
+                "../1. DRONE 2024/DJI_0574-2.jpg",
+                "../1. DRONE 2024/DJI_0578-2.jpg",
+                "../1. DRONE 2024/DJI_0582-2.jpg",
+                "../1. DRONE 2024/DJI_0587-2.jpg",
+                "../1. DRONE 2024/DJI_0592-2.jpg"
+            ];
+            var container = document.getElementById('slideshow');
+            images.forEach(function(src, i) {
+                var img = document.createElement('img');
+                img.src = src;
+                img.alt = 'Background ' + (i + 1);
+                if (i === 0) img.classList.add('active');
+                container.appendChild(img);
+            });
+            var idx = 0;
+            setInterval(function() {
+                var all = container.querySelectorAll('img');
+                if (all.length === 0) return;
+                all[idx].classList.remove('active');
+                idx = (idx + 1) % all.length;
+                all[idx].classList.add('active');
+            }, 4000);
+        })();
+        (function() {
+            var loginPanel = document.getElementById('loginPanel');
+            var createPanel = document.getElementById('createPanel');
+            var showCreate = document.getElementById('showCreateAccount');
+            var backToLogin = document.getElementById('backToLogin');
+            var loginForm = document.getElementById('loginForm');
+            var createForm = document.getElementById('createForm');
+            var loginError = document.getElementById('loginError');
+            var createError = document.getElementById('createError');
+
+            showCreate.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginPanel.classList.remove('active');
+                createPanel.classList.add('active');
+                createError.classList.remove('show');
+            });
+            backToLogin.addEventListener('click', function() {
+                createPanel.classList.remove('active');
+                loginPanel.classList.add('active');
+                loginError.classList.remove('show');
+            });
+
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                loginError.classList.remove('show');
+                var email = document.getElementById('loginEmail').value.trim();
+                var pass = document.getElementById('loginPassword').value;
+                if (!email || !pass) return;
+                loginError.textContent = 'Login not yet connected. Add your auth backend.';
+                loginError.classList.add('show');
+            });
+
+            createForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                createError.classList.remove('show');
+                var email = document.getElementById('createEmail').value.trim();
+                var username = document.getElementById('createUsername').value.trim();
+                var pass = document.getElementById('createPassword').value;
+                var confirmVal = document.getElementById('createConfirm').value;
+                var firstName = document.getElementById('createFirstName').value.trim();
+                var lastName = document.getElementById('createLastName').value.trim();
+                var course = document.getElementById('createCourse').value;
+                var yearLevel = document.getElementById('createYearLevel').value.trim();
+                if (pass !== confirmVal) {
+                    createError.textContent = 'Password at confirm password ay hindi match.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (pass.length < 6) {
+                    createError.textContent = 'Password dapat at least 6 characters.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!firstName || !lastName) {
+                    createError.textContent = 'Please enter First Name and Last Name.';
+                    createError.classList.add('show');
+                    return;
+                }
+                if (!course || !yearLevel) {
+                    createError.textContent = 'Please enter Course/Program and Year Level.';
+                    createError.classList.add('show');
+                    return;
+                }
+                createError.textContent = 'Sign up not yet connected. Add your auth backend.';
+                createError.classList.add('show');
+            });
+        })();
+    </script>
+</body>
+</html>
