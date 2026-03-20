@@ -644,8 +644,12 @@
             var docPreviewTitle = document.getElementById('docPreviewTitle');
             var docPreviewDownload = document.getElementById('docPreviewDownload');
             var docModalClose = document.getElementById('docModalClose');
+            var photoPreviewModal = document.getElementById('photoPreviewModal');
             function goToAttendanceLogin() {
                 window.location.replace('../Attendance/index.html');
+            }
+            function closePhotoPreview() {
+                if (photoPreviewModal) photoPreviewModal.classList.remove('show');
             }
 
             // Show admin panel immediately if already logged in (e.g. from Attendance with ?autologin=1)
@@ -863,6 +867,10 @@
                 docPreviewModal.classList.remove('show');
                 if (docPreviewBody) docPreviewBody.innerHTML = '';
             }
+            function closeAllOverlays() {
+                closeDocumentPreview();
+                closePhotoPreview();
+            }
 
             function openDocumentPreview(src, kind, fileName) {
                 if (!docPreviewModal || !docPreviewBody || !src) return;
@@ -938,6 +946,7 @@
             }
 
             function setTab(tabName) {
+                closeAllOverlays();
                 var contents = document.querySelectorAll('#tabContent .tab-content');
                 contents.forEach(function(c) {
                     c.style.display = (c.getAttribute('data-content') === tabName) ? 'block' : 'none';
@@ -1020,6 +1029,7 @@
 
             function renderDetails(t, key) {
                 if (!t) return;
+                closeAllOverlays();
                 selectedTrainee = t;
                 selectedKey = key;
 
@@ -1429,6 +1439,8 @@
                 if (photoModal) photoModal.addEventListener('click', function(e) { if (e.target === photoModal) photoModal.classList.remove('show'); });
                 if (docModalClose) docModalClose.addEventListener('click', closeDocumentPreview);
                 if (docPreviewModal) docPreviewModal.addEventListener('click', function(e) { if (e.target === docPreviewModal) closeDocumentPreview(); });
+                document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAllOverlays(); });
+                closeAllOverlays();
             })();
 
             function getDateStr(d) {
