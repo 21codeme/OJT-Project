@@ -810,8 +810,6 @@
                         if (!emailResolved && stored && stored.email) emailResolved = String(stored.email).trim();
                         if (!emailResolved) emailResolved = '';
 
-                        var storageUploadSkipped = false;
-
                         function inlineFileDataForDb(meta) {
                             var o = { kind: meta.kind, mimeType: meta.mimeType, inlineFallback: true };
                             if (meta.html) o.html = meta.html;
@@ -853,9 +851,7 @@
                                     }, { onConflict: 'trainee_id,doc_type' }).then(function(ins) {
                                         if (ins && ins.error) return Promise.reject(ins.error);
                                     });
-                                }).catch(function(err) {
-                                    console.warn('OJT Storage failed (' + slot.key + '), trying DB inline:', err);
-                                    storageUploadSkipped = true;
+                                }).catch(function() {
                                     return upsertDocInlineOnly(slot.key, meta);
                                 })
                             );
@@ -918,11 +914,7 @@
                                 localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
                                 localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
                             } catch (err) {}
-                            if (storageUploadSkipped) {
-                                alert('Profile updated!\n\nStorage (bucket) ay hindi available — ang maliit na dokumento ay maaaring naka-save sa database para makita ng admin; malaking PDF ay browser lamang. Gawin ang public bucket na ojt-trainee-documents + ojt-documents-storage.sql para sa tamang cloud storage.');
-                            } else {
-                                alert('Profile updated!');
-                            }
+                            alert('Profile updated!');
                             window.location.href = 'dashboard.html';
                         }
 
