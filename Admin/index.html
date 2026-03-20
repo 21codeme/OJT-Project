@@ -1595,10 +1595,11 @@
                 });
             }
 
-            // Boot: always show admin panel immediately on open.
-            var isAuthed = true;
+            // Boot: only show admin panel when an admin session exists.
+            var isAuthed = false;
             try {
                 if (fromAutologin) localStorage.setItem(ADMIN_SESSION_KEY, '1');
+                isAuthed = !!localStorage.getItem(ADMIN_SESSION_KEY);
             } catch (e) {}
 
             if (isAuthed) {
