@@ -162,6 +162,19 @@
         }
         .admin-doc-card-body a.admin-doc-dl:hover { text-decoration: underline; }
 
+        /* Admin profile grouping (match trainee profile highlights) */
+        .admin-profile-top { margin-bottom: 18px; }
+        .admin-profile-section {
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid #e8eaed;
+        }
+        .admin-profile-section h3 {
+            color: #1e3c72;
+            font-size: 1.05rem;
+            margin-bottom: 14px;
+        }
+
         .training-hours-summary-admin {
             padding: 14px 18px;
             background: #f0fdf4;
@@ -310,25 +323,51 @@
 
                     <div id="tabContent">
                         <div class="tab-content" data-content="profile">
-                            <div class="kv">
-                                <div class="k">Full Name</div><div class="v" id="kvFullName">—</div>
-                                <div class="k">Valid Email Address</div><div class="v" id="kvEmail">—</div>
-                                <div class="k">Username</div><div class="v" id="kvUsername">—</div>
-                                <div class="k">Student ID Number</div><div class="v" id="kvStudentId">—</div>
-                                <div class="k">Course / Program</div><div class="v" id="kvCourse">—</div>
-                                <div class="k">Year Level</div><div class="v" id="kvYearLevel">—</div>
-                                <div class="k">School Name</div><div class="v" id="kvSchoolName">—</div>
-                                <div class="k">Department / College</div><div class="v" id="kvDepartment">—</div>
-                                <div class="k">OJT Coordinator / Adviser</div><div class="v" id="kvCoordinator">—</div>
-                                <div class="k">Company Name</div><div class="v" id="kvCompanyName">—</div>
-                                <div class="k">Company Address</div><div class="v" id="kvCompanyAddress">—</div>
-                                <div class="k">Supervisor / Mentor</div><div class="v" id="kvSupervisor">—</div>
-                                <div class="k">Position / Role</div><div class="v" id="kvPositionRole">—</div>
-                                <div class="k">Contact Number</div><div class="v" id="kvContactNumber">—</div>
-                                <div class="k">Emergency Contact</div><div class="v" id="kvEmergencyContact">—</div>
-                                <div class="k">Training Hours Required</div><div class="v" id="kvTrainingHours">—</div>
-                                <div class="k">Start Date</div><div class="v" id="kvStartDate">—</div>
-                                <div class="k">End Date</div><div class="v" id="kvEndDate">—</div>
+                            <div class="admin-profile-top">
+                                <div class="kv">
+                                    <div class="k">Full Name</div><div class="v" id="kvFullName">—</div>
+                                    <div class="k">Valid Email Address</div><div class="v" id="kvEmail">—</div>
+                                    <div class="k">Username</div><div class="v" id="kvUsername">—</div>
+                                    <div class="k">Student ID Number</div><div class="v" id="kvStudentId">—</div>
+                                </div>
+                            </div>
+
+                            <div class="admin-profile-section">
+                                <h3>School Information</h3>
+                                <div class="kv">
+                                    <div class="k">School Name</div><div class="v" id="kvSchoolName">—</div>
+                                    <div class="k">Department / College</div><div class="v" id="kvDepartment">—</div>
+                                    <div class="k">OJT Coordinator / Adviser</div><div class="v" id="kvCoordinator">—</div>
+                                </div>
+                            </div>
+
+                            <div class="admin-profile-section">
+                                <h3>OJT / Company Details</h3>
+                                <div class="kv">
+                                    <div class="k">Company Name</div><div class="v" id="kvCompanyName">—</div>
+                                    <div class="k">Company Address</div><div class="v" id="kvCompanyAddress">—</div>
+                                    <div class="k">Supervisor / Mentor</div><div class="v" id="kvSupervisor">—</div>
+                                    <div class="k">Position / Role</div><div class="v" id="kvPositionRole">—</div>
+                                </div>
+                            </div>
+
+                            <div class="admin-profile-section">
+                                <h3>Course & Training</h3>
+                                <div class="kv">
+                                    <div class="k">Course / Program</div><div class="v" id="kvCourse">—</div>
+                                    <div class="k">Year Level</div><div class="v" id="kvYearLevel">—</div>
+                                    <div class="k">Training Hours Required</div><div class="v" id="kvTrainingHours">—</div>
+                                    <div class="k">Start Date</div><div class="v" id="kvStartDate">—</div>
+                                    <div class="k">End Date</div><div class="v" id="kvEndDate">—</div>
+                                </div>
+                            </div>
+
+                            <div class="admin-profile-section">
+                                <h3>Additional Info</h3>
+                                <div class="kv">
+                                    <div class="k">Contact Number</div><div class="v" id="kvContactNumber">—</div>
+                                    <div class="k">Emergency Contact</div><div class="v" id="kvEmergencyContact">—</div>
+                                </div>
                             </div>
                         </div>
 
