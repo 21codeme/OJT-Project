@@ -132,35 +132,35 @@
     <main class="main-wrap">
         <div class="card">
             <h2>Edit Profile</h2>
-            <form id="editProfileForm">
+            <form id="editProfileForm" novalidate>
                 <div class="form-grid">
                     <div class="field">
                         <label for="editEmail">Valid Email Address</label>
-                        <input type="email" id="editEmail" required>
+                        <input type="email" id="editEmail" autocomplete="email">
                     </div>
                     <div class="field">
                         <label for="editUsername">Username</label>
-                        <input type="text" id="editUsername" required>
+                        <input type="text" id="editUsername" autocomplete="username">
                         <div class="small-note">Password is not handled in this prototype.</div>
                     </div>
 
                     <div class="field full">
                         <label>Full Name (First, Middle, Last)</label>
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                            <input type="text" id="editFirstName" placeholder="First Name" required style="padding:12px 12px;">
+                            <input type="text" id="editFirstName" placeholder="First Name" style="padding:12px 12px;">
                             <input type="text" id="editMiddleName" placeholder="Middle Name" style="padding:12px 12px;">
-                            <input type="text" id="editLastName" placeholder="Last Name" required style="padding:12px 12px;">
+                            <input type="text" id="editLastName" placeholder="Last Name" style="padding:12px 12px;">
                         </div>
                     </div>
 
                     <div class="field">
                         <label for="editStudentId">Student ID Number</label>
-                        <input type="text" id="editStudentId" required>
+                        <input type="text" id="editStudentId">
                     </div>
 
                     <div class="field">
                         <label for="editCourse">Course / Program</label>
-                        <select id="editCourse" required>
+                        <select id="editCourse">
                             <option value="">Select course...</option>
                             <option value="BSIT">BSIT</option>
                             <option value="BSBA">BSBA</option>
@@ -186,7 +186,7 @@
 
                     <div class="field">
                         <label for="editYearLevel">Year Level</label>
-                        <select id="editYearLevel" required>
+                        <select id="editYearLevel">
                             <option value="">Select year...</option>
                             <option value="1st Year">1st Year</option>
                             <option value="2nd Year">2nd Year</option>
@@ -205,7 +205,7 @@
                     </div>
                     <div class="field">
                         <label for="editDepartment">Department / College</label>
-                        <select id="editDepartment" required>
+                        <select id="editDepartment">
                             <option value="">Select department...</option>
                             <option value="BSIT Department">BSIT Department</option>
                             <option value="Multimedia and Speech Laboratory">Multimedia and Speech Laboratory</option>
@@ -217,7 +217,7 @@
                     </div>
                     <div class="field full">
                         <label for="editCoordinator">OJT Coordinator / Adviser Name (if required)</label>
-                        <input type="text" id="editCoordinator" required>
+                        <input type="text" id="editCoordinator">
                     </div>
                 </div>
 
@@ -225,19 +225,19 @@
                 <div class="form-grid">
                     <div class="field">
                         <label for="editCompanyName">Company Name</label>
-                        <input type="text" id="editCompanyName" required>
+                        <input type="text" id="editCompanyName">
                     </div>
                     <div class="field">
                         <label for="editSupervisor">Supervisor / Mentor Name</label>
-                        <input type="text" id="editSupervisor" required>
+                        <input type="text" id="editSupervisor">
                     </div>
                     <div class="field full">
                         <label for="editCompanyAddress">Company Address</label>
-                        <input type="text" id="editCompanyAddress" required>
+                        <input type="text" id="editCompanyAddress">
                     </div>
                     <div class="field full">
                         <label for="editPositionRole">Position / Role Assigned</label>
-                        <input type="text" id="editPositionRole" required>
+                        <input type="text" id="editPositionRole">
                     </div>
                 </div>
 
@@ -274,23 +274,23 @@
                 <div class="form-grid">
                     <div class="field">
                         <label for="editContactNumber">Contact Number</label>
-                        <input type="text" id="editContactNumber" required>
+                        <input type="text" id="editContactNumber">
                     </div>
                     <div class="field">
                         <label for="editEmergencyContact">Emergency Contact Person</label>
-                        <input type="text" id="editEmergencyContact" required>
+                        <input type="text" id="editEmergencyContact">
                     </div>
                     <div class="field">
                         <label for="editTrainingHours">Training Hours Required</label>
-                        <input type="number" id="editTrainingHours" min="0" required>
+                        <input type="number" id="editTrainingHours" min="0">
                     </div>
                     <div class="field">
                         <label for="editStartDate">Start Date of OJT</label>
-                        <input type="date" id="editStartDate" required>
+                        <input type="date" id="editStartDate">
                     </div>
                     <div class="field full">
                         <label for="editEndDate">End Date of OJT</label>
-                        <input type="date" id="editEndDate" required>
+                        <input type="date" id="editEndDate">
                     </div>
                 </div>
 
@@ -337,7 +337,7 @@
                 } else if (v) {
                     select.value = 'Others';
                     other.classList.remove('hidden');
-                    other.required = true;
+                    other.required = false;
                     other.value = v;
                 } else {
                     select.value = '';
@@ -394,7 +394,7 @@
                 depSelect.addEventListener('change', function() {
                     var isOthers = depSelect.value === 'Others';
                     depOther.classList.toggle('hidden', !isOthers);
-                    depOther.required = isOthers;
+                    depOther.required = false;
                     if (!isOthers) depOther.value = '';
                 });
             }
