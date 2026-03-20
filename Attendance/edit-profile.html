@@ -210,6 +210,15 @@
                     </div>
                 </div>
 
+                <div class="section-title">🖼️ Profile Picture</div>
+                <div class="form-grid">
+                    <div class="field full">
+                        <label for="editProfilePicture">Upload profile picture</label>
+                        <input type="file" id="editProfilePicture" accept="image/*">
+                        <div id="previewProfilePicture" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                    </div>
+                </div>
+
                 <div class="section-title">🏫 School Information</div>
                 <div class="form-grid">
                     <div class="field">
@@ -693,6 +702,46 @@
                 });
             })();
 
+            (function restoreProfilePicturePreview() {
+                var prevEl = document.getElementById('previewProfilePicture');
+                if (!prevEl) return;
+                if (stored && stored.pictureUrl) {
+                    renderPreviewInto(prevEl, {
+                        fileName: 'profile_picture',
+                        kind: 'image',
+                        publicUrl: stored.pictureUrl
+                    });
+                } else {
+                    prevEl.classList.add('empty');
+                    prevEl.textContent = 'Walang napiling file — lalabas dito ang preview.';
+                }
+            })();
+
+            var profilePicInput = document.getElementById('editProfilePicture');
+            if (profilePicInput) {
+                profilePicInput.addEventListener('change', function() {
+                    var file = profilePicInput.files && profilePicInput.files[0];
+                    var prevEl = document.getElementById('previewProfilePicture');
+                    if (!prevEl) return;
+                    if (!file) {
+                        prevEl.classList.add('empty');
+                        prevEl.innerHTML = 'Walang napiling file — lalabas dito ang preview.';
+                        return;
+                    }
+                    prevEl.classList.remove('empty');
+                    prevEl.innerHTML = '<p class="file-preview-note">Naglo-load ng preview…</p>';
+                    processFileForPreviewAndStorage(file).then(function(meta) {
+                        if (meta && meta.error) {
+                            prevEl.classList.remove('empty');
+                            prevEl.innerHTML = '<p class="file-preview-note">' + meta.error + '</p>';
+                            profilePicInput.value = '';
+                            return;
+                        }
+                        renderPreviewInto(prevEl, meta);
+                    });
+                });
+            }
+
             function resetDocSlotUI(slotKey) {
                 DOC_SLOTS.forEach(function(slot) {
                     if (slot.key !== slotKey) return;
@@ -964,15 +1013,35 @@
                             );
                         });
 
-                        function applyProfilePictureFromDocs() {
-                            var id = docsMeta.idPicture;
-                            if (!id || id.kind !== 'image') return;
-                            if (id.publicUrl) updated.pictureUrl = id.publicUrl;
-                            else if (id.dataUrl) updated.pictureUrl = id.dataUrl;
+                        // Profile picture upload (separate from Required Documents -> ID picture)
+                        var profilePicTask = Promise.resolve();
+                        var profilePicInputEl = document.getElementById('editProfilePicture');
+                        if (profilePicInputEl && profilePicInputEl.files && profilePicInputEl.files[0]) {
+                            var profilePicFile = profilePicInputEl.files[0];
+                            profilePicTask = processFileForPreviewAndStorage(profilePicFile).then(function(meta) {
+                                if (!meta || meta.error || meta.kind !== 'image') return;
+                                var ext = fileExtForUpload(profilePicFile.name, profilePicFile.type, 'image');
+                                var path = traineeId + '/profile_picture' + ext;
+                                return sb.storage.from(OJT_DOCS_BUCKET).upload(path, profilePicFile, {
+                                    contentType: profilePicFile.type || 'application/octet-stream',
+                                    upsert: true
+                                }).then(function(upRes) {
+                                    if (upRes && upRes.error) throw upRes.error;
+                                    return sb.storage.from(OJT_DOCS_BUCKET).getPublicUrl(path);
+                                }).then(function(urlRes) {
+                                    var publicUrl = urlRes && urlRes.data && urlRes.data.publicUrl ? urlRes.data.publicUrl : null;
+                                    if (publicUrl) updated.pictureUrl = publicUrl;
+                                    else if (meta.dataUrl && meta.dataUrl.length <= OJT_DOC_INLINE_MAX_CHARS) updated.pictureUrl = meta.dataUrl;
+                                }).catch(function() {
+                                    // Storage may be missing; fallback to inline (useful for admin preview).
+                                    if (meta.dataUrl && meta.dataUrl.length <= OJT_DOC_INLINE_MAX_CHARS) updated.pictureUrl = meta.dataUrl;
+                                });
+                            }).catch(function() {
+                                // Swallow profile picture errors.
+                            });
                         }
 
                         function runTraineeUpdate() {
-                            applyProfilePictureFromDocs();
                             return sb.from('ojt_trainees').update({
                                 email: emailResolved,
                                 username: updated.username || null,
@@ -1025,7 +1094,7 @@
                             window.location.href = 'dashboard.html';
                         }
 
-                        Promise.all(uploadTasks)
+                        Promise.all(uploadTasks.concat([profilePicTask]))
                             .then(function() {
                                 return runTraineeUpdate();
                             })
