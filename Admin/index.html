@@ -644,10 +644,17 @@
             var docPreviewTitle = document.getElementById('docPreviewTitle');
             var docPreviewDownload = document.getElementById('docPreviewDownload');
             var docModalClose = document.getElementById('docModalClose');
+            function goToAttendanceLogin() {
+                window.location.replace('../Attendance/index.html');
+            }
 
             // Show admin panel immediately if already logged in (e.g. from Attendance with ?autologin=1)
             var isAuthedNow = fromAutologin;
             try { if (!isAuthedNow) isAuthedNow = !!localStorage.getItem(ADMIN_SESSION_KEY); } catch (e) {}
+            if (!isAuthedNow) {
+                goToAttendanceLogin();
+                return;
+            }
             if (isAuthedNow) {
                 if (loginPanel) loginPanel.classList.remove('active');
                 if (adminPanel) adminPanel.classList.add('active');
@@ -1405,7 +1412,7 @@
             if (btnLogout) {
                 btnLogout.addEventListener('click', function() {
                     localStorage.removeItem(ADMIN_SESSION_KEY);
-                    location.reload();
+                    goToAttendanceLogin();
                 });
             }
             if (btnReopenMenu) {
