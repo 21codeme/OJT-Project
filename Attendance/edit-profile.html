@@ -6,7 +6,6 @@
     <title>Edit Profile - OJT Trainee</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <script src="../config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -242,25 +241,26 @@
                 </div>
 
                 <div class="section-title">📄 Required Documents (optional in this prototype)</div>
+                <p class="small-note" style="margin:-6px 0 12px;">PDF o larawan lamang (hal. JPG, PNG). <strong>Hindi</strong> tinatanggap ang Word (.doc/.docx) at Excel (.xls/.xlsx).</p>
                 <div class="form-grid">
                     <div class="field">
                         <label for="editResume">Resume / CV</label>
-                        <input type="file" id="editResume" accept=".pdf,.doc,.docx,image/*">
+                        <input type="file" id="editResume" accept="application/pdf,image/*,.pdf">
                         <div id="previewResume" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field">
                         <label for="editEndorsement">Endorsement Letter</label>
-                        <input type="file" id="editEndorsement" accept=".pdf,.doc,.docx,image/*">
+                        <input type="file" id="editEndorsement" accept="application/pdf,image/*,.pdf">
                         <div id="previewEndorsement" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field">
                         <label for="editMOA">MOA</label>
-                        <input type="file" id="editMOA" accept=".pdf,.doc,.docx,image/*">
+                        <input type="file" id="editMOA" accept="application/pdf,image/*,.pdf">
                         <div id="previewMOA" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field">
                         <label for="editMedical">Medical Certificate</label>
-                        <input type="file" id="editMedical" accept=".pdf,.doc,.docx,image/*">
+                        <input type="file" id="editMedical" accept="application/pdf,image/*,.pdf">
                         <div id="previewMedical" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field full">
@@ -584,8 +584,22 @@
                         return;
                     }
                     var name = file.name || 'document';
-                    var mime = file.type || '';
-                    if (mime.indexOf('image/') === 0) {
+                    var mime = (file.type || '').toLowerCase();
+                    var isImage = mime.indexOf('image/') === 0 || /\.(jpe?g|png|gif|webp|bmp|svg|heic)$/i.test(name);
+                    var isPdf = mime === 'application/pdf' || /\.pdf$/i.test(name);
+                    if (!isImage && !isPdf) {
+                        var office = /\.(docx?|xlsx?|pptx?|ods|odt|csv|rtf)$/i.test(name) ||
+                            /word|excel|spreadsheet|ms-excel|powerpoint|officedocument|msword|vnd\.ms-/i.test(mime);
+                        resolve({
+                            fileName: name,
+                            kind: 'error',
+                            error: office
+                                ? 'Hindi pinapayagan ang Word, Excel, o katulad na file. PDF o larawan lamang.'
+                                : 'PDF o larawan lamang ang tinatanggap dito.'
+                        });
+                        return;
+                    }
+                    if (mime.indexOf('image/') === 0 || (isImage && !isPdf)) {
                         var r = new FileReader();
                         r.onload = function() {
                             resolve({
@@ -617,59 +631,11 @@
                         r2.readAsDataURL(file);
                         return;
                     }
-                    if (/\.docx$/i.test(name) || mime.indexOf('wordprocessingml') >= 0) {
-                        if (!window.mammoth) {
-                            resolve({ fileName: name, mimeType: mime, kind: 'docx', error: 'Hindi naka-load ang DOCX viewer.' });
-                            return;
-                        }
-                        var r3 = new FileReader();
-                        r3.onload = function() {
-                            window.mammoth.convertToHtml({ arrayBuffer: r3.result }).then(function(result) {
-                                resolve({
-                                    fileName: name,
-                                    mimeType: mime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                    kind: 'docx',
-                                    html: result.value
-                                });
-                            }).catch(function() {
-                                resolve({ fileName: name, kind: 'docx', error: 'Hindi mabasá ang DOCX.' });
-                            });
-                        };
-                        r3.onerror = function() {
-                            resolve({ fileName: name, kind: 'docx', error: 'Hindi mabasa ang file.' });
-                        };
-                        r3.readAsArrayBuffer(file);
-                        return;
-                    }
-                    if (/\.doc$/i.test(name) || mime === 'application/msword') {
-                        var r4 = new FileReader();
-                        r4.onload = function() {
-                            resolve({
-                                fileName: name,
-                                mimeType: mime || 'application/msword',
-                                kind: 'doc',
-                                dataUrl: r4.result
-                            });
-                        };
-                        r4.onerror = function() {
-                            resolve({ fileName: name, kind: 'doc', error: 'Hindi mabasa ang .doc.' });
-                        };
-                        r4.readAsDataURL(file);
-                        return;
-                    }
-                    var r5 = new FileReader();
-                    r5.onload = function() {
-                        resolve({
-                            fileName: name,
-                            mimeType: mime || 'application/octet-stream',
-                            kind: 'binary',
-                            dataUrl: r5.result
-                        });
-                    };
-                    r5.onerror = function() {
-                        resolve({ fileName: name, kind: 'error', error: 'Hindi mabasa ang file.' });
-                    };
-                    r5.readAsDataURL(file);
+                    resolve({
+                        fileName: name,
+                        kind: 'error',
+                        error: 'PDF o larawan lamang ang tinatanggap dito.'
+                    });
                 });
             }
 
@@ -690,6 +656,7 @@
                         if (meta && meta.error) {
                             prevEl.classList.remove('empty');
                             prevEl.innerHTML = '<p class="file-preview-note">' + meta.error + '</p>';
+                            input.value = '';
                             return;
                         }
                         renderPreviewInto(prevEl, meta);
