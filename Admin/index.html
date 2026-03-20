@@ -162,6 +162,20 @@
         }
         .admin-doc-card-body a.admin-doc-dl:hover { text-decoration: underline; }
 
+        .training-hours-summary-admin {
+            padding: 14px 18px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #166534;
+            margin-bottom: 16px;
+        }
+        .training-hours-summary-admin .sep { margin: 0 10px; color: #86efac; font-weight: 900; }
+        .training-hours-summary-admin .label { opacity: 0.9; font-weight: 900; }
+        .training-hours-summary-admin .val { font-variant-numeric: tabular-nums; }
+
         .att-table td { padding: 8px; border-bottom: 1px solid #e8eaed; font-size: 0.9rem; }
         .att-table tbody tr:hover { background: #f7f8fa; }
         .att-table .photo-cell { white-space: nowrap; }
@@ -326,6 +340,13 @@
 
                         <div class="tab-content" data-content="attendance" style="display:none;">
                             <div class="attendance-wrap">
+                                <div id="trainingHoursAdminSummary" class="training-hours-summary-admin" style="display:none;">
+                                    <span class="label">Required:</span> <span id="thAdminRequired" class="val">—</span>
+                                    <span class="sep">|</span>
+                                    <span class="label">Completed:</span> <span id="thAdminCompleted" class="val">—</span>
+                                    <span class="sep">|</span>
+                                    <span class="label">Remaining:</span> <span id="thAdminRemaining" class="val">—</span>
+                                </div>
                                 <p class="muted" id="attendanceEmpty" style="margin-bottom:10px;">No attendance records yet.</p>
                                 <div id="attendanceTableWrap" style="display:none; overflow-x:auto;">
                                     <table class="att-table" style="width:100%; border-collapse:collapse;">
@@ -852,7 +873,25 @@
                 try {
                     var res = await supabase.from('ojt_attendance').select('*').eq('trainee_id', traineeId).order('date', { ascending: false });
                     var rows = Array.isArray(res.data) ? res.data : [];
+
+                    var summaryEl = document.getElementById('trainingHoursAdminSummary');
+                    var elReq = document.getElementById('thAdminRequired');
+                    var elComp = document.getElementById('thAdminCompleted');
+                    var elRem = document.getElementById('thAdminRemaining');
+
+                    var required = 0;
+                    try {
+                        var v = selectedTrainee.trainingHours;
+                        if (v !== undefined && v !== null && v !== '') required = parseFloat(String(v).replace(/[^0-9.]/g, '')) || 0;
+                    } catch (e) {}
+                    if (summaryEl) summaryEl.style.display = 'block';
+
                     if (rows.length === 0) {
+                        var completed = 0;
+                        var remaining = Math.max(0, required - completed);
+                        if (elReq) elReq.textContent = required ? (required + ' hrs') : '—';
+                        if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
+                        if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
                         emptyEl.textContent = 'No attendance records yet.';
                         return;
                     }
@@ -876,9 +915,31 @@
                         if (pmIn && pmOut) total += Math.max(0, (pmOut - pmIn) / 60);
                         var otIn = timeToMinutes(row.ot_in_time);
                         var otOut = timeToMinutes(row.ot_out_time);
-                        if (otIn && otOut) total += Math.max(0, (otOut - otIn) / 60);
+                        if (otIn && otOut && !row.ot_closed) total += Math.max(0, (otOut - otIn) / 60);
                         return Math.round(total * 10) / 10;
                     }
+
+                    // Training-hours summary (Completed + Remaining) based on all fetched attendance rows.
+                    var totalMins = 0;
+                    rows.forEach(function(r) {
+                        var amIn = timeToMinutes(r.am_in_time);
+                        var amOut = timeToMinutes(r.am_out_time);
+                        if (amIn && amOut) totalMins += Math.max(0, amOut - amIn);
+
+                        var pmIn = timeToMinutes(r.pm_in_time);
+                        var pmOut = timeToMinutes(r.pm_out_time);
+                        if (pmIn && pmOut) totalMins += Math.max(0, pmOut - pmIn);
+
+                        var otIn = timeToMinutes(r.ot_in_time);
+                        var otOut = timeToMinutes(r.ot_out_time);
+                        if (otIn && otOut && !r.ot_closed) totalMins += Math.max(0, otOut - otIn);
+                    });
+                    var completed = Math.round((totalMins / 60) * 10) / 10;
+                    var remaining = Math.max(0, required - completed);
+                    if (elReq) elReq.textContent = required ? (required + ' hrs') : '—';
+                    if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
+                    if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
+
                     var photoModal = document.getElementById('photoPreviewModal');
                     var photoModalImg = document.getElementById('photoPreviewImg');
                     var photoModalCaption = document.getElementById('photoPreviewCaption');
