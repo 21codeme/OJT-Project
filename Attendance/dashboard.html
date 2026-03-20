@@ -1673,7 +1673,15 @@
                         var sb = await waitForSupabaseReady(7000);
                         if (!sb) throw new Error('Could not connect to Supabase.');
                         var photoUrl = '';
-                        if (photoFile) photoUrl = await uploadLogPhoto(sb, photoFile, logDate);
+                        var photoUploadFailed = false;
+                        if (photoFile) {
+                            try {
+                                photoUrl = await uploadLogPhoto(sb, photoFile, logDate);
+                            } catch (uploadErr) {
+                                photoUploadFailed = true;
+                                photoUrl = '';
+                            }
+                        }
                         var ins = await sb.from('ojt_daily_logs').insert({
                             trainee_id: traineeId,
                             log_date: logDate,
@@ -1694,9 +1702,14 @@
                         renderLogs();
                         if (textEl) textEl.value = '';
                         if (photoEl) photoEl.value = '';
-                        alert('Daily log saved.');
+                        if (photoUploadFailed) {
+                            alert('Daily log saved, pero hindi naisama ang photo. Check ojt-daily-logs storage bucket/policies.');
+                        } else {
+                            alert('Daily log saved.');
+                        }
                     } catch (e) {
-                        alert('Failed to save daily log. Make sure daily logs table and storage bucket are configured.');
+                        var msg = (e && (e.message || e.error_description || e.details || e.hint)) ? (e.message || e.error_description || e.details || e.hint) : '';
+                        alert('Failed to save daily log.\n' + (msg || 'Make sure ojt_daily_logs table exists and Supabase policies are enabled.'));
                     } finally {
                         saveBtn.disabled = false;
                         saveBtn.textContent = 'Save Log';
