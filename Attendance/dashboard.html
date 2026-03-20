@@ -34,20 +34,6 @@
         .profile-pic-wrap { flex-shrink: 0; text-align: center; }
         .profile-pic-wrap img { width: 220px; height: 220px; border-radius: 50%; object-fit: cover; border: 4px solid #1e3c72; }
         .profile-pic-wrap .upload-hint { margin-top: 10px; font-size: 0.85rem; color: #666; }
-        .profile-upload-btn {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 900;
-            font-size: 0.9rem;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #fff;
-            box-shadow: 0 4px 14px rgba(30,60,114,0.22);
-            user-select: none;
-        }
-        .profile-upload-btn:hover { opacity: 0.95; }
         .profile-details { flex: 1; min-width: 240px; }
         .profile-details .row { display: grid; grid-template-columns: 260px 1fr; gap: 12px 24px; align-items: start; margin-bottom: 16px; }
         .profile-details .row label { font-weight: 600; color: #444; font-size: 0.9rem; }
@@ -427,8 +413,7 @@
             <div class="profile-layout">
                 <div class="profile-pic-wrap">
                     <img id="profilePicture" src="../images/omsc.png" alt="Profile" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
-                    <input type="file" id="profilePictureUpload" accept="image/*" style="display:none;">
-                    <label class="profile-upload-btn" for="profilePictureUpload">Upload profile picture</label>
+                    <p class="upload-hint">Profile picture</p>
                 </div>
                 <div class="profile-details">
                     <div class="row"><label>Full Name</label><span id="profileFullName">—</span></div>
@@ -613,62 +598,6 @@
                 if (stored.pictureUrl) document.getElementById('profilePicture').src = stored.pictureUrl;
             }
             applyProfileToUI();
-
-            function getFileExt(fileName) {
-                if (!fileName) return '';
-                var m = fileName.toLowerCase().match(/(\.[a-z0-9]+)$/);
-                return m ? m[1] : '';
-            }
-
-            // Upload profile picture (Supabase Storage → update ojt_trainees.picture_url)
-            (function attachProfilePictureUpload() {
-                var input = document.getElementById('profilePictureUpload');
-                if (!input) return;
-                input.addEventListener('change', function() {
-                    var file = input.files && input.files[0];
-                    if (!file) return;
-                    if (!window.supabaseClient) {
-                        alert('Supabase not ready. Please try again.');
-                        return;
-                    }
-                    var sb = window.supabaseClient;
-                    var tid = null;
-                    try { tid = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
-                    if (!tid) {
-                        alert('Please login again (missing trainee id).');
-                        return;
-                    }
-                    var bucket = 'ojt-trainee-documents';
-                    var ext = getFileExt(file.name) || (file.type && file.type.indexOf('png') >= 0 ? '.png' : '.jpg');
-                    var path = String(tid) + '/profile_picture' + ext;
-
-                    sb.storage.from(bucket).upload(path, file, {
-                        contentType: file.type || 'application/octet-stream',
-                        upsert: true
-                    }).then(function(upRes) {
-                        if (upRes && upRes.error) throw upRes.error;
-                        return sb.storage.from(bucket).getPublicUrl(path);
-                    }).then(function(urlRes) {
-                        var publicUrl = urlRes && urlRes.data && urlRes.data.publicUrl ? urlRes.data.publicUrl : null;
-                        if (!publicUrl) throw new Error('Cannot generate public URL.');
-
-                        return sb.from('ojt_trainees').update({ picture_url: publicUrl }).eq('id', tid).then(function(up2) {
-                            if (up2 && up2.error) throw up2.error;
-                        }).then(function() {
-                            // Update local cache so UI & Admin preview stays consistent.
-                            if (!stored) stored = {};
-                            stored.pictureUrl = publicUrl;
-                            try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(stored)); } catch (e) {}
-                            document.getElementById('profilePicture').src = publicUrl;
-                            alert('Profile picture updated!');
-                            input.value = '';
-                        });
-                    }).catch(function(err) {
-                        console.error(err);
-                        alert('Failed to upload profile picture. Ensure bucket/policies for Storage are set (ojt-trainee-documents).');
-                    });
-                });
-            })();
 
             var DOC_LABELS = {
                 resume: 'Resume / CV',
