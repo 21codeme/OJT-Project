@@ -41,6 +41,12 @@ This folder contains all database-related files for the Lab Inventory Management
    - I-run ang **`database/ojt-documents-storage.sql`** sa SQL Editor (tulad ng `storage-policies.sql` para sa inventory)
    - Ang mga file ay naka-upload sa path na `{trainee_id}/{doc_type}{extension}`; ang metadata at public URL ay nasa table na `ojt_trainee_documents.file_data` (JSON).
 
+7. **OJT Daily Logs photos (Dashboard → Daily Logs)**
+   - Sa **Storage** → **New bucket**: name `ojt-daily-logs`, **Public: ON**
+   - I-run ang **`database/ojt-daily-logs-storage.sql`** sa SQL Editor
+   - Siguraduhing na-run din ang latest `database/ojt-tables.sql` para sa table na `ojt_daily_logs`
+   - Photo uploads use path format: `{trainee_id}/{log_date}/{timestamp}.{ext}`
+
 ## Database Schema
 
 ### Tables

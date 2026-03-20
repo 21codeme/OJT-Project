@@ -205,6 +205,22 @@
         .attendance-summary th, .attendance-summary td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e8eaed; }
         .attendance-summary th { font-weight: 700; color: #444; }
         .attendance-summary .thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; vertical-align: middle; }
+        .dailylogs-wrap { display: grid; grid-template-columns: minmax(260px, 360px) 1fr; gap: 16px; align-items: start; }
+        .dailylogs-form-card, .dailylogs-list-card { background: #f8fafc; border: 1px solid #e8eaed; border-radius: 12px; padding: 14px; }
+        .dailylogs-form-card h3, .dailylogs-list-card h3 { margin: 0 0 10px; color: #1e3c72; font-size: 1rem; }
+        .dailylogs-form-card label { display: block; font-weight: 700; color: #334155; margin: 8px 0 6px; font-size: 0.9rem; }
+        .dailylogs-form-card input[type="date"], .dailylogs-form-card textarea, .dailylogs-form-card input[type="file"] {
+            width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 0.92rem; background: #fff;
+        }
+        .dailylogs-form-card textarea { min-height: 140px; resize: vertical; }
+        .dailylogs-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+        .btn-save-log { border: none; border-radius: 8px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; font-weight: 700; padding: 10px 14px; cursor: pointer; }
+        .btn-save-log:hover { opacity: 0.95; }
+        .dailylog-item { background: #fff; border: 1px solid #e8eaed; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+        .dailylog-meta { font-size: 0.82rem; color: #64748b; margin-bottom: 6px; font-weight: 700; }
+        .dailylog-text { white-space: pre-wrap; color: #1f2937; font-size: 0.92rem; }
+        .dailylog-photo { display: block; margin-top: 8px; max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid #e8eaed; object-fit: contain; background: #fff; }
+        .dailylog-empty { color: #64748b; font-size: 0.9rem; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.show { display: flex; }
         .modal-box { background: #fff; border-radius: 14px; padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
@@ -225,6 +241,7 @@
         .modal-box .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .modal-box .btn-cancel { padding: 10px 18px; border: 1px solid #d7dbe0; border-radius: 10px; background: #fff; font-weight: 700; cursor: pointer; }
         .modal-box .btn-confirm { padding: 10px 18px; border: none; border-radius: 10px; background: #22c55e; color: #fff; font-weight: 700; cursor: pointer; }
+        @media (max-width: 980px) { .dailylogs-wrap { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -540,9 +557,24 @@
 
         <section id="section-dailylogs" class="section">
             <h2>Daily Logs</h2>
-            <div class="placeholder-content">
-                <p>Your daily activity logs will appear here.</p>
-                <p>Record tasks and accomplishments per day.</p>
+            <div class="dailylogs-wrap">
+                <div class="dailylogs-form-card">
+                    <h3>Add daily log</h3>
+                    <label for="dailyLogDate">Date</label>
+                    <input type="date" id="dailyLogDate">
+                    <label for="dailyLogText">Tasks / Accomplishments</label>
+                    <textarea id="dailyLogText" placeholder="Write your work log for the day..."></textarea>
+                    <label for="dailyLogPhoto">Photo (optional)</label>
+                    <input type="file" id="dailyLogPhoto" accept="image/*">
+                    <div class="dailylogs-actions">
+                        <button type="button" class="btn-save-log" id="btnSaveDailyLog">Save Log</button>
+                    </div>
+                </div>
+                <div class="dailylogs-list-card">
+                    <h3>Saved logs</h3>
+                    <div id="dailyLogsList"></div>
+                    <p id="dailyLogsEmpty" class="dailylog-empty">No logs yet. Add your first daily log.</p>
+                </div>
             </div>
         </section>
     </main>
@@ -1493,6 +1525,192 @@
             setInterval(function() {
                 if (sectionAttendance && sectionAttendance.classList.contains('active')) setButtonsState();
             }, 1000);
+        })();
+
+        (function() {
+            var DAILY_LOGS_KEY = 'ojt_trainee_daily_logs';
+            var DAILY_LOGS_BUCKET = 'ojt-daily-logs';
+            var traineeId = null;
+            try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
+            var dateEl = document.getElementById('dailyLogDate');
+            var textEl = document.getElementById('dailyLogText');
+            var photoEl = document.getElementById('dailyLogPhoto');
+            var saveBtn = document.getElementById('btnSaveDailyLog');
+            var listEl = document.getElementById('dailyLogsList');
+            var emptyEl = document.getElementById('dailyLogsEmpty');
+            var sectionDailyLogs = document.getElementById('section-dailylogs');
+            var logsCache = [];
+
+            function todayStr() {
+                var d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+            if (dateEl) dateEl.value = todayStr();
+
+            function waitForSupabaseReady(timeoutMs) {
+                timeoutMs = timeoutMs || 7000;
+                return new Promise(function(resolve) {
+                    var start = Date.now();
+                    (function check() {
+                        if (window.supabaseClient) return resolve(window.supabaseClient);
+                        if (Date.now() - start > timeoutMs) return resolve(null);
+                        setTimeout(check, 120);
+                    })();
+                });
+            }
+
+            function loadLocalLogs() {
+                try {
+                    var raw = localStorage.getItem(DAILY_LOGS_KEY);
+                    var map = raw ? JSON.parse(raw) : {};
+                    var arr = map && traineeId ? (map[String(traineeId)] || []) : [];
+                    logsCache = Array.isArray(arr) ? arr : [];
+                } catch (e) {
+                    logsCache = [];
+                }
+            }
+            function saveLocalLogs() {
+                if (!traineeId) return;
+                try {
+                    var raw = localStorage.getItem(DAILY_LOGS_KEY);
+                    var map = raw ? JSON.parse(raw) : {};
+                    if (!map || typeof map !== 'object') map = {};
+                    map[String(traineeId)] = logsCache;
+                    localStorage.setItem(DAILY_LOGS_KEY, JSON.stringify(map));
+                } catch (e) {}
+            }
+            function renderLogs() {
+                if (!listEl || !emptyEl) return;
+                listEl.innerHTML = '';
+                var arr = (logsCache || []).slice().sort(function(a, b) {
+                    return (b.created_at || '').localeCompare(a.created_at || '');
+                });
+                if (!arr.length) {
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+                emptyEl.style.display = 'none';
+                arr.forEach(function(log) {
+                    var item = document.createElement('div');
+                    item.className = 'dailylog-item';
+                    var meta = document.createElement('div');
+                    meta.className = 'dailylog-meta';
+                    meta.textContent = (log.log_date || '') + (log.created_at ? (' • ' + new Date(log.created_at).toLocaleString()) : '');
+                    var txt = document.createElement('div');
+                    txt.className = 'dailylog-text';
+                    txt.textContent = log.log_text || '';
+                    item.appendChild(meta);
+                    item.appendChild(txt);
+                    if (log.photo_url) {
+                        var a = document.createElement('a');
+                        a.href = log.photo_url;
+                        a.target = '_blank';
+                        a.rel = 'noopener';
+                        var img = document.createElement('img');
+                        img.className = 'dailylog-photo';
+                        img.src = log.photo_url;
+                        img.alt = 'Daily log photo';
+                        a.appendChild(img);
+                        item.appendChild(a);
+                    }
+                    listEl.appendChild(item);
+                });
+            }
+
+            async function loadLogsFromSupabase() {
+                var sb = await waitForSupabaseReady(7000);
+                if (!sb || !traineeId) {
+                    loadLocalLogs();
+                    renderLogs();
+                    return;
+                }
+                try {
+                    var res = await sb.from('ojt_daily_logs').select('*').eq('trainee_id', traineeId).order('created_at', { ascending: false });
+                    if (res && !res.error && Array.isArray(res.data)) {
+                        logsCache = res.data.map(function(r) {
+                            return {
+                                id: r.id,
+                                trainee_id: r.trainee_id,
+                                log_date: r.log_date,
+                                log_text: r.log_text,
+                                photo_url: r.photo_url || '',
+                                created_at: r.created_at || ''
+                            };
+                        });
+                        saveLocalLogs();
+                        renderLogs();
+                        return;
+                    }
+                } catch (e) {}
+                loadLocalLogs();
+                renderLogs();
+            }
+
+            async function uploadLogPhoto(sb, file, logDate) {
+                if (!file) return '';
+                if (!/^image\//i.test(file.type || '')) throw new Error('Image files only.');
+                var parts = String(file.name || '').split('.');
+                var ext = parts.length > 1 ? parts.pop().toLowerCase() : 'jpg';
+                var path = String(traineeId) + '/' + String(logDate) + '/' + Date.now() + '.' + ext;
+                var up = await sb.storage.from(DAILY_LOGS_BUCKET).upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
+                if (up.error) throw up.error;
+                var pub = sb.storage.from(DAILY_LOGS_BUCKET).getPublicUrl(path);
+                var url = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : '';
+                if (!url) throw new Error('Could not get photo URL.');
+                return url;
+            }
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', async function() {
+                    if (!traineeId) { alert('Trainee session not found. Please log in again.'); return; }
+                    var logDate = dateEl && dateEl.value ? dateEl.value : todayStr();
+                    var logText = textEl && textEl.value ? textEl.value.trim() : '';
+                    if (!logText) { alert('Please enter your daily log text.'); return; }
+                    var photoFile = photoEl && photoEl.files && photoEl.files[0] ? photoEl.files[0] : null;
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Saving...';
+                    try {
+                        var sb = await waitForSupabaseReady(7000);
+                        if (!sb) throw new Error('Could not connect to Supabase.');
+                        var photoUrl = '';
+                        if (photoFile) photoUrl = await uploadLogPhoto(sb, photoFile, logDate);
+                        var ins = await sb.from('ojt_daily_logs').insert({
+                            trainee_id: traineeId,
+                            log_date: logDate,
+                            log_text: logText,
+                            photo_url: photoUrl || null
+                        }).select('*').single();
+                        if (ins.error) throw ins.error;
+                        var row = ins.data || {};
+                        logsCache.unshift({
+                            id: row.id || ('local-' + Date.now()),
+                            trainee_id: row.trainee_id || traineeId,
+                            log_date: row.log_date || logDate,
+                            log_text: row.log_text || logText,
+                            photo_url: row.photo_url || photoUrl || '',
+                            created_at: row.created_at || new Date().toISOString()
+                        });
+                        saveLocalLogs();
+                        renderLogs();
+                        if (textEl) textEl.value = '';
+                        if (photoEl) photoEl.value = '';
+                        alert('Daily log saved.');
+                    } catch (e) {
+                        alert('Failed to save daily log. Make sure daily logs table and storage bucket are configured.');
+                    } finally {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Save Log';
+                    }
+                });
+            }
+
+            if (sectionDailyLogs) {
+                var observer = new MutationObserver(function() {
+                    if (sectionDailyLogs.classList.contains('active')) loadLogsFromSupabase();
+                });
+                observer.observe(sectionDailyLogs, { attributes: true, attributeFilter: ['class'] });
+            }
+            loadLogsFromSupabase();
         })();
     </script>
 </body>

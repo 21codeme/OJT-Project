@@ -88,6 +88,21 @@ ALTER TABLE ojt_attendance_reopen ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on ojt_attendance_reopen" ON ojt_attendance_reopen;
 CREATE POLICY "Allow all on ojt_attendance_reopen" ON ojt_attendance_reopen FOR ALL USING (true) WITH CHECK (true);
 
+-- 3c) OJT Daily Logs (trainee logs with optional photo)
+CREATE TABLE IF NOT EXISTS ojt_daily_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trainee_id UUID NOT NULL REFERENCES ojt_trainees(id) ON DELETE CASCADE,
+    log_date TEXT NOT NULL,
+    log_text TEXT NOT NULL,
+    photo_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ojt_daily_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_daily_logs" ON ojt_daily_logs;
+CREATE POLICY "Allow all on ojt_daily_logs" ON ojt_daily_logs FOR ALL USING (true) WITH CHECK (true);
+
 -- 4) OJT Admin (optional — default admin for login)
 CREATE TABLE IF NOT EXISTS ojt_admin (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

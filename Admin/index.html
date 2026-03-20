@@ -161,6 +161,11 @@
             text-decoration: none;
         }
         .admin-doc-card-body a.admin-doc-dl:hover { text-decoration: underline; }
+        .admin-dailylogs-list { display: flex; flex-direction: column; gap: 10px; }
+        .admin-log-item { background: #f8fafc; border: 1px solid #e8eaed; border-radius: 10px; padding: 10px 12px; }
+        .admin-log-meta { color: #64748b; font-weight: 700; font-size: 0.82rem; margin-bottom: 6px; }
+        .admin-log-text { color: #1f2937; font-size: 0.92rem; white-space: pre-wrap; }
+        .admin-log-photo { display: block; margin-top: 8px; max-width: 100%; max-height: 240px; border: 1px solid #e8eaed; border-radius: 8px; object-fit: contain; background: #fff; }
         .admin-doc-card-body .admin-doc-preview-img.preview-clickable,
         .admin-doc-card-body .admin-doc-preview-pdf.preview-clickable {
             cursor: pointer;
@@ -551,7 +556,9 @@
                         </div>
 
                         <div class="tab-content" data-content="dailylogs" style="display:none;">
-                            <p class="muted">Daily logs will appear here when the trainee records them. This feature can be added in a future update.</p>
+                            <p class="muted" style="margin-bottom:12px;font-size:0.9rem;">Daily logs submitted by the trainee are shown here.</p>
+                            <div id="adminDailyLogsList" class="admin-dailylogs-list"></div>
+                            <p class="muted" id="adminDailyLogsEmpty">Pumili muna ng trainee.</p>
                         </div>
                     </div>
                 </section>
@@ -639,6 +646,7 @@
             var selectedTrainee = null;
             var traineesCache = [];
             var docsMapCache = {};
+            var dailyLogsCache = {};
             var docPreviewModal = document.getElementById('docPreviewModal');
             var docPreviewBody = document.getElementById('docPreviewBody');
             var docPreviewTitle = document.getElementById('docPreviewTitle');
@@ -970,6 +978,7 @@
                     renderDocsIfNeeded();
                     var tab = this.getAttribute('data-tab');
                     if (tab === 'attendance') renderAttendanceIfNeeded();
+                    if (tab === 'dailylogs') renderDailyLogsIfNeeded();
                 });
             });
 
@@ -1065,6 +1074,7 @@
                 renderDocsIfNeeded(true);
                 var activeTab = document.querySelector('.tabs .tab-btn.active');
                 if (activeTab && activeTab.getAttribute('data-tab') === 'attendance') renderAttendanceIfNeeded();
+                if (activeTab && activeTab.getAttribute('data-tab') === 'dailylogs') renderDailyLogsIfNeeded();
             }
 
             async function fetchDocumentsForTrainee(traineeId) {
@@ -1080,6 +1090,71 @@
                         });
                     }
                 } catch (e) {}
+            }
+
+            async function fetchDailyLogsForTrainee(traineeId) {
+                var supabase = window.supabaseClient || await waitForSupabaseReady();
+                if (!supabase || !traineeId) return [];
+                try {
+                    var res = await supabase.from('ojt_daily_logs').select('*').eq('trainee_id', traineeId).order('created_at', { ascending: false });
+                    return Array.isArray(res.data) ? res.data : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function renderDailyLogsIfNeeded(force) {
+                var tabBtn = document.querySelector('.tabs .tab-btn.active');
+                var tab = tabBtn ? tabBtn.getAttribute('data-tab') : 'profile';
+                if (tab !== 'dailylogs' && !force) return;
+                var listEl = document.getElementById('adminDailyLogsList');
+                var emptyEl = document.getElementById('adminDailyLogsEmpty');
+                if (!listEl || !emptyEl) return;
+                listEl.innerHTML = '';
+                if (!selectedKey || !selectedTrainee) {
+                    emptyEl.textContent = 'Pumili muna ng trainee.';
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+                var traineeId = selectedTrainee.id || selectedKey;
+                fetchDailyLogsForTrainee(traineeId).then(function(rows) {
+                    var tid = String(traineeId);
+                    dailyLogsCache[tid] = rows || [];
+                    listEl.innerHTML = '';
+                    var logs = dailyLogsCache[tid] || [];
+                    if (!logs.length) {
+                        emptyEl.textContent = 'No daily logs yet for this trainee.';
+                        emptyEl.style.display = 'block';
+                        return;
+                    }
+                    emptyEl.style.display = 'none';
+                    logs.forEach(function(log) {
+                        var item = document.createElement('div');
+                        item.className = 'admin-log-item';
+                        var meta = document.createElement('div');
+                        meta.className = 'admin-log-meta';
+                        var created = log.created_at ? new Date(log.created_at).toLocaleString() : '';
+                        meta.textContent = (log.log_date || '') + (created ? (' • ' + created) : '');
+                        var text = document.createElement('div');
+                        text.className = 'admin-log-text';
+                        text.textContent = log.log_text || '';
+                        item.appendChild(meta);
+                        item.appendChild(text);
+                        if (log.photo_url) {
+                            var a = document.createElement('a');
+                            a.href = log.photo_url;
+                            a.target = '_blank';
+                            a.rel = 'noopener';
+                            var img = document.createElement('img');
+                            img.className = 'admin-log-photo';
+                            img.src = log.photo_url;
+                            img.alt = 'Daily log photo';
+                            a.appendChild(img);
+                            item.appendChild(a);
+                        }
+                        listEl.appendChild(item);
+                    });
+                });
             }
 
             var docsRenderSeq = 0;
