@@ -266,6 +266,7 @@
                     <label for="reopenDate">Re-open for date:</label>
                     <input type="date" id="reopenDate">
                     <button class="btn btn-primary" type="button" id="btnReopen" style="display:none;" title="Re-open attendance for selected trainee for the chosen date">Re-open for date</button>
+                    <button class="btn btn-secondary" type="button" id="btnCloseReopenDate" style="display:none;" title="Close re-open for selected date">Close date</button>
                 </div>
                 <div class="row">
                     <label for="reopenFrom">Re-open range:</label>
@@ -273,6 +274,11 @@
                     <span>to</span>
                     <input type="date" id="reopenTo" placeholder="To">
                     <button class="btn btn-secondary" type="button" id="btnReopenRange" style="display:none;" title="Re-open attendance for all days in range">Re-open range</button>
+                    <button class="btn btn-secondary" type="button" id="btnCloseReopenRange" style="display:none;" title="Close re-open for all days in range">Close range</button>
+                </div>
+                <div class="row">
+                    <label>All reopened days:</label>
+                    <button class="btn btn-secondary" type="button" id="btnCloseReopenAll" style="display:none;" title="Close all reopened dates for selected trainee">Close all days</button>
                 </div>
             </div>
             <button class="btn btn-secondary" type="button" id="btnLogout" style="display:none;">Log out</button>
@@ -477,6 +483,9 @@
             var reopenActions = document.getElementById('reopenActions');
             var btnReopen = document.getElementById('btnReopen');
             var btnReopenRange = document.getElementById('btnReopenRange');
+            var btnCloseReopenDate = document.getElementById('btnCloseReopenDate');
+            var btnCloseReopenRange = document.getElementById('btnCloseReopenRange');
+            var btnCloseReopenAll = document.getElementById('btnCloseReopenAll');
 
             var traineeSearch = document.getElementById('traineeSearch');
             var traineeListEl = document.getElementById('traineeList');
@@ -496,6 +505,9 @@
                 if (btnReopenMenu) btnReopenMenu.style.display = 'inline-block';
                 if (btnReopen) btnReopen.style.display = 'inline-block';
                 if (btnReopenRange) btnReopenRange.style.display = 'inline-block';
+                if (btnCloseReopenDate) btnCloseReopenDate.style.display = 'inline-block';
+                if (btnCloseReopenRange) btnCloseReopenRange.style.display = 'inline-block';
+                if (btnCloseReopenAll) btnCloseReopenAll.style.display = 'inline-block';
             } else {
                 if (loginPanel) loginPanel.classList.add('active');
                 if (adminPanel) adminPanel.classList.remove('active');
@@ -503,6 +515,9 @@
                 if (btnReopenMenu) btnReopenMenu.style.display = 'none';
                 if (btnReopen) btnReopen.style.display = 'none';
                 if (btnReopenRange) btnReopenRange.style.display = 'none';
+                if (btnCloseReopenDate) btnCloseReopenDate.style.display = 'none';
+                if (btnCloseReopenRange) btnCloseReopenRange.style.display = 'none';
+                if (btnCloseReopenAll) btnCloseReopenAll.style.display = 'none';
                 if (reopenActions) reopenActions.style.display = 'none';
             }
 
@@ -1276,6 +1291,99 @@
                 });
             }
 
+            if (btnCloseReopenDate) {
+                btnCloseReopenDate.addEventListener('click', async function() {
+                    if (!selectedTrainee || !selectedKey) {
+                        alert('Select a trainee first.');
+                        return;
+                    }
+                    var dateStr = reopenDateEl && reopenDateEl.value ? reopenDateEl.value : getDateStr(new Date());
+                    var traineeId = selectedTrainee.id || selectedKey;
+                    var supabase = window.supabaseClient || await waitForSupabaseReady();
+                    if (!supabase) {
+                        alert('Could not connect. Try again.');
+                        return;
+                    }
+                    try {
+                        var del = await supabase.from('ojt_attendance_reopen')
+                            .delete()
+                            .eq('trainee_id', traineeId)
+                            .eq('date', dateStr);
+                        if (del.error) throw del.error;
+                        var name = selectedTrainee.fullName || selectedTrainee.email || 'Trainee';
+                        alert('Closed re-open for ' + name + ' on ' + dateStr + '.');
+                        if (reopenActions) reopenActions.style.display = 'none';
+                    } catch (e) {
+                        alert('Failed to close date. Try again.');
+                    }
+                });
+            }
+
+            if (btnCloseReopenRange) {
+                btnCloseReopenRange.addEventListener('click', async function() {
+                    if (!selectedTrainee || !selectedKey) {
+                        alert('Select a trainee first.');
+                        return;
+                    }
+                    var fromVal = reopenFromEl && reopenFromEl.value;
+                    var toVal = reopenToEl && reopenToEl.value;
+                    if (!fromVal || !toVal) {
+                        alert('Enter both From and To dates.');
+                        return;
+                    }
+                    if (fromVal > toVal) {
+                        alert('From date must be on or before To date.');
+                        return;
+                    }
+                    var traineeId = selectedTrainee.id || selectedKey;
+                    var supabase = window.supabaseClient || await waitForSupabaseReady();
+                    if (!supabase) {
+                        alert('Could not connect. Try again.');
+                        return;
+                    }
+                    try {
+                        var del = await supabase.from('ojt_attendance_reopen')
+                            .delete()
+                            .eq('trainee_id', traineeId)
+                            .gte('date', fromVal)
+                            .lte('date', toVal);
+                        if (del.error) throw del.error;
+                        var name = selectedTrainee.fullName || selectedTrainee.email || 'Trainee';
+                        alert('Closed re-open range for ' + name + ' from ' + fromVal + ' to ' + toVal + '.');
+                        if (reopenActions) reopenActions.style.display = 'none';
+                    } catch (e) {
+                        alert('Failed to close range. Try again.');
+                    }
+                });
+            }
+
+            if (btnCloseReopenAll) {
+                btnCloseReopenAll.addEventListener('click', async function() {
+                    if (!selectedTrainee || !selectedKey) {
+                        alert('Select a trainee first.');
+                        return;
+                    }
+                    if (!confirm('Close all reopened dates for this trainee?')) return;
+                    var traineeId = selectedTrainee.id || selectedKey;
+                    var supabase = window.supabaseClient || await waitForSupabaseReady();
+                    if (!supabase) {
+                        alert('Could not connect. Try again.');
+                        return;
+                    }
+                    try {
+                        var del = await supabase.from('ojt_attendance_reopen')
+                            .delete()
+                            .eq('trainee_id', traineeId);
+                        if (del.error) throw del.error;
+                        var name = selectedTrainee.fullName || selectedTrainee.email || 'Trainee';
+                        alert('Closed all reopened dates for ' + name + '.');
+                        if (reopenActions) reopenActions.style.display = 'none';
+                    } catch (e) {
+                        alert('Failed to close all reopened dates. Try again.');
+                    }
+                });
+            }
+
             // Boot: always show admin panel immediately on open.
             var isAuthed = true;
             try {
@@ -1289,6 +1397,9 @@
                 if (btnReopenMenu) btnReopenMenu.style.display = 'inline-block';
                 if (btnReopen) btnReopen.style.display = 'inline-block';
                 if (btnReopenRange) btnReopenRange.style.display = 'inline-block';
+                if (btnCloseReopenDate) btnCloseReopenDate.style.display = 'inline-block';
+                if (btnCloseReopenRange) btnCloseReopenRange.style.display = 'inline-block';
+                if (btnCloseReopenAll) btnCloseReopenAll.style.display = 'inline-block';
                 loadAllFromSupabase().then(function() {
                     renderTraineeList();
                     var trainees = loadTrainees();
@@ -1305,6 +1416,9 @@
                 if (btnReopenMenu) btnReopenMenu.style.display = 'none';
                 if (btnReopen) btnReopen.style.display = 'none';
                 if (btnReopenRange) btnReopenRange.style.display = 'none';
+                if (btnCloseReopenDate) btnCloseReopenDate.style.display = 'none';
+                if (btnCloseReopenRange) btnCloseReopenRange.style.display = 'none';
+                if (btnCloseReopenAll) btnCloseReopenAll.style.display = 'none';
                 if (reopenActions) reopenActions.style.display = 'none';
             }
         })();
