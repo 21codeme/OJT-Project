@@ -645,11 +645,15 @@
             var docPreviewDownload = document.getElementById('docPreviewDownload');
             var docModalClose = document.getElementById('docModalClose');
             var photoPreviewModal = document.getElementById('photoPreviewModal');
+            var editAttendanceModalEl = document.getElementById('editAttendanceModal');
             function goToAttendanceLogin() {
                 window.location.replace('../Attendance/index.html');
             }
             function closePhotoPreview() {
                 if (photoPreviewModal) photoPreviewModal.classList.remove('show');
+            }
+            function closeEditAttendanceOverlay() {
+                if (editAttendanceModalEl) editAttendanceModalEl.style.display = 'none';
             }
 
             // Show admin panel immediately if already logged in (e.g. from Attendance with ?autologin=1)
@@ -870,6 +874,8 @@
             function closeAllOverlays() {
                 closeDocumentPreview();
                 closePhotoPreview();
+                closeEditAttendanceOverlay();
+                if (reopenActions) reopenActions.style.display = 'none';
             }
 
             function openDocumentPreview(src, kind, fileName) {
