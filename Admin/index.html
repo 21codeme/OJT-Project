@@ -211,22 +211,26 @@
             background: #fff;
             border-radius: 14px;
             box-shadow: 0 12px 34px rgba(15, 23, 42, 0.2);
-            padding: 14px;
-            min-width: 420px;
+            padding: 16px;
+            width: 640px;
+            max-width: calc(100vw - 24px);
             border: 1px solid #e5e7eb;
             display: none;
             z-index: 1000;
         }
+        #reopenActions .reopen-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 0.9fr;
+            gap: 12px;
+        }
         #reopenActions .row {
             display: flex;
             flex-direction: column;
-            align-items: stretch;
             gap: 8px;
-        }
-        #reopenActions .row + .row {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eef2f7;
+            padding: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
         }
         #reopenActions label {
             font-size: 0.88rem;
@@ -248,14 +252,9 @@
         }
         #reopenActions .range-inputs {
             display: grid;
-            grid-template-columns: 1fr auto 1fr;
+            grid-template-columns: 1fr;
             gap: 8px;
             align-items: center;
-        }
-        #reopenActions .range-inputs .to-label {
-            font-size: 0.82rem;
-            color: #475569;
-            font-weight: 700;
         }
         #reopenActions .row-controls.single {
             grid-template-columns: 1fr;
@@ -285,9 +284,10 @@
             .admin-layout { grid-template-columns: 1fr; min-height: auto; }
             .trainee-list { max-height: 320px; }
             #reopenActions {
-                min-width: 320px;
-                max-width: calc(100vw - 24px);
-                right: 0;
+                width: 360px;
+            }
+            #reopenActions .reopen-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -301,30 +301,31 @@
         <div class="top-header-actions" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <button class="btn btn-primary" type="button" id="btnReopenMenu" style="display:none;" title="Show re-open options">Re-open</button>
             <div id="reopenActions">
-                <div class="row">
-                    <label for="reopenDate">Re-open for date:</label>
-                    <input type="date" id="reopenDate">
-                    <div class="row-controls">
-                        <button class="btn btn-primary" type="button" id="btnReopen" style="display:none;" title="Re-open attendance for selected trainee for the chosen date">Re-open for date</button>
-                        <button class="btn btn-secondary" type="button" id="btnCloseReopenDate" style="display:none;" title="Close re-open for selected date">Close date</button>
+                <div class="reopen-grid">
+                    <div class="row">
+                        <label for="reopenDate">Date actions</label>
+                        <input type="date" id="reopenDate">
+                        <div class="row-controls">
+                            <button class="btn btn-primary" type="button" id="btnReopen" style="display:none;" title="Re-open attendance for selected trainee for the chosen date">Re-open date</button>
+                            <button class="btn btn-secondary" type="button" id="btnCloseReopenDate" style="display:none;" title="Close re-open for selected date">Close date</button>
+                        </div>
                     </div>
-                </div>
-                <div class="row">
-                    <label for="reopenFrom">Re-open range:</label>
-                    <div class="range-inputs">
-                        <input type="date" id="reopenFrom" placeholder="From">
-                        <span class="to-label">to</span>
-                        <input type="date" id="reopenTo" placeholder="To">
+                    <div class="row">
+                        <label for="reopenFrom">Range actions</label>
+                        <div class="range-inputs">
+                            <input type="date" id="reopenFrom" placeholder="From">
+                            <input type="date" id="reopenTo" placeholder="To">
+                        </div>
+                        <div class="row-controls">
+                            <button class="btn btn-secondary" type="button" id="btnReopenRange" style="display:none;" title="Re-open attendance for all days in range">Re-open range</button>
+                            <button class="btn btn-secondary" type="button" id="btnCloseReopenRange" style="display:none;" title="Close re-open for all days in range">Close range</button>
+                        </div>
                     </div>
-                    <div class="row-controls">
-                        <button class="btn btn-secondary" type="button" id="btnReopenRange" style="display:none;" title="Re-open attendance for all days in range">Re-open range</button>
-                        <button class="btn btn-secondary" type="button" id="btnCloseReopenRange" style="display:none;" title="Close re-open for all days in range">Close range</button>
-                    </div>
-                </div>
-                <div class="row">
-                    <label>All reopened days:</label>
-                    <div class="row-controls single">
-                        <button class="btn btn-secondary" type="button" id="btnCloseReopenAll" style="display:none;" title="Close all reopened dates for selected trainee">Close all days</button>
+                    <div class="row">
+                        <label>All reopened days</label>
+                        <div class="row-controls single">
+                            <button class="btn btn-secondary" type="button" id="btnCloseReopenAll" style="display:none;" title="Close all reopened dates for selected trainee">Close all days</button>
+                        </div>
                     </div>
                 </div>
             </div>
