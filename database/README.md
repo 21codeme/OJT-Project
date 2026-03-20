@@ -36,6 +36,11 @@ This folder contains all database-related files for the Lab Inventory Management
    - Pag may error na **"new row violates row-level security policy"**, i-run sa **SQL Editor** ang file na **`database/storage-policies.sql`** para payagan ang upload at read sa bucket na iyon.
    - **Folder structure:** Sa loob ng bucket, ang mga larawan ay naka-organize bilang: **{PC Section} / {sheetId} / {rowIndex} / {timestamp}.jpg** (hal. `PC 1/sheet-2/5/1234567890.jpg`). Lahat ng picture na na-upload sa isang PC section (e.g. PC 1) ay nasa iisang folder; kapag na-import ang Excel, gumagana pa rin ang picture dahil naka-save ang URL sa link.
 
+6. **OJT Trainee documents (Edit Profile → Required Documents)**
+   - Sa **Storage** → **New bucket**: name `ojt-trainee-documents`, **Public: ON**
+   - I-run ang **`database/ojt-documents-storage.sql`** sa SQL Editor (tulad ng `storage-policies.sql` para sa inventory)
+   - Ang mga file ay naka-upload sa path na `{trainee_id}/{doc_type}{extension}`; ang metadata at public URL ay nasa table na `ojt_trainee_documents.file_data` (JSON).
+
 ## Database Schema
 
 ### Tables

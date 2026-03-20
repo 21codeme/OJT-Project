@@ -6,6 +6,7 @@
     <title>Edit Profile - OJT Trainee</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <script src="../config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,6 +67,45 @@
         .small-note { color: #666; font-size: 0.85rem; margin-top: 6px; }
         .btn-back { display: inline-block; margin-bottom: 14px; color: #1e3c72; text-decoration: none; font-weight: 700; }
         .btn-back:hover { text-decoration: underline; }
+
+        .file-preview-slot {
+            margin-top: 10px;
+            min-height: 0;
+            border: 1px dashed #c5cad3;
+            border-radius: 10px;
+            background: #fafbfc;
+            padding: 10px;
+            overflow: hidden;
+        }
+        .file-preview-slot.empty { padding: 8px 10px; color: #888; font-size: 0.85rem; }
+        .file-preview-slot img.doc-preview-img {
+            max-width: 100%;
+            max-height: 220px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+        }
+        .file-preview-slot iframe.doc-preview-pdf {
+            width: 100%;
+            height: 280px;
+            border: none;
+            border-radius: 8px;
+            background: #525659;
+        }
+        .file-preview-slot .docx-preview-body {
+            max-height: 260px;
+            overflow: auto;
+            padding: 12px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e8eaed;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+        .file-preview-slot .docx-preview-body ::selection { background: rgba(30,60,114,0.15); }
+        .file-preview-note { margin: 0 0 8px; font-size: 0.82rem; color: #666; }
+        .file-preview-slot a.doc-dl { color: #1e3c72; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -206,22 +246,27 @@
                     <div class="field">
                         <label for="editResume">Resume / CV</label>
                         <input type="file" id="editResume" accept=".pdf,.doc,.docx,image/*">
+                        <div id="previewResume" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field">
                         <label for="editEndorsement">Endorsement Letter</label>
                         <input type="file" id="editEndorsement" accept=".pdf,.doc,.docx,image/*">
+                        <div id="previewEndorsement" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field">
                         <label for="editMOA">MOA</label>
                         <input type="file" id="editMOA" accept=".pdf,.doc,.docx,image/*">
+                        <div id="previewMOA" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field">
                         <label for="editMedical">Medical Certificate</label>
                         <input type="file" id="editMedical" accept=".pdf,.doc,.docx,image/*">
+                        <div id="previewMedical" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                     <div class="field full">
                         <label for="editIdPicture">ID Picture / Valid ID</label>
                         <input type="file" id="editIdPicture" accept="image/*">
+                        <div id="previewIdPicture" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
                     </div>
                 </div>
 
@@ -267,7 +312,7 @@
 
             function splitFullName(fullName) {
                 if (!fullName) return { first: '', middle: '', last: '' };
-                var parts = String(fullName).trim().split(/\\s+/).filter(Boolean);
+                var parts = String(fullName).trim().split(/\s+/).filter(Boolean);
                 if (parts.length === 1) return { first: parts[0], middle: '', last: '' };
                 if (parts.length === 2) return { first: parts[0], middle: '', last: parts[1] };
                 return { first: parts[0], middle: parts.slice(1, -1).join(' '), last: parts[parts.length - 1] };
@@ -354,20 +399,341 @@
                 });
             }
 
-            function fileName(id) {
+            var DOC_SLOTS = [
+                { inputId: 'editResume', key: 'resume', previewId: 'previewResume' },
+                { inputId: 'editEndorsement', key: 'endorsement', previewId: 'previewEndorsement' },
+                { inputId: 'editMOA', key: 'moa', previewId: 'previewMOA' },
+                { inputId: 'editMedical', key: 'medical', previewId: 'previewMedical' },
+                { inputId: 'editIdPicture', key: 'idPicture', previewId: 'previewIdPicture' }
+            ];
+
+            var OJT_DOCS_BUCKET = 'ojt-trainee-documents';
+            var serverDocMetaByType = {};
+
+            function waitForSupabase(maxMs) {
+                return new Promise(function(resolve) {
+                    var t0 = Date.now();
+                    var limit = maxMs || 8000;
+                    function tick() {
+                        if (window.supabaseClient) {
+                            resolve(window.supabaseClient);
+                            return;
+                        }
+                        if (Date.now() - t0 > limit) {
+                            resolve(null);
+                            return;
+                        }
+                        setTimeout(tick, 100);
+                    }
+                    tick();
+                });
+            }
+
+            function fileExtForUpload(fileName, mime, kind) {
+                var n = fileName || '';
+                if (/\.pdf$/i.test(n)) return '.pdf';
+                if (/\.docx$/i.test(n)) return '.docx';
+                if (/\.doc$/i.test(n)) return '.doc';
+                if (/\.png$/i.test(n)) return '.png';
+                if (/\.jpe?g$/i.test(n)) return '.jpg';
+                if (/\.webp$/i.test(n)) return '.webp';
+                if (/\.gif$/i.test(n)) return '.gif';
+                if (mime === 'application/pdf') return '.pdf';
+                if (mime && mime.indexOf('image/png') === 0) return '.png';
+                if (mime && mime.indexOf('image/jpeg') === 0) return '.jpg';
+                if (mime && mime.indexOf('image/webp') === 0) return '.webp';
+                if (mime && mime.indexOf('image/gif') === 0) return '.gif';
+                if (kind === 'pdf') return '.pdf';
+                if (kind === 'image') return '.jpg';
+                if (kind === 'docx') return '.docx';
+                if (kind === 'doc') return '.doc';
+                return '.bin';
+            }
+
+            function parseServerDocRow(row) {
+                if (!row) return null;
+                var fn = row.file_name || 'file';
+                if (!row.file_data) {
+                    return fn ? { fileName: fn, kind: 'legacy' } : null;
+                }
+                try {
+                    var j = JSON.parse(row.file_data);
+                    if (j && typeof j === 'object') {
+                        return {
+                            fileName: j.fileName || fn,
+                            kind: j.kind,
+                            publicUrl: j.publicUrl,
+                            mimeType: j.mimeType,
+                            html: j.html
+                        };
+                    }
+                } catch (e) {}
+                return { fileName: fn, kind: 'legacy' };
+            }
+
+            function uploadDocToStorage(supabase, traineeId, docType, file, meta) {
+                var ext = fileExtForUpload(file.name, file.type, meta.kind);
+                var path = traineeId + '/' + docType + ext;
+                return supabase.storage.from(OJT_DOCS_BUCKET).upload(path, file, {
+                    contentType: meta.mimeType || file.type || 'application/octet-stream',
+                    upsert: true
+                }).then(function(result) {
+                    if (result.error) return Promise.reject(result.error);
+                    var pub = supabase.storage.from(OJT_DOCS_BUCKET).getPublicUrl(path);
+                    return {
+                        fileName: meta.fileName,
+                        kind: meta.kind,
+                        mimeType: meta.mimeType,
+                        publicUrl: pub.data.publicUrl,
+                        html: meta.html
+                    };
+                });
+            }
+
+            function loadStoredDocMap() {
+                try {
+                    var raw = localStorage.getItem('ojt_trainee_documents');
+                    if (!raw) return {};
+                    var o = JSON.parse(raw);
+                    return o && typeof o === 'object' ? o : {};
+                } catch (e) {
+                    return {};
+                }
+            }
+
+            function fileNameFromInput(id) {
                 var el = document.getElementById(id);
                 if (!el || !el.files || !el.files[0]) return null;
                 return el.files[0].name;
             }
 
-            var idPicInput = document.getElementById('editIdPicture');
-            function maybeUpdatePictureUrl(callback) {
-                if (!idPicInput || !idPicInput.files || !idPicInput.files[0]) return callback(null);
-                var file = idPicInput.files[0];
-                if (!file.type || !file.type.startsWith('image/')) return callback(null);
-                var reader = new FileReader();
-                reader.onload = function() { callback(reader.result); };
-                reader.readAsDataURL(file);
+            function renderPreviewInto(el, meta) {
+                if (!el) return;
+                el.classList.remove('empty');
+                el.innerHTML = '';
+                if (!meta || !meta.fileName) {
+                    el.classList.add('empty');
+                    el.textContent = 'Walang napiling file — lalabas dito ang preview.';
+                    return;
+                }
+                var cap = document.createElement('p');
+                cap.className = 'file-preview-note';
+                cap.textContent = meta.fileName;
+                el.appendChild(cap);
+                var kind = meta.kind;
+                var mediaSrc = meta.dataUrl || meta.publicUrl;
+                if (kind === 'image' && mediaSrc) {
+                    var img = document.createElement('img');
+                    img.className = 'doc-preview-img';
+                    img.alt = meta.fileName;
+                    img.src = mediaSrc;
+                    el.appendChild(img);
+                    return;
+                }
+                if (kind === 'pdf' && mediaSrc) {
+                    var iframe = document.createElement('iframe');
+                    iframe.className = 'doc-preview-pdf';
+                    iframe.title = meta.fileName;
+                    iframe.src = mediaSrc;
+                    el.appendChild(iframe);
+                    return;
+                }
+                if (kind === 'docx' && meta.html) {
+                    var wrap = document.createElement('div');
+                    wrap.className = 'docx-preview-body';
+                    wrap.innerHTML = meta.html;
+                    el.appendChild(wrap);
+                    return;
+                }
+                if (kind === 'doc' && mediaSrc) {
+                    var p = document.createElement('p');
+                    p.className = 'file-preview-note';
+                    p.textContent = 'Ang lumang .doc ay hindi masilip nang buo sa browser. I-download at buksan sa Microsoft Word.';
+                    el.appendChild(p);
+                    var a = document.createElement('a');
+                    a.className = 'doc-dl';
+                    a.href = mediaSrc;
+                    a.download = meta.fileName;
+                    a.textContent = 'I-download ang file';
+                    el.appendChild(a);
+                    return;
+                }
+                if (mediaSrc) {
+                    var p2 = document.createElement('p');
+                    p2.className = 'file-preview-note';
+                    p2.textContent = 'Preview hindi available — i-download ang file.';
+                    el.appendChild(p2);
+                    var a2 = document.createElement('a');
+                    a2.className = 'doc-dl';
+                    a2.href = mediaSrc;
+                    a2.download = meta.fileName;
+                    a2.textContent = 'I-download';
+                    el.appendChild(a2);
+                    return;
+                }
+                el.appendChild(document.createTextNode('Hindi maipakita ang preview.'));
+            }
+
+            function processFileForPreviewAndStorage(file) {
+                return new Promise(function(resolve) {
+                    if (!file) {
+                        resolve(null);
+                        return;
+                    }
+                    var name = file.name || 'document';
+                    var mime = file.type || '';
+                    if (mime.indexOf('image/') === 0) {
+                        var r = new FileReader();
+                        r.onload = function() {
+                            resolve({
+                                fileName: name,
+                                mimeType: mime || 'image/jpeg',
+                                kind: 'image',
+                                dataUrl: r.result
+                            });
+                        };
+                        r.onerror = function() {
+                            resolve({ fileName: name, mimeType: mime, kind: 'error', error: 'Hindi mabasa ang larawan.' });
+                        };
+                        r.readAsDataURL(file);
+                        return;
+                    }
+                    if (mime === 'application/pdf' || /\.pdf$/i.test(name)) {
+                        var r2 = new FileReader();
+                        r2.onload = function() {
+                            resolve({
+                                fileName: name,
+                                mimeType: 'application/pdf',
+                                kind: 'pdf',
+                                dataUrl: r2.result
+                            });
+                        };
+                        r2.onerror = function() {
+                            resolve({ fileName: name, kind: 'error', error: 'Hindi mabasa ang PDF.' });
+                        };
+                        r2.readAsDataURL(file);
+                        return;
+                    }
+                    if (/\.docx$/i.test(name) || mime.indexOf('wordprocessingml') >= 0) {
+                        if (!window.mammoth) {
+                            resolve({ fileName: name, mimeType: mime, kind: 'docx', error: 'Hindi naka-load ang DOCX viewer.' });
+                            return;
+                        }
+                        var r3 = new FileReader();
+                        r3.onload = function() {
+                            window.mammoth.convertToHtml({ arrayBuffer: r3.result }).then(function(result) {
+                                resolve({
+                                    fileName: name,
+                                    mimeType: mime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                    kind: 'docx',
+                                    html: result.value
+                                });
+                            }).catch(function() {
+                                resolve({ fileName: name, kind: 'docx', error: 'Hindi mabasá ang DOCX.' });
+                            });
+                        };
+                        r3.onerror = function() {
+                            resolve({ fileName: name, kind: 'docx', error: 'Hindi mabasa ang file.' });
+                        };
+                        r3.readAsArrayBuffer(file);
+                        return;
+                    }
+                    if (/\.doc$/i.test(name) || mime === 'application/msword') {
+                        var r4 = new FileReader();
+                        r4.onload = function() {
+                            resolve({
+                                fileName: name,
+                                mimeType: mime || 'application/msword',
+                                kind: 'doc',
+                                dataUrl: r4.result
+                            });
+                        };
+                        r4.onerror = function() {
+                            resolve({ fileName: name, kind: 'doc', error: 'Hindi mabasa ang .doc.' });
+                        };
+                        r4.readAsDataURL(file);
+                        return;
+                    }
+                    var r5 = new FileReader();
+                    r5.onload = function() {
+                        resolve({
+                            fileName: name,
+                            mimeType: mime || 'application/octet-stream',
+                            kind: 'binary',
+                            dataUrl: r5.result
+                        });
+                    };
+                    r5.onerror = function() {
+                        resolve({ fileName: name, kind: 'error', error: 'Hindi mabasa ang file.' });
+                    };
+                    r5.readAsDataURL(file);
+                });
+            }
+
+            DOC_SLOTS.forEach(function(slot) {
+                var input = document.getElementById(slot.inputId);
+                var prevEl = document.getElementById(slot.previewId);
+                if (!input || !prevEl) return;
+                input.addEventListener('change', function() {
+                    var f = input.files && input.files[0];
+                    if (!f) {
+                        prevEl.classList.add('empty');
+                        prevEl.innerHTML = 'Walang napiling file — lalabas dito ang preview.';
+                        return;
+                    }
+                    prevEl.classList.remove('empty');
+                    prevEl.innerHTML = '<p class="file-preview-note">Naglo-load ng preview…</p>';
+                    processFileForPreviewAndStorage(f).then(function(meta) {
+                        if (meta && meta.error) {
+                            prevEl.classList.remove('empty');
+                            prevEl.innerHTML = '<p class="file-preview-note">' + meta.error + '</p>';
+                            return;
+                        }
+                        renderPreviewInto(prevEl, meta);
+                    });
+                });
+            });
+
+            (function restoreDocPreviewsFromStorage() {
+                var map = loadStoredDocMap();
+                DOC_SLOTS.forEach(function(slot) {
+                    var entry = map[slot.key];
+                    if (!entry || typeof entry !== 'object') return;
+                    var prevEl = document.getElementById(slot.previewId);
+                    if (prevEl) renderPreviewInto(prevEl, entry);
+                });
+            })();
+
+            function hydrateDocPreviewsFromSupabase() {
+                var tid = null;
+                try { tid = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
+                waitForSupabase(10000).then(function(sb) {
+                    if (!sb || !tid) return;
+                    sb.from('ojt_trainee_documents').select('doc_type,file_name,file_data').eq('trainee_id', tid).then(function(res) {
+                        (res.data || []).forEach(function(row) {
+                            if (row && row.doc_type) serverDocMetaByType[row.doc_type] = parseServerDocRow(row);
+                        });
+                        DOC_SLOTS.forEach(function(slot) {
+                            var m = serverDocMetaByType[slot.key];
+                            if (m && m.kind && m.kind !== 'legacy') {
+                                var prevEl = document.getElementById(slot.previewId);
+                                if (prevEl) renderPreviewInto(prevEl, m);
+                            }
+                        });
+                    });
+                });
+            }
+            hydrateDocPreviewsFromSupabase();
+
+            function docMetaToLight(meta) {
+                if (!meta || typeof meta !== 'object') return null;
+                return {
+                    fileName: meta.fileName,
+                    kind: meta.kind,
+                    publicUrl: meta.publicUrl,
+                    mimeType: meta.mimeType,
+                    html: meta.html
+                };
             }
 
             document.getElementById('editProfileForm').addEventListener('submit', function(e) {
@@ -401,79 +767,142 @@
                     pictureUrl: stored.pictureUrl || null
                 };
 
-                var docs = {
-                    resume: fileName('editResume'),
-                    endorsement: fileName('editEndorsement'),
-                    moa: fileName('editMOA'),
-                    medical: fileName('editMedical'),
-                    idPicture: fileName('editIdPicture')
+                var localFallbackMap = loadStoredDocMap();
+
+                var buildDocs = function() {
+                    var docs = {};
+                    var tasks = DOC_SLOTS.map(function(slot) {
+                        var input = document.getElementById(slot.inputId);
+                        var f = input && input.files && input.files[0];
+                        if (!f) {
+                            docs[slot.key] = serverDocMetaByType[slot.key] || localFallbackMap[slot.key] || null;
+                            return Promise.resolve();
+                        }
+                        return processFileForPreviewAndStorage(f).then(function(meta) {
+                            var fallback = serverDocMetaByType[slot.key] || localFallbackMap[slot.key] || null;
+                            docs[slot.key] = meta && meta.error ? fallback : meta;
+                        });
+                    });
+                    return Promise.all(tasks).then(function() { return docs; });
                 };
 
-                maybeUpdatePictureUrl(function(pictureUrl) {
-                    if (pictureUrl) updated.pictureUrl = pictureUrl;
-                    var traineeId = null;
-                    try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (err) {}
-                    var supabase = window.supabaseClient;
-                    var saveLocalFallback = function() {
-                        try {
-                            localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
-                            localStorage.setItem('ojt_trainee_documents', JSON.stringify(docs));
-                        } catch (err) {}
-                    };
-                    var finish = function() {
-                        alert('Profile updated!');
-                        window.location.href = 'dashboard.html';
-                    };
+                var traineeId = null;
+                try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (err) {}
 
-                    if (supabase && traineeId) {
-                        supabase.from('ojt_trainees').update({
-                            email: updated.email || null,
-                            username: updated.username || null,
-                            full_name: updated.fullName || null,
-                            student_id: updated.studentId || null,
-                            course: updated.course || null,
-                            year_level: updated.yearLevel || null,
-                            school_name: updated.schoolName || null,
-                            department: updated.department || null,
-                            coordinator: updated.coordinator || null,
-                            company_name: updated.companyName || null,
-                            company_address: updated.companyAddress || null,
-                            supervisor: updated.supervisor || null,
-                            position_role: updated.positionRole || null,
-                            contact_number: updated.contactNumber || null,
-                            emergency_contact: updated.emergencyContact || null,
-                            training_hours: updated.trainingHours || null,
-                            start_date: updated.startDate || null,
-                            end_date: updated.endDate || null,
-                            picture_url: updated.pictureUrl || null,
-                            updated_at: new Date().toISOString()
-                        }).eq('id', traineeId).then(function() {
-                            var docTypes = ['resume', 'endorsement', 'moa', 'medical', 'idPicture'];
-                            var ops = [];
-                            docTypes.forEach(function(type) {
-                                if (!docs[type]) return;
-                                ops.push(supabase.from('ojt_trainee_documents').upsert({
-                                    trainee_id: traineeId,
-                                    doc_type: type,
-                                    file_name: docs[type] || null,
-                                    file_data: null
-                                }, { onConflict: 'trainee_id,doc_type' }));
-                            });
-                            Promise.all(ops).then(function() {
-                                saveLocalFallback();
-                                finish();
-                            }).catch(function() {
-                                saveLocalFallback();
-                                finish();
-                            });
-                        }).catch(function() {
-                            saveLocalFallback();
-                            finish();
+                var saveLocalFallback = function(docs) {
+                    try {
+                        var light = {};
+                        Object.keys(docs || {}).forEach(function(k) {
+                            var m = docs[k];
+                            if (!m || typeof m !== 'object') return;
+                            var L = docMetaToLight(m);
+                            if (L && (L.publicUrl || L.html)) light[k] = L;
+                            else if (m.dataUrl) {
+                                light[k] = {
+                                    fileName: m.fileName,
+                                    kind: m.kind,
+                                    mimeType: m.mimeType,
+                                    dataUrl: m.dataUrl,
+                                    html: m.html
+                                };
+                            }
                         });
-                        return;
+                        localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
+                        localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
+                    } catch (err) {
+                        if (err && err.name === 'QuotaExceededError') {
+                            alert('Puno na ang browser storage. Gamitin ang Supabase Storage (mas maliit na cache lang ang naka-save nang lokal).');
+                        }
                     }
-                    saveLocalFallback();
-                    finish();
+                };
+
+                var finish = function() {
+                    alert('Profile updated!');
+                    window.location.href = 'dashboard.html';
+                };
+
+                buildDocs().then(function(docsMeta) {
+                    waitForSupabase(10000).then(function(sb) {
+                        if (!sb || !traineeId) {
+                            saveLocalFallback(docsMeta);
+                            finish();
+                            return;
+                        }
+
+                        var uploadTasks = [];
+                        DOC_SLOTS.forEach(function(slot) {
+                            var input = document.getElementById(slot.inputId);
+                            var file = input && input.files && input.files[0];
+                            var meta = docsMeta[slot.key];
+                            if (!file || !meta || meta.error || meta.kind === 'legacy') return;
+                            uploadTasks.push(
+                                uploadDocToStorage(sb, traineeId, slot.key, file, meta).then(function(stored) {
+                                    docsMeta[slot.key] = stored;
+                                    var fd = { kind: stored.kind, publicUrl: stored.publicUrl, mimeType: stored.mimeType };
+                                    if (stored.html) fd.html = stored.html;
+                                    return sb.from('ojt_trainee_documents').upsert({
+                                        trainee_id: traineeId,
+                                        doc_type: slot.key,
+                                        file_name: stored.fileName,
+                                        file_data: JSON.stringify(fd)
+                                    }, { onConflict: 'trainee_id,doc_type' }).then(function(ins) {
+                                        if (ins && ins.error) return Promise.reject(ins.error);
+                                    });
+                                })
+                            );
+                        });
+
+                        Promise.all(uploadTasks)
+                            .then(function() {
+                                if (docsMeta.idPicture && docsMeta.idPicture.publicUrl && docsMeta.idPicture.kind === 'image') {
+                                    updated.pictureUrl = docsMeta.idPicture.publicUrl;
+                                }
+                                return sb.from('ojt_trainees').update({
+                                    email: updated.email || null,
+                                    username: updated.username || null,
+                                    full_name: updated.fullName || null,
+                                    student_id: updated.studentId || null,
+                                    course: updated.course || null,
+                                    year_level: updated.yearLevel || null,
+                                    school_name: updated.schoolName || null,
+                                    department: updated.department || null,
+                                    coordinator: updated.coordinator || null,
+                                    company_name: updated.companyName || null,
+                                    company_address: updated.companyAddress || null,
+                                    supervisor: updated.supervisor || null,
+                                    position_role: updated.positionRole || null,
+                                    contact_number: updated.contactNumber || null,
+                                    emergency_contact: updated.emergencyContact || null,
+                                    training_hours: updated.trainingHours || null,
+                                    start_date: updated.startDate || null,
+                                    end_date: updated.endDate || null,
+                                    picture_url: updated.pictureUrl || null,
+                                    updated_at: new Date().toISOString()
+                                }).eq('id', traineeId).then(function(up) {
+                                    if (up && up.error) return Promise.reject(up.error);
+                                });
+                            })
+                            .then(function() {
+                                var light = {};
+                                Object.keys(docsMeta).forEach(function(k) {
+                                    var m = docsMeta[k];
+                                    if (!m || typeof m !== 'object') return;
+                                    var L = docMetaToLight(m);
+                                    if (L && (L.publicUrl || L.html)) light[k] = L;
+                                });
+                                try {
+                                    localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
+                                    localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
+                                } catch (err) {}
+                                finish();
+                            })
+                            .catch(function(err) {
+                                console.error(err);
+                                alert('May error sa Supabase (Storage o DB). Gawin ang bucket na ojt-trainee-documents (public) at i-run ang database/ojt-documents-storage.sql. Pag offline, naka-cache nang lokal.');
+                                saveLocalFallback(docsMeta);
+                                finish();
+                            });
+                    });
                 });
             });
         })();

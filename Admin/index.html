@@ -108,10 +108,59 @@
         .kv .k { color: #444; font-weight: 800; font-size: 0.92rem; }
         .kv .v { color: #222; font-weight: 700; font-size: 0.92rem; }
         .muted { color: #777; font-weight: 600; }
-        .doc-list { display: flex; flex-direction: column; gap: 8px; }
-        .doc-item { border: 1px solid #e8eaed; border-radius: 12px; padding: 10px 12px; background: #fafbff; }
-        .doc-item .t { font-weight: 900; color: #1e3c72; }
-        .doc-item .d { color: #555; font-weight: 700; margin-top: 3px; }
+        .doc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+        .admin-doc-card {
+            border: 1px solid #e8eaed;
+            border-radius: 14px;
+            background: #fafbff;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .admin-doc-card-title {
+            font-weight: 900;
+            color: #1e3c72;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e8eaed;
+            background: #fff;
+            font-size: 0.95rem;
+        }
+        .admin-doc-card-body { padding: 12px; min-height: 72px; }
+        .admin-doc-filename { font-size: 0.82rem; color: #555; margin-bottom: 10px; word-break: break-all; }
+        .admin-doc-card-body img.admin-doc-preview-img {
+            width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #e8eaed;
+            display: block;
+            margin: 0 auto;
+        }
+        .admin-doc-card-body iframe.admin-doc-preview-pdf {
+            width: 100%;
+            height: min(55vh, 420px);
+            border: none;
+            border-radius: 8px;
+            background: #525659;
+        }
+        .admin-doc-card-body .admin-doc-docx {
+            max-height: min(50vh, 360px);
+            overflow: auto;
+            padding: 12px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e8eaed;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+        .admin-doc-card-body a.admin-doc-dl {
+            display: inline-block;
+            margin-top: 8px;
+            color: #1e3c72;
+            font-weight: 800;
+            text-decoration: none;
+        }
+        .admin-doc-card-body a.admin-doc-dl:hover { text-decoration: underline; }
 
         .att-table td { padding: 8px; border-bottom: 1px solid #e8eaed; font-size: 0.9rem; }
         .att-table tbody tr:hover { background: #f7f8fa; }
@@ -270,8 +319,9 @@
                         </div>
 
                         <div class="tab-content" data-content="documents" style="display:none;">
+                            <p class="muted" style="margin-bottom:12px;font-size:0.9rem;">Mga dokumentong na-upload ng trainee. Dito makikita ang aktwal na file (larawan / PDF / Word) kapag na-sync sa cloud.</p>
                             <div class="doc-list" id="docsList"></div>
-                            <p class="muted" id="docsEmpty" style="display:none;margin-top:10px;">No documents uploaded yet.</p>
+                            <p class="muted" id="docsEmpty" style="display:none;margin-top:10px;">Pumili muna ng trainee.</p>
                         </div>
 
                         <div class="tab-content" data-content="attendance" style="display:none;">
@@ -428,6 +478,123 @@
                 });
             }
 
+            function docRowToEntry(d) {
+                if (!d || !d.doc_type) return null;
+                var fn = d.file_name || 'File';
+                if (!d.file_data) {
+                    return { fileName: fn, kind: 'legacy' };
+                }
+                try {
+                    var j = JSON.parse(d.file_data);
+                    if (j && typeof j === 'object') {
+                        return {
+                            fileName: j.fileName || fn,
+                            kind: j.kind,
+                            publicUrl: j.publicUrl,
+                            mimeType: j.mimeType,
+                            html: j.html
+                        };
+                    }
+                } catch (e) {}
+                return { fileName: fn, kind: 'legacy' };
+            }
+
+            function adminAppendDocCard(container, title, entry) {
+                var card = document.createElement('div');
+                card.className = 'admin-doc-card';
+                var h = document.createElement('div');
+                h.className = 'admin-doc-card-title';
+                h.textContent = title;
+                card.appendChild(h);
+                var body = document.createElement('div');
+                body.className = 'admin-doc-card-body';
+
+                if (entry == null) {
+                    var p0 = document.createElement('p');
+                    p0.className = 'muted';
+                    p0.textContent = 'Walang na-upload na dokumento dito.';
+                    body.appendChild(p0);
+                    card.appendChild(body);
+                    container.appendChild(card);
+                    return;
+                }
+
+                if (typeof entry === 'string') {
+                    var pStr = document.createElement('p');
+                    pStr.className = 'muted';
+                    pStr.textContent = 'Sa records: ';
+                    var strong = document.createElement('strong');
+                    strong.textContent = entry;
+                    pStr.appendChild(strong);
+                    var span = document.createElement('span');
+                    span.textContent = ' — walang preview (lumang format). Dapat mag-upload muli ang trainee.';
+                    pStr.appendChild(span);
+                    body.appendChild(pStr);
+                    card.appendChild(body);
+                    container.appendChild(card);
+                    return;
+                }
+
+                var fn = entry.fileName || 'Document';
+                var fnEl = document.createElement('div');
+                fnEl.className = 'admin-doc-filename';
+                fnEl.textContent = fn;
+                body.appendChild(fnEl);
+
+                var src = entry.publicUrl || entry.dataUrl;
+
+                if (entry.kind === 'image' && src) {
+                    var img = document.createElement('img');
+                    img.className = 'admin-doc-preview-img';
+                    img.alt = fn;
+                    img.src = src;
+                    body.appendChild(img);
+                } else if (entry.kind === 'pdf' && src) {
+                    var iframe = document.createElement('iframe');
+                    iframe.className = 'admin-doc-preview-pdf';
+                    iframe.title = fn;
+                    iframe.src = src;
+                    body.appendChild(iframe);
+                } else if (entry.kind === 'docx' && entry.html) {
+                    var dx = document.createElement('div');
+                    dx.className = 'admin-doc-docx';
+                    dx.innerHTML = entry.html;
+                    body.appendChild(dx);
+                } else if (entry.kind === 'doc' && src) {
+                    var note = document.createElement('p');
+                    note.className = 'muted';
+                    note.style.fontSize = '0.88rem';
+                    note.textContent = '.doc — i-download at buksan sa Word.';
+                    body.appendChild(note);
+                    var a = document.createElement('a');
+                    a.className = 'admin-doc-dl';
+                    a.href = src;
+                    a.download = fn;
+                    a.textContent = 'I-download';
+                    body.appendChild(a);
+                } else if (src) {
+                    var a2 = document.createElement('a');
+                    a2.className = 'admin-doc-dl';
+                    a2.href = src;
+                    a2.download = fn;
+                    a2.textContent = 'I-download ang file';
+                    body.appendChild(a2);
+                } else if (entry.kind === 'legacy') {
+                    var pLeg = document.createElement('p');
+                    pLeg.className = 'muted';
+                    pLeg.textContent = 'Walang naka-link na file sa storage — historical record lang.';
+                    body.appendChild(pLeg);
+                } else {
+                    var unk = document.createElement('p');
+                    unk.className = 'muted';
+                    unk.textContent = 'Hindi maipakita ang preview.';
+                    body.appendChild(unk);
+                }
+
+                card.appendChild(body);
+                container.appendChild(card);
+            }
+
             async function loadAllFromSupabase() {
                 var supabase = window.supabaseClient || await waitForSupabaseReady();
                 if (!supabase) return;
@@ -463,10 +630,10 @@
                     docsMapCache = {};
                     if (Array.isArray(dr.data)) {
                         dr.data.forEach(function(d) {
-                            if (!d || !d.trainee_id) return;
+                            if (!d || !d.trainee_id || !d.doc_type) return;
                             var tid = String(d.trainee_id);
                             if (!docsMapCache[tid]) docsMapCache[tid] = {};
-                            docsMapCache[tid][d.doc_type] = d.file_name || '—';
+                            docsMapCache[tid][d.doc_type] = docRowToEntry(d);
                         });
                     }
                 } catch (e) {}
@@ -601,7 +768,7 @@
                         var tid = String(traineeId);
                         if (!docsMapCache[tid]) docsMapCache[tid] = {};
                         res.data.forEach(function(d) {
-                            if (d && d.doc_type) docsMapCache[tid][d.doc_type] = d.file_name || '—';
+                            if (d && d.doc_type) docsMapCache[tid][d.doc_type] = docRowToEntry(d);
                         });
                     }
                 } catch (e) {}
@@ -635,13 +802,15 @@
                     if (!docs || typeof docs !== 'object') {
                         try {
                             var docsRaw = localStorage.getItem(DOCS_DB_KEY);
-                            if (docsRaw) { var localMap = JSON.parse(docsRaw); if (localMap && typeof localMap === 'object') docs = localMap[selectedKey] || localMap[String(selectedKey)] || null; }
+                            if (docsRaw) {
+                                var localMap = JSON.parse(docsRaw);
+                                if (localMap && typeof localMap === 'object') {
+                                    docs = localMap[selectedKey] || localMap[String(selectedKey)] || null;
+                                }
+                            }
                         } catch (e) {}
                     }
-                    if (!docs || typeof docs !== 'object') {
-                        docsEmpty.style.display = 'block';
-                        return;
-                    }
+                    if (!docs || typeof docs !== 'object') docs = {};
                     docsEmpty.style.display = 'none';
                     var order = [
                         ['resume', 'Resume / CV'],
@@ -651,13 +820,7 @@
                         ['idPicture', 'ID Picture / Valid ID']
                     ];
                     order.forEach(function(pair) {
-                        var id = pair[0];
-                        var title = pair[1];
-                        var fileName = docs[id] || null;
-                        var item = document.createElement('div');
-                        item.className = 'doc-item';
-                        item.innerHTML = '<div class="t">' + title + '</div><div class="d">' + (fileName ? fileName : '—') + '</div>';
-                        docsList.appendChild(item);
+                        adminAppendDocCard(docsList, pair[1], docs[pair[0]]);
                     });
                 }
             }

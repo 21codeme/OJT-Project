@@ -1,5 +1,6 @@
 -- OJT Trainees, Documents, Attendance, Admin — run sa Supabase SQL Editor
 -- Creates tables for trainee accounts, uploaded documents, attendance records, and admin.
+-- Mga dokumento (file): gumawa ng public Storage bucket na ojt-trainee-documents at i-run ang ojt-documents-storage.sql.
 
 -- 1) OJT Trainees (profile from create account)
 CREATE TABLE IF NOT EXISTS ojt_trainees (

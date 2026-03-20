@@ -77,6 +77,78 @@
         .btn-secondary:hover { background: #f4f6f8; }
         .placeholder-content { color: #666; padding: 24px 0; }
         .placeholder-content p { margin-bottom: 12px; }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+            gap: 20px;
+            margin-top: 8px;
+        }
+        .doc-card {
+            border: 1px solid #e8eaed;
+            border-radius: 14px;
+            background: #fafbff;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .doc-card h3 {
+            margin: 0;
+            padding: 14px 16px;
+            font-size: 1rem;
+            color: #1e3c72;
+            border-bottom: 1px solid #e8eaed;
+            background: #fff;
+        }
+        .doc-card .doc-card-body {
+            padding: 14px;
+            min-height: 120px;
+        }
+        .doc-card .doc-filename {
+            font-size: 0.82rem;
+            color: #555;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .doc-card img.doc-dash-preview {
+            width: 100%;
+            max-height: 320px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #e8eaed;
+        }
+        .doc-card iframe.doc-dash-pdf {
+            width: 100%;
+            height: min(70vh, 520px);
+            border: none;
+            border-radius: 8px;
+            background: #525659;
+        }
+        .doc-card .doc-dash-docx {
+            max-height: min(55vh, 420px);
+            overflow: auto;
+            padding: 14px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e8eaed;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .doc-card .doc-dash-empty {
+            color: #888;
+            font-size: 0.95rem;
+            padding: 12px 0;
+        }
+        .doc-card a.doc-dash-dl {
+            display: inline-block;
+            margin-top: 10px;
+            color: #1e3c72;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .doc-card a.doc-dash-dl:hover { text-decoration: underline; }
         .back-home { display: inline-block; margin-bottom: 16px; color: #1e3c72; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
         .back-home:hover { text-decoration: underline; }
 
@@ -384,10 +456,8 @@
 
         <section id="section-documents" class="section">
             <h2>Documents</h2>
-            <div class="placeholder-content">
-                <p>Your documents and requirements will appear here.</p>
-                <p>Upload or view OJT-related documents (e.g. endorsement, memorandum, certificates).</p>
-            </div>
+            <p class="placeholder-content" style="padding-top:0;margin-bottom:16px;">Mga na-upload mula sa <strong>Edit Profile</strong> (Required Documents). Makikita dito ang aktwal na larawan, PDF, o nilalaman ng DOCX — hindi lang pangalan ng file.</p>
+            <div id="documentsGrid" class="documents-grid"></div>
         </section>
 
         <section id="section-attendance" class="section">
@@ -528,6 +598,202 @@
                 if (stored.pictureUrl) document.getElementById('profilePicture').src = stored.pictureUrl;
             }
             applyProfileToUI();
+
+            var DOC_LABELS = {
+                resume: 'Resume / CV',
+                endorsement: 'Endorsement Letter',
+                moa: 'MOA (Memorandum of Agreement)',
+                medical: 'Medical Certificate',
+                idPicture: 'ID Picture / Valid ID'
+            };
+
+            function waitForSupabaseDocsMax(maxMs) {
+                return new Promise(function(resolve) {
+                    var t0 = Date.now();
+                    var lim = maxMs || 8000;
+                    function tick() {
+                        if (window.supabaseClient) {
+                            resolve(window.supabaseClient);
+                            return;
+                        }
+                        if (Date.now() - t0 > lim) {
+                            resolve(null);
+                            return;
+                        }
+                        setTimeout(tick, 100);
+                    }
+                    tick();
+                });
+            }
+
+            function loadLocalDocsMap() {
+                try {
+                    var raw = localStorage.getItem('ojt_trainee_documents');
+                    if (raw) return JSON.parse(raw) || {};
+                } catch (e) {}
+                return {};
+            }
+
+            function docsServerRowsToMap(rows) {
+                var serverMap = {};
+                (rows || []).forEach(function(row) {
+                    if (!row || !row.doc_type) return;
+                    if (row.file_data) {
+                        try {
+                            var j = JSON.parse(row.file_data);
+                            serverMap[row.doc_type] = Object.assign({ fileName: row.file_name }, j);
+                        } catch (e) {
+                            serverMap[row.doc_type] = { fileName: row.file_name, kind: 'legacy' };
+                        }
+                    } else if (row.file_name) {
+                        serverMap[row.doc_type] = row.file_name;
+                    }
+                });
+                return serverMap;
+            }
+
+            function mergeDocsServerLocal(serverMap, localMap) {
+                var keys = ['resume', 'endorsement', 'moa', 'medical', 'idPicture'];
+                var out = {};
+                keys.forEach(function(k) {
+                    var s = serverMap[k];
+                    var l = localMap[k];
+                    var sRich = s && typeof s === 'object' && (s.publicUrl || s.html || s.dataUrl);
+                    var lRich = l && typeof l === 'object' && (l.publicUrl || l.html || l.dataUrl);
+                    if (sRich) out[k] = s;
+                    else if (typeof s === 'string') out[k] = s;
+                    else if (lRich) out[k] = l;
+                    else if (s && typeof s === 'object') out[k] = s;
+                    else if (l) out[k] = l;
+                });
+                return out;
+            }
+
+            function renderDocumentsGrid(map) {
+                var grid = document.getElementById('documentsGrid');
+                if (!grid) return;
+                grid.innerHTML = '';
+                var keys = ['resume', 'endorsement', 'moa', 'medical', 'idPicture'];
+                keys.forEach(function(key) {
+                    var card = document.createElement('article');
+                    card.className = 'doc-card';
+                    var title = document.createElement('h3');
+                    title.textContent = DOC_LABELS[key] || key;
+                    card.appendChild(title);
+                    var body = document.createElement('div');
+                    body.className = 'doc-card-body';
+                    var entry = map[key];
+                    if (entry == null) {
+                        var empty = document.createElement('p');
+                        empty.className = 'doc-dash-empty';
+                        empty.textContent = 'Walang na-upload pa. Pumunta sa Edit Profile at maglagay ng file.';
+                        body.appendChild(empty);
+                        card.appendChild(body);
+                        grid.appendChild(card);
+                        return;
+                    }
+                    if (typeof entry === 'string') {
+                        var legacy = document.createElement('p');
+                        legacy.className = 'doc-dash-empty';
+                        legacy.textContent = 'Naka-save lang ang pangalan ng file (\u201c' + entry + '\u201d) — walang preview. Mag-upload ulit sa Edit Profile.';
+                        body.appendChild(legacy);
+                        card.appendChild(body);
+                        grid.appendChild(card);
+                        return;
+                    }
+                    var fn = entry.fileName || 'Document';
+                    var fnEl = document.createElement('div');
+                    fnEl.className = 'doc-filename';
+                    fnEl.textContent = fn;
+                    body.appendChild(fnEl);
+                    var src = entry.dataUrl || entry.publicUrl;
+                    if (entry.kind === 'image' && src) {
+                        var img = document.createElement('img');
+                        img.className = 'doc-dash-preview';
+                        img.alt = fn;
+                        img.src = src;
+                        body.appendChild(img);
+                    } else if (entry.kind === 'pdf' && src) {
+                        var iframe = document.createElement('iframe');
+                        iframe.className = 'doc-dash-pdf';
+                        iframe.title = fn;
+                        iframe.src = src;
+                        body.appendChild(iframe);
+                    } else if (entry.kind === 'docx' && entry.html) {
+                        var dx = document.createElement('div');
+                        dx.className = 'doc-dash-docx';
+                        dx.innerHTML = entry.html;
+                        body.appendChild(dx);
+                    } else if (entry.kind === 'doc' && src) {
+                        var note = document.createElement('p');
+                        note.className = 'doc-dash-empty';
+                        note.textContent = 'Ang .doc ay buksan sa Word. I-download mula sa link sa ibaba.';
+                        body.appendChild(note);
+                        var a = document.createElement('a');
+                        a.className = 'doc-dash-dl';
+                        a.href = src;
+                        a.download = fn;
+                        a.textContent = 'I-download ang .doc';
+                        body.appendChild(a);
+                    } else if (src) {
+                        var a2 = document.createElement('a');
+                        a2.className = 'doc-dash-dl';
+                        a2.href = src;
+                        a2.download = fn;
+                        a2.textContent = 'I-download ang file';
+                        body.appendChild(a2);
+                    } else {
+                        var unk = document.createElement('p');
+                        unk.className = 'doc-dash-empty';
+                        unk.textContent = 'Hindi maipakita ang preview ng file na ito.';
+                        body.appendChild(unk);
+                    }
+                    card.appendChild(body);
+                    grid.appendChild(card);
+                });
+            }
+
+            async function refreshDocumentsGrid() {
+                var localMap = loadLocalDocsMap();
+                var sb = await waitForSupabaseDocsMax(8000);
+                var serverMap = {};
+                if (sb && traineeId) {
+                    try {
+                        var res = await sb.from('ojt_trainee_documents').select('doc_type,file_name,file_data').eq('trainee_id', traineeId);
+                        serverMap = docsServerRowsToMap(res.data);
+                    } catch (e) {
+                        serverMap = {};
+                    }
+                }
+                var merged = mergeDocsServerLocal(serverMap, localMap);
+                renderDocumentsGrid(merged);
+                try {
+                    var cache = {};
+                    ['resume', 'endorsement', 'moa', 'medical', 'idPicture'].forEach(function(k) {
+                        var v = merged[k];
+                        if (v && typeof v === 'object' && (v.publicUrl || v.html)) {
+                            cache[k] = {
+                                fileName: v.fileName,
+                                kind: v.kind,
+                                publicUrl: v.publicUrl,
+                                mimeType: v.mimeType,
+                                html: v.html
+                            };
+                        }
+                    });
+                    if (Object.keys(cache).length) localStorage.setItem('ojt_trainee_documents', JSON.stringify(cache));
+                } catch (e) {}
+            }
+
+            refreshDocumentsGrid();
+
+            var sectionDocuments = document.getElementById('section-documents');
+            if (sectionDocuments) {
+                var docObserver = new MutationObserver(function() {
+                    if (sectionDocuments.classList.contains('active')) refreshDocumentsGrid();
+                });
+                docObserver.observe(sectionDocuments, { attributes: true, attributeFilter: ['class'] });
+            }
 
             (async function loadProfileFromSupabase() {
                 var supabase = window.supabaseClient;
