@@ -161,6 +161,93 @@
             text-decoration: none;
         }
         .admin-doc-card-body a.admin-doc-dl:hover { text-decoration: underline; }
+        .admin-doc-card-body .admin-doc-preview-img.preview-clickable,
+        .admin-doc-card-body .admin-doc-preview-pdf.preview-clickable {
+            cursor: pointer;
+        }
+        #docPreviewModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            box-sizing: border-box;
+        }
+        #docPreviewModal.show { display: flex; }
+        #docPreviewModal .modal-inner {
+            max-width: 96vw;
+            max-height: 95vh;
+            width: min(1100px, 96vw);
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #docPreviewModal .modal-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: #1e3c72;
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        #docPreviewModal .doc-preview-body {
+            flex: 1;
+            min-height: 60vh;
+            overflow: hidden;
+            border-radius: 8px;
+            border: 1px solid #e8eaed;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #docPreviewModal .doc-preview-body img {
+            max-width: 100%;
+            max-height: 78vh;
+            object-fit: contain;
+            display: block;
+        }
+        #docPreviewModal .doc-preview-body iframe {
+            width: 100%;
+            height: 78vh;
+            border: none;
+            background: #525659;
+        }
+        #docPreviewModal .doc-preview-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #docPreviewModal .doc-preview-title {
+            font-weight: 800;
+            color: #1e3c72;
+            font-size: 0.95rem;
+            word-break: break-word;
+        }
+        #docPreviewDownload {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #1e3c72;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 800;
+        }
 
         /* Admin profile grouping (match trainee profile highlights) */
         .admin-profile-top { margin-bottom: 18px; }
@@ -479,6 +566,16 @@
             <div class="modal-caption" id="photoPreviewCaption"></div>
         </div>
     </div>
+    <div id="docPreviewModal" aria-hidden="true">
+        <div class="modal-inner">
+            <button type="button" class="modal-close" id="docModalClose" aria-label="Close">&times;</button>
+            <div class="doc-preview-actions">
+                <div id="docPreviewTitle" class="doc-preview-title">Document preview</div>
+                <a id="docPreviewDownload" href="#" download>Download</a>
+            </div>
+            <div id="docPreviewBody" class="doc-preview-body"></div>
+        </div>
+    </div>
     <div id="editAttendanceModal" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
         <div style="background:#fff; border-radius:14px; padding:16px; max-width:480px; width:100%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -542,6 +639,11 @@
             var selectedTrainee = null;
             var traineesCache = [];
             var docsMapCache = {};
+            var docPreviewModal = document.getElementById('docPreviewModal');
+            var docPreviewBody = document.getElementById('docPreviewBody');
+            var docPreviewTitle = document.getElementById('docPreviewTitle');
+            var docPreviewDownload = document.getElementById('docPreviewDownload');
+            var docModalClose = document.getElementById('docModalClose');
 
             // Show admin panel immediately if already logged in (e.g. from Attendance with ?autologin=1)
             var isAuthedNow = fromAutologin;
@@ -669,16 +771,46 @@
 
                 if (entry.kind === 'image' && src) {
                     var img = document.createElement('img');
-                    img.className = 'admin-doc-preview-img';
+                    img.className = 'admin-doc-preview-img preview-clickable';
                     img.alt = fn;
                     img.src = src;
+                    img.title = 'Click to view full image';
+                    img.addEventListener('click', function() {
+                        openDocumentPreview(src, 'image', fn);
+                    });
                     body.appendChild(img);
+                    var dlImg = document.createElement('a');
+                    dlImg.className = 'admin-doc-dl';
+                    dlImg.href = src;
+                    dlImg.download = fn;
+                    dlImg.textContent = 'Download image';
+                    body.appendChild(dlImg);
                 } else if (entry.kind === 'pdf' && src) {
                     var iframe = document.createElement('iframe');
-                    iframe.className = 'admin-doc-preview-pdf';
+                    iframe.className = 'admin-doc-preview-pdf preview-clickable';
                     iframe.title = fn;
                     iframe.src = src;
+                    iframe.title = fn + ' (click to open full view)';
+                    iframe.addEventListener('click', function() {
+                        openDocumentPreview(src, 'pdf', fn);
+                    });
                     body.appendChild(iframe);
+                    var openPdf = document.createElement('a');
+                    openPdf.className = 'admin-doc-dl';
+                    openPdf.href = '#';
+                    openPdf.textContent = 'View full PDF';
+                    openPdf.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        openDocumentPreview(src, 'pdf', fn);
+                    });
+                    body.appendChild(openPdf);
+                    var dlPdf = document.createElement('a');
+                    dlPdf.className = 'admin-doc-dl';
+                    dlPdf.href = src;
+                    dlPdf.download = fn;
+                    dlPdf.style.marginLeft = '10px';
+                    dlPdf.textContent = 'Download PDF';
+                    body.appendChild(dlPdf);
                 } else if (entry.kind === 'docx' && entry.html) {
                     var dx = document.createElement('div');
                     dx.className = 'admin-doc-docx';
@@ -717,6 +849,35 @@
 
                 card.appendChild(body);
                 container.appendChild(card);
+            }
+
+            function closeDocumentPreview() {
+                if (!docPreviewModal) return;
+                docPreviewModal.classList.remove('show');
+                if (docPreviewBody) docPreviewBody.innerHTML = '';
+            }
+
+            function openDocumentPreview(src, kind, fileName) {
+                if (!docPreviewModal || !docPreviewBody || !src) return;
+                docPreviewBody.innerHTML = '';
+                if (docPreviewTitle) docPreviewTitle.textContent = fileName || 'Document preview';
+                if (docPreviewDownload) {
+                    docPreviewDownload.href = src;
+                    docPreviewDownload.download = fileName || 'document';
+                }
+
+                if (kind === 'pdf') {
+                    var frame = document.createElement('iframe');
+                    frame.src = src;
+                    frame.title = fileName || 'PDF';
+                    docPreviewBody.appendChild(frame);
+                } else {
+                    var img = document.createElement('img');
+                    img.src = src;
+                    img.alt = fileName || 'Image';
+                    docPreviewBody.appendChild(img);
+                }
+                docPreviewModal.classList.add('show');
             }
 
             async function loadAllFromSupabase() {
@@ -1259,6 +1420,8 @@
                 var closeBtn = document.getElementById('photoModalClose');
                 if (closeBtn) closeBtn.addEventListener('click', function() { if (photoModal) photoModal.classList.remove('show'); });
                 if (photoModal) photoModal.addEventListener('click', function(e) { if (e.target === photoModal) photoModal.classList.remove('show'); });
+                if (docModalClose) docModalClose.addEventListener('click', closeDocumentPreview);
+                if (docPreviewModal) docPreviewModal.addEventListener('click', function(e) { if (e.target === docPreviewModal) closeDocumentPreview(); });
             })();
 
             function getDateStr(d) {
