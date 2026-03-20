@@ -1528,7 +1528,6 @@
         })();
 
         (function() {
-            var DAILY_LOGS_KEY = 'ojt_trainee_daily_logs';
             var DAILY_LOGS_BUCKET = 'ojt-daily-logs';
             var traineeId = null;
             try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
@@ -1559,26 +1558,6 @@
                 });
             }
 
-            function loadLocalLogs() {
-                try {
-                    var raw = localStorage.getItem(DAILY_LOGS_KEY);
-                    var map = raw ? JSON.parse(raw) : {};
-                    var arr = map && traineeId ? (map[String(traineeId)] || []) : [];
-                    logsCache = Array.isArray(arr) ? arr : [];
-                } catch (e) {
-                    logsCache = [];
-                }
-            }
-            function saveLocalLogs() {
-                if (!traineeId) return;
-                try {
-                    var raw = localStorage.getItem(DAILY_LOGS_KEY);
-                    var map = raw ? JSON.parse(raw) : {};
-                    if (!map || typeof map !== 'object') map = {};
-                    map[String(traineeId)] = logsCache;
-                    localStorage.setItem(DAILY_LOGS_KEY, JSON.stringify(map));
-                } catch (e) {}
-            }
             function renderLogs() {
                 if (!listEl || !emptyEl) return;
                 listEl.innerHTML = '';
@@ -1619,11 +1598,7 @@
 
             async function loadLogsFromSupabase() {
                 var sb = await waitForSupabaseReady(7000);
-                if (!sb || !traineeId) {
-                    loadLocalLogs();
-                    renderLogs();
-                    return;
-                }
+                if (!sb || !traineeId) { logsCache = []; renderLogs(); return; }
                 try {
                     var res = await sb.from('ojt_daily_logs').select('*').eq('trainee_id', traineeId).order('created_at', { ascending: false });
                     if (res && !res.error && Array.isArray(res.data)) {
@@ -1637,12 +1612,10 @@
                                 created_at: r.created_at || ''
                             };
                         });
-                        saveLocalLogs();
                         renderLogs();
                         return;
                     }
-                } catch (e) {}
-                loadLocalLogs();
+                } catch (e) { logsCache = []; }
                 renderLogs();
             }
 
@@ -1698,7 +1671,6 @@
                             photo_url: row.photo_url || photoUrl || '',
                             created_at: row.created_at || new Date().toISOString()
                         });
-                        saveLocalLogs();
                         renderLogs();
                         if (textEl) textEl.value = '';
                         if (photoEl) photoEl.value = '';
