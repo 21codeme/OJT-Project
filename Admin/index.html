@@ -775,6 +775,8 @@
                 } catch (e) {}
             }
 
+            var docsRenderSeq = 0;
+
             function renderDocsIfNeeded(force) {
                 var tabBtn = document.querySelector('.tabs .tab-btn.active');
                 var tab = tabBtn ? tabBtn.getAttribute('data-tab') : 'profile';
@@ -790,13 +792,18 @@
                 }
 
                 var traineeId = selectedTrainee.id || selectedKey;
+                var seq = ++docsRenderSeq;
                 fetchDocumentsForTrainee(traineeId).then(function() {
+                    if (seq !== docsRenderSeq) return;
                     renderDocsInner();
                 }).catch(function() {
+                    if (seq !== docsRenderSeq) return;
                     renderDocsInner();
                 });
 
                 function renderDocsInner() {
+                    // Prevent duplicate rendering when multiple async calls overlap.
+                    if (seq !== docsRenderSeq) return;
                     var docsMap = (docsMapCache && typeof docsMapCache === 'object') ? docsMapCache : {};
                     if (!docsMap || typeof docsMap !== 'object') docsMap = {};
                     var docs = (selectedKey && docsMap[selectedKey]) || (selectedKey && docsMap[String(selectedKey)]) || null;
@@ -820,6 +827,7 @@
                         ['medical', 'Medical Certificate'],
                         ['idPicture', 'ID Picture / Valid ID']
                     ];
+                    docsList.innerHTML = '';
                     order.forEach(function(pair) {
                         adminAppendDocCard(docsList, pair[1], docs[pair[0]]);
                     });
