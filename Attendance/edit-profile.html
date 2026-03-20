@@ -105,6 +105,20 @@
         .file-preview-slot .docx-preview-body ::selection { background: rgba(30,60,114,0.15); }
         .file-preview-note { margin: 0 0 8px; font-size: 0.82rem; color: #666; }
         .file-preview-slot a.doc-dl { color: #1e3c72; font-weight: 700; }
+
+        .btn-delete-doc {
+            margin-top: 10px;
+            display: inline-block;
+            width: 100%;
+            border: 1px solid #ef4444;
+            background: #fff;
+            color: #b91c1c;
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            font-weight: 900;
+        }
+        .btn-delete-doc:hover { background: #fef2f2; }
     </style>
 </head>
 <body>
@@ -247,26 +261,31 @@
                         <label for="editResume">Resume / CV</label>
                         <input type="file" id="editResume" accept="application/pdf,image/*,.pdf">
                         <div id="previewResume" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <button type="button" class="btn-delete-doc" data-doc-key="resume" aria-label="Remove resume">Remove</button>
                     </div>
                     <div class="field">
                         <label for="editEndorsement">Endorsement Letter</label>
                         <input type="file" id="editEndorsement" accept="application/pdf,image/*,.pdf">
                         <div id="previewEndorsement" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <button type="button" class="btn-delete-doc" data-doc-key="endorsement" aria-label="Remove endorsement">Remove</button>
                     </div>
                     <div class="field">
                         <label for="editMOA">MOA</label>
                         <input type="file" id="editMOA" accept="application/pdf,image/*,.pdf">
                         <div id="previewMOA" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <button type="button" class="btn-delete-doc" data-doc-key="moa" aria-label="Remove MOA">Remove</button>
                     </div>
                     <div class="field">
                         <label for="editMedical">Medical Certificate</label>
                         <input type="file" id="editMedical" accept="application/pdf,image/*,.pdf">
                         <div id="previewMedical" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <button type="button" class="btn-delete-doc" data-doc-key="medical" aria-label="Remove medical certificate">Remove</button>
                     </div>
                     <div class="field full">
                         <label for="editIdPicture">ID Picture / Valid ID</label>
                         <input type="file" id="editIdPicture" accept="image/*">
                         <div id="previewIdPicture" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <button type="button" class="btn-delete-doc" data-doc-key="idPicture" aria-label="Remove ID picture">Remove</button>
                     </div>
                 </div>
 
@@ -673,6 +692,94 @@
                     if (prevEl) renderPreviewInto(prevEl, entry);
                 });
             })();
+
+            function resetDocSlotUI(slotKey) {
+                DOC_SLOTS.forEach(function(slot) {
+                    if (slot.key !== slotKey) return;
+                    var input = document.getElementById(slot.inputId);
+                    var prevEl = document.getElementById(slot.previewId);
+                    if (input) input.value = '';
+                    if (prevEl) {
+                        prevEl.classList.add('empty');
+                        prevEl.innerHTML = 'Walang napiling file — lalabas dito ang preview.';
+                    }
+                });
+                serverDocMetaByType[slotKey] = null;
+            }
+
+            function clearLocalDoc(slotKey) {
+                try {
+                    var raw = localStorage.getItem('ojt_trainee_documents');
+                    var map = raw ? JSON.parse(raw) : {};
+                    if (map && typeof map === 'object') {
+                        delete map[slotKey];
+                        localStorage.setItem('ojt_trainee_documents', JSON.stringify(map));
+                    }
+                } catch (e) {}
+            }
+
+            function attachDeleteHandlers() {
+                var delBtns = document.querySelectorAll('[data-doc-key]');
+                delBtns.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var slotKey = this.getAttribute('data-doc-key');
+                        if (!slotKey) return;
+                        if (!confirm('Remove this document?')) return;
+
+                        resetDocSlotUI(slotKey);
+                        clearLocalDoc(slotKey);
+
+                        var tId = null;
+                        try { tId = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
+                        if (!tId || !window.supabaseClient) return;
+
+                        var sb = window.supabaseClient;
+                        // 1) Delete DB row
+                        sb.from('ojt_trainee_documents')
+                            .delete()
+                            .eq('trainee_id', tId)
+                            .eq('doc_type', slotKey)
+                            .then(function() {
+                                // 2) Delete Storage objects under {trainee_id}/{doc_type}*
+                                return sb.storage.from(OJT_DOCS_BUCKET).list(tId, { limit: 1000 });
+                            })
+                            .then(function(listRes) {
+                                var items = listRes && listRes.data ? listRes.data : [];
+                                var names = [];
+                                items.forEach(function(it) {
+                                    if (!it || !it.name) return;
+                                    if (String(it.name).indexOf(slotKey) === 0) {
+                                        names.push(tId + '/' + it.name);
+                                    }
+                                });
+                                if (!names.length) return Promise.resolve();
+                                return sb.storage.from(OJT_DOCS_BUCKET).remove(names);
+                            })
+                            .then(function() {
+                                if (slotKey === 'idPicture') {
+                                    return sb.from('ojt_trainees').update({ picture_url: null }).eq('id', tId);
+                                }
+                                return Promise.resolve();
+                            })
+                            .catch(function(err) {
+                                console.warn('[OJT] Remove failed (DB/Storage).', err);
+                            });
+
+                        if (slotKey === 'idPicture') {
+                            try {
+                                var profRaw = localStorage.getItem('ojt_trainee_profile');
+                                if (profRaw) {
+                                    var prof = JSON.parse(profRaw);
+                                    prof.pictureUrl = null;
+                                    localStorage.setItem('ojt_trainee_profile', JSON.stringify(prof));
+                                }
+                            } catch (e) {}
+                        }
+                    });
+                });
+            }
+
+            attachDeleteHandlers();
 
             function hydrateDocPreviewsFromSupabase() {
                 var tid = null;
