@@ -821,6 +821,13 @@
                     window.location.href = 'dashboard.html';
                 };
 
+                function supabaseErrText(err) {
+                    if (!err) return '';
+                    if (typeof err === 'string') return err;
+                    if (err.message) return err.message + (err.details ? ' — ' + err.details : '');
+                    try { return JSON.stringify(err); } catch (e) { return String(err); }
+                }
+
                 buildDocs().then(function(docsMeta) {
                     waitForSupabase(10000).then(function(sb) {
                         if (!sb || !traineeId) {
@@ -828,6 +835,10 @@
                             finish();
                             return;
                         }
+
+                        var emailResolved = (updated.email || '').trim();
+                        if (!emailResolved && stored && stored.email) emailResolved = String(stored.email).trim();
+                        if (!emailResolved) emailResolved = '';
 
                         var uploadTasks = [];
                         DOC_SLOTS.forEach(function(slot) {
@@ -852,55 +863,78 @@
                             );
                         });
 
-                        Promise.all(uploadTasks)
-                            .then(function() {
-                                if (docsMeta.idPicture && docsMeta.idPicture.publicUrl && docsMeta.idPicture.kind === 'image') {
-                                    updated.pictureUrl = docsMeta.idPicture.publicUrl;
-                                }
-                                return sb.from('ojt_trainees').update({
-                                    email: updated.email || null,
-                                    username: updated.username || null,
-                                    full_name: updated.fullName || null,
-                                    student_id: updated.studentId || null,
-                                    course: updated.course || null,
-                                    year_level: updated.yearLevel || null,
-                                    school_name: updated.schoolName || null,
-                                    department: updated.department || null,
-                                    coordinator: updated.coordinator || null,
-                                    company_name: updated.companyName || null,
-                                    company_address: updated.companyAddress || null,
-                                    supervisor: updated.supervisor || null,
-                                    position_role: updated.positionRole || null,
-                                    contact_number: updated.contactNumber || null,
-                                    emergency_contact: updated.emergencyContact || null,
-                                    training_hours: updated.trainingHours || null,
-                                    start_date: updated.startDate || null,
-                                    end_date: updated.endDate || null,
-                                    picture_url: updated.pictureUrl || null,
-                                    updated_at: new Date().toISOString()
-                                }).eq('id', traineeId).then(function(up) {
-                                    if (up && up.error) return Promise.reject(up.error);
-                                });
-                            })
-                            .then(function() {
-                                var light = {};
-                                Object.keys(docsMeta).forEach(function(k) {
-                                    var m = docsMeta[k];
-                                    if (!m || typeof m !== 'object') return;
-                                    var L = docMetaToLight(m);
-                                    if (L && (L.publicUrl || L.html)) light[k] = L;
-                                });
-                                try {
-                                    localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
-                                    localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
-                                } catch (err) {}
-                                finish();
-                            })
-                            .catch(function(err) {
+                        function runTraineeUpdate() {
+                            if (docsMeta.idPicture && docsMeta.idPicture.publicUrl && docsMeta.idPicture.kind === 'image') {
+                                updated.pictureUrl = docsMeta.idPicture.publicUrl;
+                            }
+                            return sb.from('ojt_trainees').update({
+                                email: emailResolved,
+                                username: updated.username || null,
+                                full_name: updated.fullName || null,
+                                student_id: updated.studentId || null,
+                                course: updated.course || null,
+                                year_level: updated.yearLevel || null,
+                                school_name: updated.schoolName || null,
+                                department: updated.department || null,
+                                coordinator: updated.coordinator || null,
+                                company_name: updated.companyName || null,
+                                company_address: updated.companyAddress || null,
+                                supervisor: updated.supervisor || null,
+                                position_role: updated.positionRole || null,
+                                contact_number: updated.contactNumber || null,
+                                emergency_contact: updated.emergencyContact || null,
+                                training_hours: updated.trainingHours || null,
+                                start_date: updated.startDate || null,
+                                end_date: updated.endDate || null,
+                                picture_url: updated.pictureUrl || null,
+                                updated_at: new Date().toISOString()
+                            }).eq('id', traineeId).then(function(up) {
+                                if (up && up.error) return Promise.reject(up.error);
+                            });
+                        }
+
+                        function persistLocalAndFinish() {
+                            var light = {};
+                            Object.keys(docsMeta).forEach(function(k) {
+                                var m = docsMeta[k];
+                                if (!m || typeof m !== 'object') return;
+                                var L = docMetaToLight(m);
+                                if (L && (L.publicUrl || L.html)) light[k] = L;
+                            });
+                            try {
+                                updated.email = emailResolved;
+                                localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
+                                localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
+                            } catch (err) {}
+                            finish();
+                        }
+
+                        var hadUploads = uploadTasks.length > 0;
+
+                        if (!hadUploads) {
+                            runTraineeUpdate().then(persistLocalAndFinish).catch(function(err) {
                                 console.error(err);
-                                alert('May error sa Supabase (Storage o DB). Gawin ang bucket na ojt-trainee-documents (public) at i-run ang database/ojt-documents-storage.sql. Pag offline, naka-cache nang lokal.');
+                                alert('Hindi na-save ang profile sa database:\n' + supabaseErrText(err) + '\n\nKung nakita mo ang tungkol sa NULL / email, panatilihing may laman ang Email.');
                                 saveLocalFallback(docsMeta);
                                 finish();
+                            });
+                            return;
+                        }
+
+                        Promise.all(uploadTasks)
+                            .then(function() {
+                                return runTraineeUpdate();
+                            })
+                            .then(persistLocalAndFinish)
+                            .catch(function(err) {
+                                console.error(err);
+                                alert('Hindi na-upload ang dokumento sa Storage o hindi na-save ang metadata:\n' + supabaseErrText(err) + '\n\nSinusubukang i-save ang profile nang walang bagong file…\n\nKung "Bucket not found": gawin ang public bucket na ojt-trainee-documents at i-run ang database/ojt-documents-storage.sql sa Supabase.');
+                                runTraineeUpdate().then(persistLocalAndFinish).catch(function(err2) {
+                                    console.error(err2);
+                                    alert('Hindi pa rin na-save ang profile:\n' + supabaseErrText(err2));
+                                    saveLocalFallback(docsMeta);
+                                    finish();
+                                });
                             });
                     });
                 });
