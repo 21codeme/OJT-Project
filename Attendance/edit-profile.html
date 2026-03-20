@@ -408,6 +408,8 @@
             ];
 
             var OJT_DOCS_BUCKET = 'ojt-trainee-documents';
+            /** Max na chars ng base64 data URL na ise-save sa DB kung walang Storage (para makita ng admin). */
+            var OJT_DOC_INLINE_MAX_CHARS = 900000;
             var serverDocMetaByType = {};
 
             function waitForSupabase(maxMs) {
@@ -464,7 +466,8 @@
                             kind: j.kind,
                             publicUrl: j.publicUrl,
                             mimeType: j.mimeType,
-                            html: j.html
+                            html: j.html,
+                            dataUrl: j.dataUrl
                         };
                     }
                 } catch (e) {}
@@ -840,6 +843,30 @@
                         if (!emailResolved && stored && stored.email) emailResolved = String(stored.email).trim();
                         if (!emailResolved) emailResolved = '';
 
+                        var storageUploadSkipped = false;
+
+                        function inlineFileDataForDb(meta) {
+                            var o = { kind: meta.kind, mimeType: meta.mimeType, inlineFallback: true };
+                            if (meta.html) o.html = meta.html;
+                            if (meta.dataUrl && meta.dataUrl.length <= OJT_DOC_INLINE_MAX_CHARS) o.dataUrl = meta.dataUrl;
+                            return o;
+                        }
+
+                        function upsertDocInlineOnly(slotKey, meta) {
+                            var pay = inlineFileDataForDb(meta);
+                            if (!pay.html && !pay.dataUrl) return Promise.resolve();
+                            var json = JSON.stringify(pay);
+                            if (json.length > 1950000) return Promise.resolve();
+                            return sb.from('ojt_trainee_documents').upsert({
+                                trainee_id: traineeId,
+                                doc_type: slotKey,
+                                file_name: meta.fileName,
+                                file_data: json
+                            }, { onConflict: 'trainee_id,doc_type' }).then(function(ins) {
+                                if (ins && ins.error) console.warn('ojt_trainee_documents inline upsert:', ins.error);
+                            });
+                        }
+
                         var uploadTasks = [];
                         DOC_SLOTS.forEach(function(slot) {
                             var input = document.getElementById(slot.inputId);
@@ -859,14 +886,23 @@
                                     }, { onConflict: 'trainee_id,doc_type' }).then(function(ins) {
                                         if (ins && ins.error) return Promise.reject(ins.error);
                                     });
+                                }).catch(function(err) {
+                                    console.warn('OJT Storage failed (' + slot.key + '), trying DB inline:', err);
+                                    storageUploadSkipped = true;
+                                    return upsertDocInlineOnly(slot.key, meta);
                                 })
                             );
                         });
 
+                        function applyProfilePictureFromDocs() {
+                            var id = docsMeta.idPicture;
+                            if (!id || id.kind !== 'image') return;
+                            if (id.publicUrl) updated.pictureUrl = id.publicUrl;
+                            else if (id.dataUrl) updated.pictureUrl = id.dataUrl;
+                        }
+
                         function runTraineeUpdate() {
-                            if (docsMeta.idPicture && docsMeta.idPicture.publicUrl && docsMeta.idPicture.kind === 'image') {
-                                updated.pictureUrl = docsMeta.idPicture.publicUrl;
-                            }
+                            applyProfilePictureFromDocs();
                             return sb.from('ojt_trainees').update({
                                 email: emailResolved,
                                 username: updated.username || null,
@@ -900,41 +936,41 @@
                                 if (!m || typeof m !== 'object') return;
                                 var L = docMetaToLight(m);
                                 if (L && (L.publicUrl || L.html)) light[k] = L;
+                                else if (m.dataUrl) {
+                                    light[k] = {
+                                        fileName: m.fileName,
+                                        kind: m.kind,
+                                        mimeType: m.mimeType,
+                                        dataUrl: m.dataUrl,
+                                        html: m.html
+                                    };
+                                }
                             });
                             try {
                                 updated.email = emailResolved;
                                 localStorage.setItem('ojt_trainee_profile', JSON.stringify(updated));
                                 localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
                             } catch (err) {}
-                            finish();
-                        }
-
-                        var hadUploads = uploadTasks.length > 0;
-
-                        if (!hadUploads) {
-                            runTraineeUpdate().then(persistLocalAndFinish).catch(function(err) {
-                                console.error(err);
-                                alert('Hindi na-save ang profile sa database:\n' + supabaseErrText(err) + '\n\nKung nakita mo ang tungkol sa NULL / email, panatilihing may laman ang Email.');
-                                saveLocalFallback(docsMeta);
-                                finish();
-                            });
-                            return;
+                            if (storageUploadSkipped) {
+                                alert('Profile updated!\n\nStorage (bucket) ay hindi available — ang maliit na dokumento ay maaaring naka-save sa database para makita ng admin; malaking PDF ay browser lamang. Gawin ang public bucket na ojt-trainee-documents + ojt-documents-storage.sql para sa tamang cloud storage.');
+                            } else {
+                                alert('Profile updated!');
+                            }
+                            window.location.href = 'dashboard.html';
                         }
 
                         Promise.all(uploadTasks)
                             .then(function() {
                                 return runTraineeUpdate();
                             })
-                            .then(persistLocalAndFinish)
+                            .then(function() {
+                                persistLocalAndFinish();
+                            })
                             .catch(function(err) {
                                 console.error(err);
-                                alert('Hindi na-upload ang dokumento sa Storage o hindi na-save ang metadata:\n' + supabaseErrText(err) + '\n\nSinusubukang i-save ang profile nang walang bagong file…\n\nKung "Bucket not found": gawin ang public bucket na ojt-trainee-documents at i-run ang database/ojt-documents-storage.sql sa Supabase.');
-                                runTraineeUpdate().then(persistLocalAndFinish).catch(function(err2) {
-                                    console.error(err2);
-                                    alert('Hindi pa rin na-save ang profile:\n' + supabaseErrText(err2));
-                                    saveLocalFallback(docsMeta);
-                                    finish();
-                                });
+                                alert('Hindi na-save ang profile sa database:\n' + supabaseErrText(err) + '\n\nKung nakita mo ang tungkol sa NULL / email, panatilihing may laman ang Email.');
+                                saveLocalFallback(docsMeta);
+                                finish();
                             });
                     });
                 });
