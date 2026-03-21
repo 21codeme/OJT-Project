@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OJT Trainee - Occidental Mindoro State College</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../config.js"></script>
     <style>
@@ -241,6 +244,72 @@
         .modal-box .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .modal-box .btn-cancel { padding: 10px 18px; border: 1px solid #d7dbe0; border-radius: 10px; background: #fff; font-weight: 700; cursor: pointer; }
         .modal-box .btn-confirm { padding: 10px 18px; border: none; border-radius: 10px; background: #22c55e; color: #fff; font-weight: 700; cursor: pointer; }
+        /* Trainee certificate preview (matches Admin certificate layout) */
+        .trainee-cert-toolbar { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .trainee-cert-dl-label { font-weight: 700; color: #1e3c72; font-size: 0.92rem; margin-right: 4px; }
+        .btn-trainee-cert-dl {
+            padding: 10px 18px; border: none; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.9rem;
+            background: linear-gradient(180deg, #1e3c72 0%, #163059 100%); color: #fff;
+            box-shadow: 0 1px 2px rgba(30, 60, 114, 0.22);
+        }
+        .btn-trainee-cert-dl:hover { filter: brightness(1.06); }
+        .btn-trainee-cert-dl:disabled { opacity: 0.55; cursor: not-allowed; filter: none; }
+        .btn-trainee-cert-dl-secondary {
+            background: #fff; color: #1e3c72; border: 2px solid #1e3c72;
+            box-shadow: none;
+        }
+        .btn-trainee-cert-dl-secondary:hover { background: rgba(30, 60, 114, 0.06); }
+        .trainee-cert-size-note { font-size: 0.82rem; color: #64748b; margin: 0 0 14px; max-width: 52rem; line-height: 1.45; }
+        .trainee-cert-wait-card {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 22px 24px; max-width: 40rem;
+            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06); color: #334155; font-size: 0.98rem; line-height: 1.55;
+        }
+        .trainee-cert-wait-card strong { color: #1e3c72; }
+        .ojt-cert-print-root { max-width: 1000px; margin: 0 auto; }
+        .ojt-cert-sheet { position: relative; width: 100%; line-height: 0; border-radius: 4px; overflow: hidden; box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12); }
+        .ojt-cert-bg { display: block; width: 100%; height: auto; vertical-align: top; }
+        .ojt-cert-layer {
+            position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding: clamp(26%, 28vw, 30%) 9% 7.5% 9%; box-sizing: border-box; pointer-events: none; background: transparent;
+        }
+        .ojt-cert-stack {
+            pointer-events: auto; width: 100%; max-width: 52rem; display: flex; flex-direction: column; align-items: center;
+            text-align: center; gap: clamp(12px, 2.2vw, 20px); margin: 0; padding: 0;
+        }
+        .ojt-cert-name-wrap { display: inline-block; width: max-content; max-width: 100%; box-sizing: border-box; }
+        .ojt-cert-name {
+            font-family: 'Great Vibes', cursive; font-size: clamp(2rem, 5.2vw, 2.85rem); color: #002d62; font-weight: 400; line-height: 1.15;
+            display: block; border-bottom: 1.5px solid #002d62; padding-bottom: 8px; margin: 0; text-align: center;
+            word-wrap: break-word; overflow-wrap: break-word; max-width: min(100%, 28em);
+        }
+        .ojt-cert-prose { width: 100%; max-width: 40em; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.28em; }
+        .ojt-cert-body {
+            font-family: 'Roboto Condensed', 'Segoe UI', sans-serif; font-size: clamp(0.8rem, 1.65vw, 0.98rem); font-weight: 400;
+            line-height: 1.5; color: #002d62; margin: 0; max-width: 40em;
+        }
+        .ojt-cert-body strong { font-weight: 700; color: #001f44; }
+        .ojt-cert-date-line {
+            font-family: 'Roboto Condensed', 'Segoe UI', sans-serif; font-size: clamp(0.8rem, 1.65vw, 0.98rem);
+            font-weight: 400; line-height: 1.45; color: #002d62; margin: 0;
+        }
+        .ojt-cert-date-line strong { font-weight: 700; color: #001f44; }
+        .ojt-cert-sig-row {
+            display: flex; width: 100%; justify-content: space-between; align-items: flex-end;
+            gap: clamp(14px, 4vw, 36px); margin-top: clamp(8px, 1.5vw, 16px);
+        }
+        .ojt-cert-sig-col { flex: 1; min-width: 0; max-width: 46%; display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .ojt-cert-sig-head { display: inline-block; max-width: 100%; vertical-align: top; }
+        .ojt-cert-sig-line { width: 100%; margin: 0 0 10px; border: none; border-top: 2px solid #002d62; height: 0; box-sizing: border-box; }
+        .ojt-cert-sig-name {
+            font-family: 'Roboto Condensed', 'Segoe UI', sans-serif; font-weight: 700; font-size: clamp(0.95rem, 2.35vw, 1.22rem);
+            letter-spacing: 0.08em; color: #002d62; text-transform: uppercase; margin: 0; line-height: 1.2;
+            text-align: center; word-wrap: break-word; overflow-wrap: break-word;
+        }
+        .ojt-cert-sig-pos {
+            font-family: 'Roboto Condensed', 'Segoe UI', sans-serif; font-size: clamp(0.58rem, 1.15vw, 0.72rem);
+            font-weight: 400; color: #002d62; margin: 6px 0 0; line-height: 1.35; max-width: 100%;
+        }
         @media (max-width: 980px) { .dailylogs-wrap { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -258,6 +327,7 @@
             <button type="button" class="nav-btn" data-section="documents">Documents</button>
             <button type="button" class="nav-btn" data-section="attendance">Attendance</button>
             <button type="button" class="nav-btn" data-section="dailylogs">Daily Logs</button>
+            <button type="button" class="nav-btn" data-section="certificate">Certificate</button>
             <button type="button" class="nav-btn btn-edit-profile" id="btnEditProfile">Edit Profile</button>
             <button type="button" class="btn-logout" id="btnLogout">Log out</button>
         </nav>
@@ -577,10 +647,63 @@
                 </div>
             </div>
         </section>
+
+        <section id="section-certificate" class="section">
+            <h2>OJT Certificate of Completion</h2>
+            <p id="traineeCertLeadPending" class="placeholder-content" style="padding-top:0;margin-bottom:14px;display:none;">Your certificate will appear here after the OJT coordinator / admin has <strong>submitted</strong> it in the admin panel. Please check back later.</p>
+            <p id="traineeCertLeadReady" class="placeholder-content" style="padding-top:0;margin-bottom:14px;display:none;">Preview uses your profile data. Download as <strong>PNG</strong> (image) or <strong>PDF</strong> (A4 landscape).</p>
+            <div id="traineeCertBlock" style="display:none;">
+                <div class="trainee-cert-toolbar">
+                    <span class="trainee-cert-dl-label">Download</span>
+                    <button type="button" class="btn-trainee-cert-dl" id="btnTraineeCertPng" title="Save as PNG image">PNG image</button>
+                    <button type="button" class="btn-trainee-cert-dl btn-trainee-cert-dl-secondary" id="btnTraineeCertPdf" title="Save as PDF (A4 landscape)">PDF</button>
+                </div>
+                <p id="traineeCertExportSize" class="trainee-cert-size-note" aria-live="polite">PNG: dimensions in pixels = 2× your on-screen preview (max width ~1000px → ~2000px wide). Exact size is shown after each download. PDF: one page, A4 landscape (297 × 210 mm).</p>
+                <div id="traineeCertificatePrintArea" class="ojt-cert-print-root">
+                    <div class="ojt-cert-sheet">
+                        <img class="ojt-cert-bg" src="../OJT%20CERTIFICATE%20(1).png" alt="">
+                        <div class="ojt-cert-layer">
+                            <div class="ojt-cert-stack">
+                                <span class="ojt-cert-name-wrap"><span id="traineeCertName" class="ojt-cert-name"></span></span>
+                                <div class="ojt-cert-prose">
+                                    <p id="traineeCertBody" class="ojt-cert-body"></p>
+                                    <p id="traineeCertDate" class="ojt-cert-date-line"></p>
+                                </div>
+                                <div class="ojt-cert-sig-row">
+                                    <div class="ojt-cert-sig-col">
+                                        <div class="ojt-cert-sig-head">
+                                            <div class="ojt-cert-sig-line" aria-hidden="true"></div>
+                                            <p class="ojt-cert-sig-name" id="traineeCertCoordName"></p>
+                                        </div>
+                                        <p class="ojt-cert-sig-pos" id="traineeCertCoordPos"></p>
+                                    </div>
+                                    <div class="ojt-cert-sig-col">
+                                        <div class="ojt-cert-sig-head">
+                                            <div class="ojt-cert-sig-line" aria-hidden="true"></div>
+                                            <p class="ojt-cert-sig-name" id="traineeCertSupName"></p>
+                                        </div>
+                                        <p class="ojt-cert-sig-pos" id="traineeCertSupPos"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p id="traineeCertPlaceholder" class="placeholder-content" style="display:none;">Complete your profile first. Your certificate will show here after the admin submits it.</p>
+        </section>
     </main>
 
+    <script src="certificate-bg-inline.js"></script>
     <script>
         (function() {
+            if (location.protocol === 'file:' && window.__OJT_CERTIFICATE_BG_DATA_URL__) {
+                var _certBg = document.querySelector('#traineeCertificatePrintArea .ojt-cert-bg');
+                if (_certBg) {
+                    _certBg.removeAttribute('crossorigin');
+                    _certBg.src = window.__OJT_CERTIFICATE_BG_DATA_URL__;
+                }
+            }
             var navBtns = document.querySelectorAll('.nav-btn[data-section]');
             var sections = document.querySelectorAll('.section');
             function showSection(sectionId) {
@@ -590,6 +713,20 @@
                 var btn = document.querySelector('.nav-btn[data-section="' + sectionId + '"]');
                 if (sectionEl) sectionEl.classList.add('active');
                 if (btn) btn.classList.add('active');
+                if (sectionId === 'certificate' && typeof renderTraineeCertificate === 'function') renderTraineeCertificate();
+                if (sectionId === 'certificate') {
+                    var sb = window.supabaseClient;
+                    var tid = traineeId;
+                    if (sb && tid && typeof renderTraineeCertificate === 'function') {
+                        sb.from('ojt_trainees').select('certificate_submitted_at').eq('id', tid).maybeSingle().then(function(res) {
+                            if (res && res.data && stored) {
+                                stored.certificateSubmittedAt = res.data.certificate_submitted_at || null;
+                                try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(stored)); } catch (e) {}
+                                renderTraineeCertificate();
+                            }
+                        });
+                    }
+                }
             }
             navBtns.forEach(function(btn) {
                 btn.addEventListener('click', function() {
@@ -604,11 +741,161 @@
             var traineeId = null;
             try {
                 var raw = localStorage.getItem('ojt_trainee_profile');
-                if (raw) stored = JSON.parse(raw);
+                if (raw) {
+                    stored = JSON.parse(raw);
+                    if (stored && stored.certificateSubmittedAt === undefined) stored.certificateSubmittedAt = null;
+                }
                 traineeId = localStorage.getItem('ojt_trainee_id');
             } catch (e) {}
+
+            function escapeHtmlCert(s) {
+                if (s == null) return '';
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+            function numberToEnglishWords(n) {
+                n = Math.floor(Number(n));
+                if (isNaN(n) || n < 0) return '';
+                if (n > 999999) return String(n);
+                var a = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+                var b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+                function under100(x) {
+                    if (x < 20) return a[x];
+                    var t = Math.floor(x / 10);
+                    var o = x % 10;
+                    return b[t] + (o ? '-' + a[o] : '');
+                }
+                function under1000(x) {
+                    if (x < 100) return under100(x);
+                    var h = Math.floor(x / 100);
+                    var r = x % 100;
+                    return a[h] + ' hundred' + (r ? ' ' + (r < 20 ? a[r] : under100(r)) : '');
+                }
+                if (n === 0) return 'zero';
+                if (n < 1000) return under1000(n);
+                if (n < 1000000) {
+                    var k = Math.floor(n / 1000);
+                    var r = n % 1000;
+                    return under1000(k) + ' thousand' + (r ? ' ' + under1000(r) : '');
+                }
+                return String(n);
+            }
+            function ordinalEnglishDay(n) {
+                n = Math.floor(Number(n));
+                if (isNaN(n)) return '';
+                var j = n % 10;
+                var k = n % 100;
+                if (j === 1 && k !== 11) return n + 'st';
+                if (j === 2 && k !== 12) return n + 'nd';
+                if (j === 3 && k !== 13) return n + 'rd';
+                return n + 'th';
+            }
+            function parseTraineeDateStr(s) {
+                if (!s || s === '—') return null;
+                var str = String(s).trim();
+                var m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+                var d = new Date(str);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            function buildCertificatePlace(t) {
+                function norm(v) {
+                    if (v == null) return '';
+                    var s = String(v).trim();
+                    if (s === '' || s === '—') return '';
+                    return s;
+                }
+                var school = norm(t.schoolName);
+                var addr = norm(t.companyAddress);
+                var comp = norm(t.companyName);
+                var DEFAULT_SCHOOL = 'Occidental Mindoro State College';
+                var tailParts = [];
+                if (addr) tailParts.push(addr);
+                if (comp) tailParts.push(comp);
+                var tail = tailParts.join(', ');
+                if (school && tail) return school + ' – ' + tail;
+                if (school) return school;
+                if (tail) return tail;
+                return DEFAULT_SCHOOL;
+            }
+            function trainingHoursCertificatePhrase(t) {
+                var raw = t && t.trainingHours;
+                if (raw === null || raw === undefined || raw === '' || String(raw).trim() === '—') {
+                    return '—';
+                }
+                var numH;
+                if (typeof raw === 'number' && !isNaN(raw)) {
+                    numH = Math.floor(Math.abs(raw));
+                } else {
+                    var digits = String(raw).replace(/[^\d]/g, '');
+                    numH = digits ? parseInt(digits, 10) : NaN;
+                }
+                if (!isNaN(numH) && numH >= 0) {
+                    return numberToEnglishWords(numH) + ' (' + numH + ')';
+                }
+                return String(raw).trim();
+            }
+            function fillTraineeCertificate(t) {
+                var nameEl = document.getElementById('traineeCertName');
+                var bodyEl = document.getElementById('traineeCertBody');
+                var dateEl = document.getElementById('traineeCertDate');
+                var coordN = document.getElementById('traineeCertCoordName');
+                var coordP = document.getElementById('traineeCertCoordPos');
+                var supN = document.getElementById('traineeCertSupName');
+                var supP = document.getElementById('traineeCertSupPos');
+                if (!nameEl || !bodyEl || !dateEl || !coordN || !coordP || !supN || !supP) return;
+                nameEl.textContent = (t.fullName && String(t.fullName).trim()) ? String(t.fullName).trim() : '—';
+                var wordsPhrase = trainingHoursCertificatePhrase(t);
+                var place = buildCertificatePlace(t);
+                var issueDate = parseTraineeDateStr(t.endDate) || parseTraineeDateStr(t.startDate) || new Date();
+                var dayOrd = ordinalEnglishDay(issueDate.getDate());
+                var monthLong = issueDate.toLocaleString('en-US', { month: 'long' });
+                var year = issueDate.getFullYear();
+                bodyEl.innerHTML = 'This certificate is awarded for the successful completion of <strong>' + escapeHtmlCert(wordsPhrase) + ' hours of On-the-Job Training</strong> at the <strong>' + escapeHtmlCert(place) + '</strong>.';
+                dateEl.innerHTML = 'Given this <strong>' + escapeHtmlCert(dayOrd) + '</strong> day of <strong>' + escapeHtmlCert(monthLong + ' ' + year) + '</strong>.';
+                coordN.textContent = (t.coordinator && String(t.coordinator).trim() && t.coordinator !== '—') ? String(t.coordinator).trim().toUpperCase() : '—';
+                coordP.textContent = 'OJT Coordinator / Adviser';
+                supN.textContent = (t.supervisor && String(t.supervisor).trim() && t.supervisor !== '—') ? String(t.supervisor).trim().toUpperCase() : '—';
+                var posRole = (t.positionRole && String(t.positionRole).trim() && t.positionRole !== '—') ? String(t.positionRole).trim() : '';
+                supP.textContent = posRole || 'Supervisor / Mentor';
+            }
+            function isTraineeCertificateReleased() {
+                return !!(stored && stored.certificateSubmittedAt);
+            }
+
+            function renderTraineeCertificate() {
+                var block = document.getElementById('traineeCertBlock');
+                var ph = document.getElementById('traineeCertPlaceholder');
+                var leadPending = document.getElementById('traineeCertLeadPending');
+                var leadReady = document.getElementById('traineeCertLeadReady');
+                if (!stored) {
+                    if (block) block.style.display = 'none';
+                    if (ph) ph.style.display = 'block';
+                    if (leadPending) leadPending.style.display = 'none';
+                    if (leadReady) leadReady.style.display = 'none';
+                    return;
+                }
+                if (ph) ph.style.display = 'none';
+                if (!isTraineeCertificateReleased()) {
+                    if (block) block.style.display = 'none';
+                    if (leadPending) leadPending.style.display = 'block';
+                    if (leadReady) leadReady.style.display = 'none';
+                    return;
+                }
+                if (leadPending) leadPending.style.display = 'none';
+                if (leadReady) leadReady.style.display = 'block';
+                if (block) block.style.display = 'block';
+                fillTraineeCertificate(stored);
+            }
+
             function applyProfileToUI() {
-                if (!stored) return;
+                if (!stored) {
+                    renderTraineeCertificate();
+                    return;
+                }
                 if (stored.fullName) document.getElementById('profileFullName').textContent = stored.fullName;
                 if (stored.email) document.getElementById('profileEmail').textContent = stored.email;
                 if (stored.username) document.getElementById('profileUsername').textContent = stored.username;
@@ -628,6 +915,7 @@
                 if (stored.contactNumber) document.getElementById('profileContactNumber').textContent = stored.contactNumber;
                 if (stored.emergencyContact) document.getElementById('profileEmergencyContact').textContent = stored.emergencyContact;
                 if (stored.pictureUrl) document.getElementById('profilePicture').src = stored.pictureUrl;
+                renderTraineeCertificate();
             }
             applyProfileToUI();
 
@@ -854,7 +1142,8 @@
                             trainingHours: row.training_hours || '—',
                             startDate: row.start_date || '—',
                             endDate: row.end_date || '—',
-                            pictureUrl: row.picture_url || null
+                            pictureUrl: row.picture_url || null,
+                            certificateSubmittedAt: row.certificate_submitted_at || null
                         };
                         localStorage.setItem('ojt_trainee_profile', JSON.stringify(stored));
                         applyProfileToUI();
@@ -910,6 +1199,173 @@
                         return;
                     }
                     window.location.href = 'edit-profile.html';
+                });
+            }
+
+            var CERT_CAPTURE_SCALE = 2;
+
+            function loadHtml2CanvasScript(cb) {
+                if (typeof html2canvas !== 'undefined') {
+                    cb();
+                    return;
+                }
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                s.onload = function() { cb(); };
+                s.onerror = function() {
+                    alert('Could not load the image export library. Check your network and try again.');
+                    setTraineeCertExportBusy(false);
+                };
+                document.head.appendChild(s);
+            }
+
+            function loadJsPdf(cb) {
+                if ((window.jspdf && window.jspdf.jsPDF) || window.jsPDF) {
+                    cb();
+                    return;
+                }
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                s.onload = function() { cb(); };
+                s.onerror = function() {
+                    alert('Could not load the PDF library. Check your network and try again.');
+                    setTraineeCertExportBusy(false);
+                };
+                document.head.appendChild(s);
+            }
+
+            function certDownloadBaseName() {
+                if (!stored) return 'trainee';
+                var raw = (stored.studentId || stored.fullName || 'trainee').toString();
+                return raw.replace(/[^\w\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 48) || 'trainee';
+            }
+
+            function setTraineeCertExportBusy(busy) {
+                var btnPng = document.getElementById('btnTraineeCertPng');
+                var btnPdf = document.getElementById('btnTraineeCertPdf');
+                if (btnPng) btnPng.disabled = !!busy;
+                if (btnPdf) btnPdf.disabled = !!busy;
+            }
+
+            function waitForFontsThen(fn) {
+                var p = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+                p.then(function() {
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(fn);
+                    });
+                });
+            }
+
+            function runTraineeCertExport(kind) {
+                var el = document.getElementById('traineeCertificatePrintArea');
+                var sizeNote = document.getElementById('traineeCertExportSize');
+                if (!stored) {
+                    alert('Complete your profile first.');
+                    return;
+                }
+                if (!isTraineeCertificateReleased()) {
+                    alert('Your certificate is not available yet. It will appear after the OJT coordinator submits it from the admin panel.');
+                    return;
+                }
+                if (!el) return;
+                if (location.protocol === 'file:' && !window.__OJT_CERTIFICATE_BG_DATA_URL__) {
+                    alert('Could not load certificate-bg-inline.js (same folder as this page). PNG/PDF export needs that file when opening dashboard.html as a local file.');
+                    return;
+                }
+                setTraineeCertExportBusy(true);
+                waitForFontsThen(function() {
+                loadHtml2CanvasScript(function() {
+                    if (typeof html2canvas === 'undefined') {
+                        setTraineeCertExportBusy(false);
+                        return;
+                    }
+                    var isDataBg = false;
+                    var bgImg = el.querySelector('.ojt-cert-bg');
+                    if (bgImg && bgImg.src && bgImg.src.indexOf('data:') === 0) isDataBg = true;
+                    html2canvas(el, {
+                        scale: CERT_CAPTURE_SCALE,
+                        useCORS: !isDataBg,
+                        allowTaint: false,
+                        logging: false,
+                        backgroundColor: '#ffffff',
+                        imageTimeout: 20000,
+                        onclone: function(clonedDoc) {
+                            if (location.protocol !== 'file:' || !window.__OJT_CERTIFICATE_BG_DATA_URL__) return;
+                            var ci = clonedDoc.querySelector('#traineeCertificatePrintArea .ojt-cert-bg') || clonedDoc.querySelector('.ojt-cert-bg');
+                            if (ci) {
+                                ci.removeAttribute('crossorigin');
+                                ci.src = window.__OJT_CERTIFICATE_BG_DATA_URL__;
+                            }
+                        }
+                    }).then(function(canvas) {
+                        var base = certDownloadBaseName();
+                        if (sizeNote) {
+                            sizeNote.textContent = 'Last PNG: ' + canvas.width + ' × ' + canvas.height + ' px (capture at ' + CERT_CAPTURE_SCALE + '×). PDF: A4 landscape, 297 × 210 mm — image scaled to fit.';
+                        }
+                        if (kind === 'png') {
+                            var a = document.createElement('a');
+                            a.download = 'OJT-Certificate-' + base + '.png';
+                            a.href = canvas.toDataURL('image/png');
+                            a.click();
+                            setTraineeCertExportBusy(false);
+                            return;
+                        }
+                        loadJsPdf(function() {
+                            try {
+                                var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+                                if (!JsPDF) {
+                                    alert('PDF library not available.');
+                                    setTraineeCertExportBusy(false);
+                                    return;
+                                }
+                                var pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                                var pageW = pdf.internal.pageSize.getWidth();
+                                var pageH = pdf.internal.pageSize.getHeight();
+                                var imgData = canvas.toDataURL('image/png');
+                                var cw = canvas.width;
+                                var ch = canvas.height;
+                                var canvasRatio = cw / ch;
+                                var pageRatio = pageW / pageH;
+                                var fw;
+                                var fh;
+                                if (canvasRatio > pageRatio) {
+                                    fw = pageW;
+                                    fh = pageW / canvasRatio;
+                                } else {
+                                    fh = pageH;
+                                    fw = pageH * canvasRatio;
+                                }
+                                pdf.addImage(imgData, 'PNG', (pageW - fw) / 2, (pageH - fh) / 2, fw, fh);
+                                pdf.save('OJT-Certificate-' + base + '.pdf');
+                            } catch (e) {
+                                alert('Could not create the PDF. Try again.');
+                            }
+                            setTraineeCertExportBusy(false);
+                        });
+                    }).catch(function(err) {
+                        try { console.error('trainee cert export', err); } catch (e2) {}
+                        var msg = 'Could not create the image. ';
+                        if (location.protocol === 'file:') {
+                            msg += 'Opening this page via a local server (e.g. Live Server, or: python -m http.server) often fixes export. ';
+                        }
+                        msg += (err && err.message) ? err.message : 'Try again.';
+                        alert(msg);
+                        setTraineeCertExportBusy(false);
+                    });
+                });
+                });
+            }
+
+            var btnTraineeCertPng = document.getElementById('btnTraineeCertPng');
+            var btnTraineeCertPdf = document.getElementById('btnTraineeCertPdf');
+            if (btnTraineeCertPng) {
+                btnTraineeCertPng.addEventListener('click', function() {
+                    runTraineeCertExport('png');
+                });
+            }
+            if (btnTraineeCertPdf) {
+                btnTraineeCertPdf.addEventListener('click', function() {
+                    runTraineeCertExport('pdf');
                 });
             }
         })();

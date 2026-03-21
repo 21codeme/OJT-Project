@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS ojt_trainees (
 -- Add password column if table already exists (run once)
 ALTER TABLE ojt_trainees ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
+-- Admin “Submit” on Certificate sets this; trainee dashboard shows certificate only when set
+ALTER TABLE ojt_trainees ADD COLUMN IF NOT EXISTS certificate_submitted_at TIMESTAMPTZ;
+
 ALTER TABLE ojt_trainees ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on ojt_trainees" ON ojt_trainees;
 CREATE POLICY "Allow all on ojt_trainees" ON ojt_trainees FOR ALL USING (true) WITH CHECK (true);
