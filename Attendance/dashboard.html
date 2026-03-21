@@ -704,6 +704,22 @@
                     _certBg.src = window.__OJT_CERTIFICATE_BG_DATA_URL__;
                 }
             }
+
+            function waitForSupabaseReadyTrainee(timeoutMs) {
+                timeoutMs = timeoutMs || 12000;
+                return new Promise(function(resolve) {
+                    var start = Date.now();
+                    (function check() {
+                        if (window.supabaseClient) return resolve(window.supabaseClient);
+                        if (typeof window.initSupabase === 'function') {
+                            try { window.initSupabase(); } catch (e) {}
+                        }
+                        if (Date.now() - start > timeoutMs) return resolve(null);
+                        setTimeout(check, 120);
+                    })();
+                });
+            }
+
             var navBtns = document.querySelectorAll('.nav-btn[data-section]');
             var sections = document.querySelectorAll('.section');
             function showSection(sectionId) {
@@ -715,15 +731,17 @@
                 if (btn) btn.classList.add('active');
                 if (sectionId === 'certificate' && typeof renderTraineeCertificate === 'function') renderTraineeCertificate();
                 if (sectionId === 'certificate') {
-                    var sb = window.supabaseClient;
-                    var tid = traineeId;
-                    if (sb && tid && typeof renderTraineeCertificate === 'function') {
-                        sb.from('ojt_trainees').select('certificate_submitted_at').eq('id', tid).maybeSingle().then(function(res) {
-                            if (res && res.data && stored) {
-                                stored.certificateSubmittedAt = res.data.certificate_submitted_at || null;
-                                try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(stored)); } catch (e) {}
-                                renderTraineeCertificate();
-                            }
+                    var tidCert = traineeId;
+                    if (tidCert && typeof renderTraineeCertificate === 'function') {
+                        waitForSupabaseReadyTrainee(15000).then(function(sb) {
+                            if (!sb || !stored) return;
+                            sb.from('ojt_trainees').select('certificate_submitted_at').eq('id', tidCert).maybeSingle().then(function(res) {
+                                if (res && res.data && stored) {
+                                    stored.certificateSubmittedAt = res.data.certificate_submitted_at || null;
+                                    try { localStorage.setItem('ojt_trainee_profile', JSON.stringify(stored)); } catch (e) {}
+                                    renderTraineeCertificate();
+                                }
+                            });
                         });
                     }
                 }
@@ -1116,7 +1134,7 @@
             }
 
             (async function loadProfileFromSupabase() {
-                var supabase = window.supabaseClient;
+                var supabase = await waitForSupabaseReadyTrainee(15000);
                 if (!supabase || !traineeId) return;
                 try {
                     var res = await supabase.from('ojt_trainees').select('*').eq('id', traineeId).maybeSingle();

@@ -1,8 +1,8 @@
 -- OJT trainee documents: Storage bucket policies (prototype — public read/write)
--- 1) Sa Supabase Dashboard → Storage → New bucket:
+-- 1) In Supabase Dashboard → Storage → New bucket:
 --    Name: ojt-trainee-documents
---    Public bucket: ON (para sa direktang <img> / <iframe> preview nang walang signed URL)
--- 2) I-run ang buong script na ito sa SQL Editor.
+--    Public bucket: ON (for direct <img> / <iframe> preview without signed URLs)
+-- 2) Run this entire script in the SQL Editor.
 
 DROP POLICY IF EXISTS "Allow public uploads to ojt-trainee-documents" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public read from ojt-trainee-documents" ON storage.objects;

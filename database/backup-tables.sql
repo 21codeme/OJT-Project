@@ -1,7 +1,7 @@
--- Backup tables sa Supabase — hiwalay na table para sa Inventory backup at Class Schedule backup
--- I-run sa Supabase SQL Editor (New Query > Paste > Run)
+-- Backup tables in Supabase — separate tables for Inventory backup and Class Schedule backup
+-- Run in Supabase SQL Editor (New Query > Paste > Run)
 
--- 1) Inventory Backup Snapshot — isang row (id=1), nakastore ang buong backup JSON
+-- 1) Inventory Backup Snapshot — single row (id=1), stores the full backup JSON
 CREATE TABLE IF NOT EXISTS inventory_backup_snapshot (
     id INTEGER PRIMARY KEY DEFAULT 1,
     data JSONB NOT NULL DEFAULT '{}',
@@ -30,7 +30,7 @@ CREATE TRIGGER inventory_backup_snapshot_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_inventory_backup_updated_at();
 
 
--- 2) Class Schedule Backup Snapshot — isang row (id=1), nakastore ang buong backup JSON
+-- 2) Class Schedule Backup Snapshot — single row (id=1), stores the full backup JSON
 CREATE TABLE IF NOT EXISTS class_schedule_backup_snapshot (
     id INTEGER PRIMARY KEY DEFAULT 1,
     data JSONB NOT NULL DEFAULT '{}',

@@ -199,6 +199,11 @@
             box-shadow: 0 1px 2px rgba(15, 118, 110, 0.25);
         }
         .btn-cert-toolbar-submit:hover { filter: brightness(1.06); }
+        .btn-cert-toolbar-submit.btn-cert-toolbar-unsubmit {
+            background: linear-gradient(180deg, #c2410c 0%, #9a3412 100%);
+            box-shadow: 0 1px 2px rgba(154, 52, 18, 0.35);
+        }
+        .btn-cert-toolbar-submit.btn-cert-toolbar-unsubmit:hover { filter: brightness(1.05); }
         .btn-cert-toolbar-upload {
             background: #fff;
             color: #334155;
@@ -976,6 +981,7 @@
                                     <button type="button" class="btn-cert-toolbar btn-cert-toolbar-dl" id="btnCertDownload">Download</button>
                                     <button type="button" class="btn-cert-toolbar btn-cert-toolbar-submit" id="btnCertSubmit">Submit</button>
                                     <button type="button" class="btn-cert-toolbar btn-cert-toolbar-upload" id="btnCertUpload">Upload</button>
+                                    <button type="button" class="btn-cert-toolbar btn-cert-toolbar-upload" id="btnCertResetFrame" title="Revert to the default background template">Default frame</button>
                                     <input type="file" id="certUploadInput" accept="image/*,application/pdf" style="display:none" aria-hidden="true">
                                 </div>
                                 <div id="certificatePrintArea" class="ojt-cert-print-root">
@@ -1119,8 +1125,8 @@
             var DB_KEY = 'ojt_trainees_db';
             var DOCS_DB_KEY = 'ojt_trainee_documents_db';
             var CERT_DATE_OVERRIDE_KEY = 'ojt_admin_cert_date_overrides';
-            var CERT_SUBMITTED_KEY = 'ojt_admin_cert_submitted';
-            var OJT_CERT_INLINE_MAX = 1950000;
+            /* Max JSON length for file_data (base64 data URL + metadata). ~10 MB allows typical HD certificate PNG/JPG frames. */
+            var OJT_CERT_INLINE_MAX = 10 * 1024 * 1024;
             // When coming from Attendance admin login: set session and clean URL so panel shows
             var fromAutologin = false;
             try {
@@ -1495,7 +1501,8 @@
                                 })(),
                                 startDate: row.start_date || '—',
                                 endDate: row.end_date || '—',
-                                pictureUrl: row.picture_url || null
+                                pictureUrl: row.picture_url || null,
+                                certificateSubmittedAt: row.certificate_submitted_at || null
                             };
                         });
                     }
@@ -1701,6 +1708,33 @@
                 supP.textContent = posRole || 'Supervisor / Mentor';
             }
 
+            var DEFAULT_CERT_BG_SRC = '../OJT%20CERTIFICATE%20(1).png';
+
+            function resetCertificateFrameToDefault() {
+                var bg = document.querySelector('#certificatePrintArea .ojt-cert-bg');
+                if (bg) {
+                    bg.src = DEFAULT_CERT_BG_SRC;
+                    bg.removeAttribute('crossorigin');
+                }
+            }
+
+            /** Sets the certificate background image from an uploaded sheet (image only). PDF leaves default frame. */
+            function applyCertificateFrameEntry(entry) {
+                var bg = document.querySelector('#certificatePrintArea .ojt-cert-bg');
+                if (!bg) return;
+                if (!entry) {
+                    resetCertificateFrameToDefault();
+                    return;
+                }
+                var u = entry.publicUrl || entry.dataUrl;
+                if (entry.kind === 'pdf' || !u) {
+                    resetCertificateFrameToDefault();
+                    return;
+                }
+                bg.src = u;
+                bg.removeAttribute('crossorigin');
+            }
+
             function updateCertificatePanel() {
                 var ph = document.getElementById('certTabPlaceholder');
                 var block = document.getElementById('certificateBlock');
@@ -1712,8 +1746,10 @@
                 }
                 ph.style.display = 'none';
                 block.style.display = 'block';
+                resetCertificateFrameToDefault();
                 fillCertificateFromTrainee(selectedTrainee);
                 syncCertificateIssueDateInput();
+                syncCertSubmitButtonUI();
             }
 
             function refreshTraineesAndCertificatePanel() {
@@ -2304,13 +2340,38 @@
                 document.head.appendChild(s);
             }
 
-            function saveCertificateSubmittedStatus(traineeKey) {
-                if (!traineeKey) return;
-                try {
-                    var o = JSON.parse(localStorage.getItem(CERT_SUBMITTED_KEY) || '{}');
-                    o[traineeKey] = new Date().toISOString();
-                    localStorage.setItem(CERT_SUBMITTED_KEY, JSON.stringify(o));
-                } catch (e) {}
+            function applyCertificateSubmittedAtToCaches(traineeId, isoOrNull) {
+                if (selectedTrainee && String(selectedTrainee.id) === String(traineeId)) {
+                    selectedTrainee.certificateSubmittedAt = isoOrNull;
+                }
+                if (traineesCache && traineesCache.length) {
+                    for (var i = 0; i < traineesCache.length; i++) {
+                        if (String(traineesCache[i].id) === String(traineeId)) {
+                            traineesCache[i].certificateSubmittedAt = isoOrNull;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            function syncCertSubmitButtonUI() {
+                var btn = document.getElementById('btnCertSubmit');
+                if (!btn) return;
+                if (!selectedTrainee) {
+                    btn.textContent = 'Submit';
+                    btn.classList.remove('btn-cert-toolbar-unsubmit');
+                    btn.removeAttribute('title');
+                    return;
+                }
+                if (selectedTrainee.certificateSubmittedAt) {
+                    btn.textContent = 'Unsubmit';
+                    btn.classList.add('btn-cert-toolbar-unsubmit');
+                    btn.title = 'Withdraw submission — the trainee will not see the certificate until you submit again.';
+                } else {
+                    btn.textContent = 'Submit';
+                    btn.classList.remove('btn-cert-toolbar-unsubmit');
+                    btn.title = 'Show the certificate on the trainee dashboard.';
+                }
             }
 
             var btnCertDownload = document.getElementById('btnCertDownload');
@@ -2353,22 +2414,55 @@
                         alert('Select a trainee first.');
                         return;
                     }
-                    var key = getTraineeKey(selectedTrainee);
-                    if (!key) return;
-                    saveCertificateSubmittedStatus(key);
                     var tid = selectedTrainee.id;
-                    var sb = window.supabaseClient;
-                    if (sb && tid != null && tid !== '') {
-                        sb.from('ojt_trainees').update({ certificate_submitted_at: new Date().toISOString() }).eq('id', tid).then(function(res) {
+                    if (tid == null || tid === '') {
+                        alert('No Supabase trainee ID. Create the account while online (with Supabase).');
+                        return;
+                    }
+                    waitForSupabaseReady(15000).then(function(sb) {
+                        if (!sb) {
+                            alert('Cannot connect to Supabase. This is required for certificate Submit/Unsubmit on every PC and phone.\n\nCheck: config.js (URL and anon key), internet, and refresh the page.');
+                            return;
+                        }
+                        var isSubmitted = !!(selectedTrainee && selectedTrainee.certificateSubmittedAt);
+                        if (isSubmitted) {
+                            if (!confirm('Unsubmit the certificate? The trainee will lose access until you submit again.')) return;
+                            sb.from('ojt_trainees').update({ certificate_submitted_at: null }).eq('id', tid).then(function(res) {
+                                if (res && res.error) {
+                                    var em = res.error.message || 'error';
+                                    alert('Unsubmit failed: ' + em + (em.indexOf('column') >= 0 || em.indexOf('schema') >= 0 ? '\n\nRun database/add-certificate-submitted.sql in the Supabase SQL Editor.' : ''));
+                                    return;
+                                }
+                                applyCertificateSubmittedAtToCaches(tid, null);
+                                syncCertSubmitButtonUI();
+                                alert('Unsubmitted in Supabase. The trainee will no longer see the certificate on other devices.');
+                            });
+                            return;
+                        }
+                        var submittedAt = new Date().toISOString();
+                        sb.from('ojt_trainees').update({ certificate_submitted_at: submittedAt }).eq('id', tid).then(function(res) {
                             if (res && res.error) {
-                                alert('Saved locally, but cloud update failed: ' + (res.error.message || 'error') + '. Run database/add-certificate-submitted.sql in Supabase if this column is missing.');
+                                var em = res.error.message || 'error';
+                                alert('Submit failed: ' + em + (em.indexOf('column') >= 0 || em.indexOf('schema') >= 0 ? '\n\nRun database/add-certificate-submitted.sql in the Supabase SQL Editor.' : ''));
                                 return;
                             }
-                            alert('Certificate marked as submitted for this trainee. They can now view and download it on their dashboard.');
+                            applyCertificateSubmittedAtToCaches(tid, submittedAt);
+                            syncCertSubmitButtonUI();
+                            alert('Saved to Supabase. The trainee will see the certificate on other PCs or phones after sync.');
                         });
-                    } else {
-                        alert('Certificate marked as submitted locally. Connect Supabase so trainees can see it online.');
+                    });
+                });
+            }
+
+            var btnCertResetFrame = document.getElementById('btnCertResetFrame');
+            if (btnCertResetFrame) {
+                btnCertResetFrame.addEventListener('click', function() {
+                    if (!selectedTrainee) {
+                        alert('Select a trainee first.');
+                        return;
                     }
+                    resetCertificateFrameToDefault();
+                    fillCertificateFromTrainee(selectedTrainee);
                 });
             }
 
@@ -2400,7 +2494,8 @@
                         var o = { kind: kind, mimeType: mime, dataUrl: dataUrl, fileName: f.name, inlineFallback: true };
                         var json = JSON.stringify(o);
                         if (json.length > OJT_CERT_INLINE_MAX) {
-                            alert('File is too large. Use a smaller file or compress the PDF/image.');
+                            var maxMb = Math.round(OJT_CERT_INLINE_MAX / 1024 / 1024);
+                            alert('File is too large after encoding (limit ~' + maxMb + ' MB for this upload). Try: export as JPG at 85% quality, reduce dimensions (e.g. 3000px wide max), or use a compressed PNG.');
                             return;
                         }
                         var sb = window.supabaseClient;
@@ -2408,19 +2503,27 @@
                             alert('Cloud sync is not available.');
                             return;
                         }
-                        sb.from('ojt_trainee_documents').upsert({
+                        sb.from('ojt_trainee_certificate_sheets').insert({
                             trainee_id: tid,
-                            doc_type: 'certificate',
                             file_name: f.name,
                             file_data: json
-                        }, { onConflict: 'trainee_id,doc_type' }).then(function(res) {
+                        }).then(function(res) {
                             if (res && res.error) {
-                                alert('Upload failed: ' + (res.error.message || 'error'));
+                                var msg = res.error.message || 'error';
+                                if (msg.indexOf('relation') >= 0 || msg.indexOf('does not exist') >= 0) {
+                                    msg += ' — Run database/add-certificate-sheets.sql in Supabase SQL Editor.';
+                                }
+                                alert('Upload failed: ' + msg);
                                 return;
                             }
-                            alert('Certificate file saved for this trainee.');
+                            alert('New certificate sheet added. You can upload again for another frame.');
                             loadAllFromSupabase().then(function() {
                                 renderTraineeList();
+                                updateCertificatePanel();
+                                if (kind === 'image' && o) {
+                                    applyCertificateFrameEntry(o);
+                                    if (selectedTrainee) fillCertificateFromTrainee(selectedTrainee);
+                                }
                             });
                         });
                     };
@@ -2440,7 +2543,7 @@
                     if (!selectedTrainee || !certIssueDateInput) return;
                     var v = certIssueDateInput.value;
                     if (!v) {
-                        alert('Pumili muna ng petsa.');
+                        alert('Select a date first.');
                         return;
                     }
                     var key = getTraineeKey(selectedTrainee);

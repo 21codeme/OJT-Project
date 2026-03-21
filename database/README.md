@@ -28,36 +28,36 @@ This folder contains all database-related files for the Lab Inventory Management
    - Open the application
    - Check browser console for "Supabase connected successfully"
 
-5. **Storage bucket (para lumabas ang picture sa PC Location link)**
-   - Sa Supabase Dashboard: **Storage** → **New bucket**
+5. **Storage bucket (so pictures show in the PC Location link)**
+   - In Supabase Dashboard: **Storage** → **New bucket**
    - Name: `inventory-pictures`
    - Public bucket: **ON**
    - Create bucket.
-   - Pag may error na **"new row violates row-level security policy"**, i-run sa **SQL Editor** ang file na **`database/storage-policies.sql`** para payagan ang upload at read sa bucket na iyon.
-   - **Folder structure:** Sa loob ng bucket, ang mga larawan ay naka-organize bilang: **{PC Section} / {sheetId} / {rowIndex} / {timestamp}.jpg** (hal. `PC 1/sheet-2/5/1234567890.jpg`). Lahat ng picture na na-upload sa isang PC section (e.g. PC 1) ay nasa iisang folder; kapag na-import ang Excel, gumagana pa rin ang picture dahil naka-save ang URL sa link.
+   - If you see **"new row violates row-level security policy"**, run **`database/storage-policies.sql`** in the **SQL Editor** to allow uploads and reads on that bucket.
+   - **Folder structure:** Inside the bucket, images are organized as **{PC Section} / {sheetId} / {rowIndex} / {timestamp}.jpg** (e.g. `PC 1/sheet-2/5/1234567890.jpg`). All pictures uploaded for a PC section (e.g. PC 1) share one folder; after Excel import, pictures still work because the URL is saved in the link.
 
 6. **OJT Trainee documents (Edit Profile → Required Documents)**
-   - Sa **Storage** → **New bucket**: name `ojt-trainee-documents`, **Public: ON**
-   - I-run ang **`database/ojt-documents-storage.sql`** sa SQL Editor (tulad ng `storage-policies.sql` para sa inventory)
-   - Ang mga file ay naka-upload sa path na `{trainee_id}/{doc_type}{extension}`; ang metadata at public URL ay nasa table na `ojt_trainee_documents.file_data` (JSON).
+   - In **Storage** → **New bucket**: name `ojt-trainee-documents`, **Public: ON**
+   - Run **`database/ojt-documents-storage.sql`** in the SQL Editor (same pattern as `storage-policies.sql` for inventory)
+   - Files are uploaded to path `{trainee_id}/{doc_type}{extension}`; metadata and public URL are in `ojt_trainee_documents.file_data` (JSON).
 
 7. **OJT Daily Logs photos (Dashboard → Daily Logs)**
-   - **Mabilis na fix (404 sa REST, 400 sa Storage):** i-run ang **`database/setup-ojt-daily-logs-one-shot.sql`** sa SQL Editor — gumagawa ng table `ojt_daily_logs`, bucket `ojt-daily-logs`, storage policies, at `NOTIFY` para sa schema cache.
-   - Kailangan umiiral na ang `ojt_trainees`. Kung hindi pa, i-run muna ang buong **`database/ojt-tables.sql`**.
-   - **Manwal (kung ayaw mo ng one-shot):** Storage → New bucket `ojt-daily-logs` (Public ON) → run **`ojt-daily-logs-storage.sql`** → siguraduhing may `ojt_daily_logs` mula sa **`ojt-tables.sql`**
+   - **Quick fix (404 on REST, 400 on Storage):** run **`database/setup-ojt-daily-logs-one-shot.sql`** in the SQL Editor — creates `ojt_daily_logs` table, `ojt-daily-logs` bucket, storage policies, and `NOTIFY` for schema cache.
+   - `ojt_trainees` must already exist. If not, run **`database/ojt-tables.sql`** first.
+   - **Manual (if you skip the one-shot):** Storage → New bucket `ojt-daily-logs` (Public ON) → run **`ojt-daily-logs-storage.sql`** → ensure `ojt_daily_logs` exists from **`ojt-tables.sql`**
    - Photo path: `{trainee_id}/{log_date}/{timestamp}.{ext}`
 
 8. **Trainee forgot password (Attendance login)**
-   - I-run ang **`database/ojt-trainee-password-reset.sql`** sa SQL Editor (kailangan umiiral na ang `ojt_trainees`).
-   - Sa login page: **Nakalimutan ang password?** → email → 6-digit code → bagong password.
-   - **Email (opsyonal):** Sa `config.js`, punan ang `OJT_PASSWORD_RESET_EMAILJS`:
-     - **publicKey** — EmailJS → Account → API Keys → Public Key (i-copy; dapat tumugma byte-per-byte).
-     - **serviceId** — Email Services → ang service (hal. `service_...`).
-     - **templateId** — Email Templates → template → **Settings** → **Template ID** (hal. `template_05sxotw`). Huwag gamitin ang slug sa URL kung iba ito sa Template ID.
-   - Sa EmailJS template: **To email** = `{{to_email}}`; sa content: `{{reset_code}}`, at `{{email}}` kung kailangan sa Reply-To.
-   - **Handa nang i-paste na HTML:** `database/emailjs-template-password-reset.html`.
-   - Account → **Allowed domains:** idagdag ang production domain (hal. `ojt-project-laboratory.vercel.app`) at `localhost`.
-   - Kung walang EmailJS o mali ang config, lalabas ang code sa page pagkatapos mag-request (**fallback**).
+   - Run **`database/ojt-trainee-password-reset.sql`** in the SQL Editor (`ojt_trainees` must exist).
+   - On the login page: **Forgot password?** → email → 6-digit code → new password.
+   - **Email (optional):** In `config.js`, set `OJT_PASSWORD_RESET_EMAILJS`:
+     - **publicKey** — EmailJS → Account → API Keys → Public Key (copy exactly; must match byte-for-byte).
+     - **serviceId** — Email Services → your service (e.g. `service_...`).
+     - **templateId** — Email Templates → template → **Settings** → **Template ID** (e.g. `template_05sxotw`). Do not use the URL slug if it differs from the Template ID.
+   - In the EmailJS template: **To email** = `{{to_email}}`; in content: `{{reset_code}}`, and `{{email}}` if needed for Reply-To.
+   - **Ready-to-paste HTML:** `database/emailjs-template-password-reset.html`.
+   - Account → **Allowed domains:** add your production domain (e.g. `ojt-project-laboratory.vercel.app`) and `localhost`.
+   - If EmailJS is missing or misconfigured, the code is shown on the page after requesting (**fallback**).
 
 ## Database Schema
 

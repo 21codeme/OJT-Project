@@ -1,6 +1,6 @@
--- Trainee forgot-password (OTP) — hindi ito Supabase Auth; gumagamit ng ojt_trainees.password_hash
--- I-run sa Supabase SQL Editor pagkatapos ng ojt-tables.sql (kailangan ang ojt_trainees).
--- Pagkatapos: NOTIFY pgrst, 'reload schema';
+-- Trainee forgot-password (OTP) — not Supabase Auth; uses ojt_trainees.password_hash
+-- Run in Supabase SQL Editor after ojt-tables.sql (requires ojt_trainees).
+-- Then: NOTIFY pgrst, 'reload schema';
 
 CREATE TABLE IF NOT EXISTS ojt_password_reset_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_ojt_password_reset_email_created
 
 ALTER TABLE ojt_password_reset_codes ENABLE ROW LEVEL SECURITY;
 
--- Walang direct na access mula sa client; RPC lang (SECURITY DEFINER).
+-- No direct client access; RPC only (SECURITY DEFINER).
 DROP POLICY IF EXISTS "No direct access reset codes" ON ojt_password_reset_codes;
 CREATE POLICY "No direct access reset codes" ON ojt_password_reset_codes
     FOR ALL USING (false) WITH CHECK (false);

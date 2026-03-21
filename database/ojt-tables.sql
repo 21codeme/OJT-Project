@@ -1,6 +1,6 @@
--- OJT Trainees, Documents, Attendance, Admin — run sa Supabase SQL Editor
+-- OJT Trainees, Documents, Attendance, Admin — run in Supabase SQL Editor
 -- Creates tables for trainee accounts, uploaded documents, attendance records, and admin.
--- Mga dokumento (file): gumawa ng public Storage bucket na ojt-trainee-documents at i-run ang ojt-documents-storage.sql.
+-- Documents (files): create a public Storage bucket `ojt-trainee-documents` and run ojt-documents-storage.sql.
 
 -- 1) OJT Trainees (profile from create account)
 CREATE TABLE IF NOT EXISTS ojt_trainees (
@@ -53,6 +53,19 @@ CREATE TABLE IF NOT EXISTS ojt_trainee_documents (
 ALTER TABLE ojt_trainee_documents ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on ojt_trainee_documents" ON ojt_trainee_documents;
 CREATE POLICY "Allow all on ojt_trainee_documents" ON ojt_trainee_documents FOR ALL USING (true) WITH CHECK (true);
+
+-- 2b) Certificate frames / files — maraming row bawat trainee (bawat upload = bagong sheet)
+CREATE TABLE IF NOT EXISTS ojt_trainee_certificate_sheets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trainee_id UUID NOT NULL REFERENCES ojt_trainees(id) ON DELETE CASCADE,
+    file_name TEXT,
+    file_data TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cert_sheets_trainee ON ojt_trainee_certificate_sheets(trainee_id);
+ALTER TABLE ojt_trainee_certificate_sheets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_trainee_certificate_sheets" ON ojt_trainee_certificate_sheets;
+CREATE POLICY "Allow all on ojt_trainee_certificate_sheets" ON ojt_trainee_certificate_sheets FOR ALL USING (true) WITH CHECK (true);
 
 -- 3) OJT Attendance (one row per trainee per day)
 CREATE TABLE IF NOT EXISTS ojt_attendance (
