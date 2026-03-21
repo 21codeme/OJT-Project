@@ -136,7 +136,7 @@
             </div>
 
             <div id="forgotStep2" class="hidden">
-                <p class="hint" style="margin-bottom:10px;">Nagpadala kami ng 6-digit code sa <strong id="forgotEmailDisplay"></strong>. Ilagay ang code at bagong password.</p>
+                <p class="hint" style="margin-bottom:10px;">Nagpadala kami ng 6-digit code sa <strong id="forgotEmailDisplay"></strong>. <strong>Ilagay mo ang code mula sa email</strong> (o kopyahin mula sa kulay-orange na kahon kung hindi umabot ang email), saka ang bagong password.</p>
                 <p id="forgotEmailJsNote" class="hint hidden" style="color:#059669;">Naipadala ang code sa iyong email.</p>
                 <div id="forgotCodeFallback" class="forgot-code-box hidden">
                     <span>Kung hindi umabot ang email (o may mali sa EmailJS), gamitin ang code na ito (15 min lang):</span><br>
@@ -559,9 +559,8 @@
                             if (forgotStep2) forgotStep2.classList.remove('hidden');
                             var otpEl = document.getElementById('forgotOtp');
                             if (otpEl) {
-                                otpEl.value = code6 || String(data.code);
+                                otpEl.value = '';
                                 otpEl.focus();
-                                try { otpEl.select(); } catch (e) {}
                             }
                         } else if (forgotRequestError) {
                             forgotRequestError.textContent = 'Kung may account ang email na iyon, makakatanggap ka ng code. Tingnan ang inbox (o spam folder).';
