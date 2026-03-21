@@ -451,11 +451,13 @@
                             email: email,
                             reset_code: code,
                             code: code,
-                            message: 'Ang iyong OJT reset code: ' + code
+                            message: 'Your OJT password reset code is: ' + code
                         };
-                        emailjs.send(cfg.serviceId, cfg.templateId, params).then(function() {
+                        var sendOpts = { publicKey: cfg.publicKey };
+                        emailjs.send(cfg.serviceId, cfg.templateId, params, sendOpts).then(function() {
                             resolve(true);
-                        }).catch(function() {
+                        }).catch(function(err) {
+                            console.warn('EmailJS send failed:', err && err.text ? err.text : err);
                             resolve(false);
                         });
                     });
