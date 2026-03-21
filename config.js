@@ -7,6 +7,14 @@ const SUPABASE_CONFIG = {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmZXJma3JrZWp3Y2N2ZnNpZ3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1NTUsImV4cCI6MjA4NTg0OTU1NX0.4nc1SgH-lXD4GvZ6XSbfzyCp-Swf6Mon-O3dA_mEpXE'
 };
 
+// Opsyonal: EmailJS (https://www.emailjs.com) para tunay na mapadala ang reset code sa email.
+// Iwanang blangko kung wala pa — lalabas ang code sa screen pagkatapos (para sa lab/demo lang).
+window.OJT_PASSWORD_RESET_EMAILJS = {
+    publicKey: '',
+    serviceId: '',
+    templateId: ''
+};
+
 // Initialize Supabase client (use window object to avoid conflicts)
 window.supabaseClient = null;
 

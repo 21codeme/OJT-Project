@@ -66,6 +66,17 @@
         .pw-toggle:hover { opacity: 1; }
         input[readonly] { background: #f0f2f5; color: #444; }
         .hidden { display: none !important; }
+        .forgot-row { text-align: right; margin-top: -6px; margin-bottom: 4px; }
+        .btn-forgot {
+            background: none; border: none; color: #1e3c72; font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit;
+        }
+        .btn-forgot:hover { color: #ea580c; }
+        .forgot-code-box {
+            margin: 12px 0; padding: 12px 14px; background: #fff7ed; border: 1px solid #fdba74;
+            border-radius: 8px; font-size: 0.9rem; color: #9a3412;
+        }
+        .forgot-code-box strong { letter-spacing: 0.12em; font-size: 1.1rem; }
     </style>
 </head>
 <body>
@@ -93,12 +104,67 @@
                         <button type="button" class="pw-toggle" id="loginPasswordToggle" title="Show password" aria-label="Show password">👁</button>
                     </div>
                 </div>
+                <div class="forgot-row">
+                    <button type="button" class="btn-forgot" id="showForgotPassword">Nakalimutan ang password?</button>
+                </div>
                 <p id="loginError" class="error-msg">Maling email o password.</p>
                 <button type="submit" class="btn-login">Log in</button>
             </form>
             <div class="divider">— o —</div>
             <a href="#" id="showCreateAccount" class="create-link">Create account</a>
 
+        </div>
+
+        <div id="forgotPanel" class="panel">
+            <button type="button" class="btn-back-text" id="backFromForgot">← Back to Log in</button>
+            <div class="logo-wrap">
+                <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
+            </div>
+            <h1>Reset password</h1>
+            <p class="sub">Multimedia and Speech Laboratory — Attendance</p>
+
+            <div id="forgotStep1">
+                <p class="hint" style="margin-bottom:12px;">Gamitin ang <strong>email address</strong> na naka-register sa account (hindi username).</p>
+                <form id="forgotRequestForm">
+                    <div class="form-group">
+                        <label for="forgotEmail">Email</label>
+                        <input type="email" id="forgotEmail" name="forgotEmail" placeholder="name@example.com" autocomplete="email" required>
+                    </div>
+                    <p id="forgotRequestError" class="error-msg"></p>
+                    <button type="submit" class="btn-login" id="forgotSendCodeBtn">Ipadala ang code</button>
+                </form>
+            </div>
+
+            <div id="forgotStep2" class="hidden">
+                <p class="hint" style="margin-bottom:10px;">Nagpadala kami ng 6-digit code sa <strong id="forgotEmailDisplay"></strong>. Ilagay ang code at bagong password.</p>
+                <p id="forgotEmailJsNote" class="hint hidden" style="color:#059669;">Naipadala ang code sa iyong email.</p>
+                <div id="forgotCodeFallback" class="forgot-code-box hidden">
+                    <span>Walang EmailJS setup — ito ang code mo (15 min lang):</span><br>
+                    <strong id="forgotCodeDisplay"></strong>
+                </div>
+                <form id="forgotCompleteForm">
+                    <div class="form-group">
+                        <label for="forgotOtp">6-digit code</label>
+                        <input type="text" id="forgotOtp" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required>
+                    </div>
+                    <div class="form-group form-group-password">
+                        <label for="forgotNewPass">Bagong password</label>
+                        <div class="password-wrap">
+                            <input type="password" id="forgotNewPass" name="newPass" placeholder="Min. 6 characters" minlength="6" autocomplete="new-password" required>
+                            <button type="button" class="pw-toggle" id="forgotNewPassToggle" title="Show password" aria-label="Show password">👁</button>
+                        </div>
+                    </div>
+                    <div class="form-group form-group-password">
+                        <label for="forgotNewPass2">Confirm bagong password</label>
+                        <div class="password-wrap">
+                            <input type="password" id="forgotNewPass2" name="newPass2" placeholder="Ulitin ang password" minlength="6" autocomplete="new-password" required>
+                            <button type="button" class="pw-toggle" id="forgotNewPass2Toggle" title="Show password" aria-label="Show password">👁</button>
+                        </div>
+                    </div>
+                    <p id="forgotCompleteError" class="error-msg"></p>
+                    <button type="submit" class="btn-login" id="forgotSavePassBtn">I-save ang bagong password</button>
+                </form>
+            </div>
         </div>
 
         <div id="createPanel" class="panel">
@@ -280,12 +346,29 @@
         (function() {
             var loginPanel = document.getElementById('loginPanel');
             var createPanel = document.getElementById('createPanel');
+            var forgotPanel = document.getElementById('forgotPanel');
             var showCreate = document.getElementById('showCreateAccount');
+            var showForgotPassword = document.getElementById('showForgotPassword');
             var backToLogin = document.getElementById('backToLogin');
+            var backFromForgot = document.getElementById('backFromForgot');
             var loginForm = document.getElementById('loginForm');
             var createForm = document.getElementById('createForm');
+            var forgotRequestForm = document.getElementById('forgotRequestForm');
+            var forgotCompleteForm = document.getElementById('forgotCompleteForm');
+            var forgotStep1 = document.getElementById('forgotStep1');
+            var forgotStep2 = document.getElementById('forgotStep2');
+            var forgotRequestError = document.getElementById('forgotRequestError');
+            var forgotCompleteError = document.getElementById('forgotCompleteError');
+            var forgotEmailDisplay = document.getElementById('forgotEmailDisplay');
+            var forgotCodeFallback = document.getElementById('forgotCodeFallback');
+            var forgotCodeDisplay = document.getElementById('forgotCodeDisplay');
+            var forgotEmailJsNote = document.getElementById('forgotEmailJsNote');
+            var forgotSendCodeBtn = document.getElementById('forgotSendCodeBtn');
+            var forgotSavePassBtn = document.getElementById('forgotSavePassBtn');
             var loginError = document.getElementById('loginError');
             var createError = document.getElementById('createError');
+
+            var pendingForgotEmail = '';
 
             var REQUIRED_ADMIN_USERNAME = 'admin';
             var REQUIRED_ADMIN_PASSWORD = 'admin123';
@@ -293,14 +376,267 @@
             showCreate.addEventListener('click', function(e) {
                 e.preventDefault();
                 loginPanel.classList.remove('active');
+                if (forgotPanel) forgotPanel.classList.remove('active');
                 createPanel.classList.add('active');
                 createError.classList.remove('show');
             });
             backToLogin.addEventListener('click', function() {
                 createPanel.classList.remove('active');
+                if (forgotPanel) forgotPanel.classList.remove('active');
                 loginPanel.classList.add('active');
                 loginError.classList.remove('show');
+                resetForgotPanels();
             });
+
+            function resetForgotPanels() {
+                pendingForgotEmail = '';
+                if (forgotStep1) forgotStep1.classList.remove('hidden');
+                if (forgotStep2) forgotStep2.classList.add('hidden');
+                if (forgotRequestForm) forgotRequestForm.reset();
+                if (forgotCompleteForm) forgotCompleteForm.reset();
+                if (forgotRequestError) {
+                    forgotRequestError.textContent = '';
+                    forgotRequestError.classList.remove('show');
+                }
+                if (forgotCompleteError) {
+                    forgotCompleteError.textContent = '';
+                    forgotCompleteError.classList.remove('show');
+                }
+                if (forgotCodeFallback) forgotCodeFallback.classList.add('hidden');
+                if (forgotEmailJsNote) forgotEmailJsNote.classList.add('hidden');
+                if (forgotCodeDisplay) forgotCodeDisplay.textContent = '';
+            }
+
+            function waitForSupabaseReady(maxMs) {
+                return new Promise(function(resolve) {
+                    var start = Date.now();
+                    function tick() {
+                        if (window.supabaseClient) return resolve(window.supabaseClient);
+                        if (Date.now() - start >= maxMs) return resolve(null);
+                        setTimeout(tick, 80);
+                    }
+                    tick();
+                });
+            }
+
+            function getEmailJsConfig() {
+                var c = window.OJT_PASSWORD_RESET_EMAILJS || {};
+                if (c.publicKey && c.serviceId && c.templateId) return c;
+                return null;
+            }
+
+            function loadEmailJsScript(cb) {
+                if (typeof emailjs !== 'undefined') return cb(null);
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+                s.onload = function() { cb(null); };
+                s.onerror = function() { cb(new Error('load')); };
+                document.head.appendChild(s);
+            }
+
+            function trySendResetEmail(email, code) {
+                var cfg = getEmailJsConfig();
+                if (!cfg) return Promise.resolve(false);
+                return new Promise(function(resolve) {
+                    loadEmailJsScript(function() {
+                        if (typeof emailjs === 'undefined') return resolve(false);
+                        try {
+                            if (emailjs.init) emailjs.init({ publicKey: cfg.publicKey });
+                        } catch (e1) {
+                            try { emailjs.init(cfg.publicKey); } catch (e2) {}
+                        }
+                        var params = {
+                            to_email: email,
+                            email: email,
+                            reset_code: code,
+                            code: code,
+                            message: 'Ang iyong OJT reset code: ' + code
+                        };
+                        emailjs.send(cfg.serviceId, cfg.templateId, params).then(function() {
+                            resolve(true);
+                        }).catch(function() {
+                            resolve(false);
+                        });
+                    });
+                });
+            }
+
+            if (showForgotPassword && forgotPanel) {
+                showForgotPassword.addEventListener('click', function() {
+                    loginPanel.classList.remove('active');
+                    createPanel.classList.remove('active');
+                    forgotPanel.classList.add('active');
+                    loginError.classList.remove('show');
+                    resetForgotPanels();
+                });
+            }
+            if (backFromForgot && forgotPanel) {
+                backFromForgot.addEventListener('click', function() {
+                    forgotPanel.classList.remove('active');
+                    loginPanel.classList.add('active');
+                    resetForgotPanels();
+                });
+            }
+
+            if (forgotRequestForm) {
+                forgotRequestForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    if (forgotRequestError) {
+                        forgotRequestError.textContent = '';
+                        forgotRequestError.classList.remove('show');
+                    }
+                    var emailEl = document.getElementById('forgotEmail');
+                    var email = emailEl && emailEl.value ? emailEl.value.trim() : '';
+                    if (!email) return;
+                    var sb = await waitForSupabaseReady(8000);
+                    if (!sb) {
+                        if (forgotRequestError) {
+                            forgotRequestError.textContent = 'Walang koneksyon sa server. Subukan mamaya.';
+                            forgotRequestError.classList.add('show');
+                        }
+                        return;
+                    }
+                    if (forgotSendCodeBtn) {
+                        forgotSendCodeBtn.disabled = true;
+                        forgotSendCodeBtn.textContent = 'Nagpapadala...';
+                    }
+                    try {
+                        var res = await sb.rpc('trainee_password_reset_request', { p_email: email });
+                        var data = res.data;
+                        if (res.error) throw res.error;
+                        if (!data) {
+                            if (forgotRequestError) {
+                                forgotRequestError.textContent = 'Hindi available ang reset. I-run ang database/ojt-trainee-password-reset.sql sa Supabase SQL Editor.';
+                                forgotRequestError.classList.add('show');
+                            }
+                            return;
+                        }
+                        if (data.error === 'too_many_requests') {
+                            if (forgotRequestError) {
+                                forgotRequestError.textContent = 'Sobrang daming request. Subukan ulit mamaya.';
+                                forgotRequestError.classList.add('show');
+                            }
+                            return;
+                        }
+                        if (data.error === 'invalid_email') {
+                            if (forgotRequestError) {
+                                forgotRequestError.textContent = 'Maglagay ng wastong email address.';
+                                forgotRequestError.classList.add('show');
+                            }
+                            return;
+                        }
+                        if (data.ok && data.code) {
+                            pendingForgotEmail = email.toLowerCase();
+                            if (forgotEmailDisplay) forgotEmailDisplay.textContent = email;
+                            var emailed = await trySendResetEmail(email, data.code);
+                            if (emailed && forgotEmailJsNote) forgotEmailJsNote.classList.remove('hidden');
+                            if (!emailed && forgotCodeFallback && forgotCodeDisplay) {
+                                forgotCodeDisplay.textContent = data.code;
+                                forgotCodeFallback.classList.remove('hidden');
+                            }
+                            if (forgotStep1) forgotStep1.classList.add('hidden');
+                            if (forgotStep2) forgotStep2.classList.remove('hidden');
+                            var otpEl = document.getElementById('forgotOtp');
+                            if (otpEl) otpEl.focus();
+                        } else if (forgotRequestError) {
+                            forgotRequestError.textContent = 'Kung may account ang email na iyon, makakatanggap ka ng code. Tingnan ang inbox (o spam folder).';
+                            forgotRequestError.classList.add('show');
+                        }
+                    } catch (ex) {
+                        if (forgotRequestError) {
+                            forgotRequestError.textContent = 'Error: ' + ((ex && ex.message) ? ex.message : 'Subukan ulit.');
+                            forgotRequestError.classList.add('show');
+                        }
+                    } finally {
+                        if (forgotSendCodeBtn) {
+                            forgotSendCodeBtn.disabled = false;
+                            forgotSendCodeBtn.textContent = 'Ipadala ang code';
+                        }
+                    }
+                });
+            }
+
+            if (forgotCompleteForm) {
+                forgotCompleteForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    if (forgotCompleteError) {
+                        forgotCompleteError.textContent = '';
+                        forgotCompleteError.classList.remove('show');
+                    }
+                    var otpEl = document.getElementById('forgotOtp');
+                    var passEl = document.getElementById('forgotNewPass');
+                    var pass2El = document.getElementById('forgotNewPass2');
+                    var otp = otpEl && otpEl.value ? otpEl.value.trim() : '';
+                    var p1 = passEl ? passEl.value : '';
+                    var p2 = pass2El ? pass2El.value : '';
+                    if (p1 !== p2) {
+                        if (forgotCompleteError) {
+                            forgotCompleteError.textContent = 'Hindi magkatugma ang password.';
+                            forgotCompleteError.classList.add('show');
+                        }
+                        return;
+                    }
+                    if (!p1 || p1.length < 6) {
+                        if (forgotCompleteError) {
+                            forgotCompleteError.textContent = 'Min. 6 characters ang password.';
+                            forgotCompleteError.classList.add('show');
+                        }
+                        return;
+                    }
+                    if (!pendingForgotEmail) {
+                        if (forgotCompleteError) {
+                            forgotCompleteError.textContent = 'Magpadala muna ng code mula sa hakbang 1.';
+                            forgotCompleteError.classList.add('show');
+                        }
+                        return;
+                    }
+                    var sb = await waitForSupabaseReady(8000);
+                    if (!sb) {
+                        if (forgotCompleteError) {
+                            forgotCompleteError.textContent = 'Walang koneksyon sa server.';
+                            forgotCompleteError.classList.add('show');
+                        }
+                        return;
+                    }
+                    if (forgotSavePassBtn) {
+                        forgotSavePassBtn.disabled = true;
+                        forgotSavePassBtn.textContent = 'Sine-save...';
+                    }
+                    try {
+                        var res2 = await sb.rpc('trainee_password_reset_complete', {
+                            p_email: pendingForgotEmail,
+                            p_code: otp,
+                            p_new_password: p1
+                        });
+                        var d2 = res2.data;
+                        if (res2.error) throw res2.error;
+                        if (!d2 || !d2.ok) {
+                            var er = (d2 && d2.error) || '';
+                            if (forgotCompleteError) {
+                                if (er === 'invalid_code') forgotCompleteError.textContent = 'Mali o expired na ang code.';
+                                else if (er === 'invalid_input') forgotCompleteError.textContent = 'Suriin ang code at password (min. 6 characters).';
+                                else forgotCompleteError.textContent = 'Hindi na-update. Subukan ulit.';
+                                forgotCompleteError.classList.add('show');
+                            }
+                            return;
+                        }
+                        alert('Na-update ang password. Maaari ka nang mag-log in gamit ang bagong password.');
+                        resetForgotPanels();
+                        forgotPanel.classList.remove('active');
+                        loginPanel.classList.add('active');
+                    } catch (ex2) {
+                        if (forgotCompleteError) {
+                            forgotCompleteError.textContent = 'Error: ' + ((ex2 && ex2.message) ? ex2.message : '');
+                            forgotCompleteError.classList.add('show');
+                        }
+                    } finally {
+                        if (forgotSavePassBtn) {
+                            forgotSavePassBtn.disabled = false;
+                            forgotSavePassBtn.textContent = 'I-save ang bagong password';
+                        }
+                    }
+                });
+            }
 
             function togglePassword(inputId, btnId) {
                 var input = document.getElementById(inputId);
@@ -316,6 +652,8 @@
             togglePassword('loginPassword', 'loginPasswordToggle');
             togglePassword('createPassword', 'createPasswordToggle');
             togglePassword('createConfirm', 'createConfirmToggle');
+            togglePassword('forgotNewPass', 'forgotNewPassToggle');
+            togglePassword('forgotNewPass2', 'forgotNewPass2Toggle');
 
             var createCourseEl = document.getElementById('createCourse');
             var createCourseOtherEl = document.getElementById('createCourseOther');

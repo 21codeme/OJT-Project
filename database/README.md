@@ -47,6 +47,12 @@ This folder contains all database-related files for the Lab Inventory Management
    - **Manwal (kung ayaw mo ng one-shot):** Storage → New bucket `ojt-daily-logs` (Public ON) → run **`ojt-daily-logs-storage.sql`** → siguraduhing may `ojt_daily_logs` mula sa **`ojt-tables.sql`**
    - Photo path: `{trainee_id}/{log_date}/{timestamp}.{ext}`
 
+8. **Trainee forgot password (Attendance login)**
+   - I-run ang **`database/ojt-trainee-password-reset.sql`** sa SQL Editor (kailangan umiiral na ang `ojt_trainees`).
+   - Sa login page: **Nakalimutan ang password?** → email → 6-digit code → bagong password.
+   - **Email (opsyonal):** Sa `config.js`, punan ang `OJT_PASSWORD_RESET_EMAILJS` (EmailJS public key, service ID, template ID). Sa EmailJS template, gumamit ng variable gaya ng `{{reset_code}}` o `{{code}}`.
+   - Kung walang EmailJS, lalabas ang code sa page pagkatapos mag-request (**para sa lab/demo**; sa production ay i-set up ang EmailJS o ibang email service).
+
 ## Database Schema
 
 ### Tables
