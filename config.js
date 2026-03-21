@@ -7,13 +7,13 @@ const SUPABASE_CONFIG = {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmZXJma3JrZWp3Y2N2ZnNpZ3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1NTUsImV4cCI6MjA4NTg0OTU1NX0.4nc1SgH-lXD4GvZ6XSbfzyCp-Swf6Mon-O3dA_mEpXE'
 };
 
-// EmailJS — forgot password (https://www.emailjs.com). Kung blangko ang tatlong field sa ibaba, lalabas ang code sa page.
-// Checklist sa dashboard: (1) Account → Allowed domains → `ojt-project-laboratory.vercel.app` + `localhost`
-// (2) Email Templates → template mo → "To email" = {{to_email}} (3) Public/Service/Template ID = copy-paste, huwag i-type.
+// EmailJS — forgot password (https://www.emailjs.com). If the three fields below are empty, the reset code is shown on the page instead.
+// Dashboard checklist: (1) Account → Allowed domains → `ojt-project-laboratory.vercel.app` + `localhost`
+// (2) Email Templates → your template → "To email" = {{to_email}} (3) Public/Service/Template ID — copy-paste, do not retype.
 //
-// 404 "Account not found": maling Public Key — Account → API Keys → **Copy** public key → paste dito.
-// Ang templateId ay nasa Email Templates → template mo → **Settings** (hal. `template_05sxotw`). Ang slug sa URL
-// (hal. `3td75xs`) ay hindi palaging pareho sa API ID — kopyahin ang "Template ID" sa Settings.
+// 404 "Account not found": wrong Public Key — Account → API Keys → **Copy** public key → paste here.
+// templateId is under Email Templates → your template → **Settings** (e.g. `template_05sxotw`). The URL slug
+// (e.g. `3td75xs`) is not always the API id — copy the "Template ID" from Settings.
 window.OJT_PASSWORD_RESET_EMAILJS = {
     publicKey: '8I5kiXjS7akYHVvUK',
     serviceId: 'service_7fngazd',

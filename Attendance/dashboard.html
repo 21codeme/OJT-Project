@@ -473,7 +473,7 @@
 
         <section id="section-documents" class="section">
             <h2>Documents</h2>
-            <p class="placeholder-content" style="padding-top:0;margin-bottom:16px;">Mga na-upload mula sa <strong>Edit Profile</strong> (Required Documents). PDF o larawan lamang ang bagong upload; maaaring makita pa rin ang lumang DOCX kung naka-save na dati.</p>
+            <p class="placeholder-content" style="padding-top:0;margin-bottom:16px;">Files uploaded from <strong>Edit Profile</strong> (Required Documents). New uploads must be PDF or image; older DOCX may still appear if saved previously.</p>
             <div id="documentsGrid" class="documents-grid"></div>
         </section>
 
@@ -499,7 +499,7 @@
                         <button type="button" class="btn-time time-out-pm" id="btnTimeOutPM">Time Out PM</button>
                         <button type="button" class="btn-time time-in-ot" id="btnTimeInOT">Time In O.T.</button>
                         <button type="button" class="btn-time time-out-ot" id="btnTimeOutOT">Time Out O.T.</button>
-                        <button type="button" class="btn-time btn-close-ot" id="btnCloseOT" title="Kung hindi ka mag-overtime ngayong araw">Close O.T. (No overtime today)</button>
+                        <button type="button" class="btn-time btn-close-ot" id="btnCloseOT" title="If you will not work overtime today">Close O.T. (No overtime today)</button>
                     </div>
                 </div>
                 <div id="timeInModal" class="modal-overlay">
@@ -512,7 +512,7 @@
                             <p id="timeInPhotoDateNote" class="photo-date-note" role="alert"></p>
                         </div>
                         <div id="timeInTimeWrap" class="time-set-wrap" style="display:none;">
-                            <label for="timeInTimeInput">Oras (kung nire-open ng admin)</label>
+                            <label for="timeInTimeInput">Time (if reopened by admin)</label>
                             <input type="time" id="timeInTimeInput">
                         </div>
                         <div class="modal-actions">
@@ -523,9 +523,9 @@
                 </div>
                 <div id="timeOutModal" class="modal-overlay">
                     <div class="modal-box">
-                        <h3 id="timeOutModalTitle">Time Out — Set oras</h3>
+                        <h3 id="timeOutModalTitle">Time Out — Set time</h3>
                         <div class="time-set-wrap">
-                            <label for="timeOutTimeInput">Oras</label>
+                            <label for="timeOutTimeInput">Time</label>
                             <input type="time" id="timeOutTimeInput">
                         </div>
                         <div class="modal-actions">
@@ -718,7 +718,7 @@
                     if (entry == null) {
                         var empty = document.createElement('p');
                         empty.className = 'doc-dash-empty';
-                        empty.textContent = 'Walang na-upload pa. Pumunta sa Edit Profile at maglagay ng file.';
+                        empty.textContent = 'No file uploaded yet. Go to Edit Profile to add a file.';
                         body.appendChild(empty);
                         card.appendChild(body);
                         grid.appendChild(card);
@@ -727,7 +727,7 @@
                     if (typeof entry === 'string') {
                         var legacy = document.createElement('p');
                         legacy.className = 'doc-dash-empty';
-                        legacy.textContent = 'Naka-save lang ang pangalan ng file (\u201c' + entry + '\u201d) — walang preview. Mag-upload ulit sa Edit Profile.';
+                        legacy.textContent = 'Only the file name was saved (\u201c' + entry + '\u201d) — no preview. Upload again in Edit Profile.';
                         body.appendChild(legacy);
                         card.appendChild(body);
                         grid.appendChild(card);
@@ -759,25 +759,25 @@
                     } else if (entry.kind === 'doc' && src) {
                         var note = document.createElement('p');
                         note.className = 'doc-dash-empty';
-                        note.textContent = 'Ang .doc ay buksan sa Word. I-download mula sa link sa ibaba.';
+                        note.textContent = 'Open .doc files in Microsoft Word. Download from the link below.';
                         body.appendChild(note);
                         var a = document.createElement('a');
                         a.className = 'doc-dash-dl';
                         a.href = src;
                         a.download = fn;
-                        a.textContent = 'I-download ang .doc';
+                        a.textContent = 'Download .doc';
                         body.appendChild(a);
                     } else if (src) {
                         var a2 = document.createElement('a');
                         a2.className = 'doc-dash-dl';
                         a2.href = src;
                         a2.download = fn;
-                        a2.textContent = 'I-download ang file';
+                        a2.textContent = 'Download file';
                         body.appendChild(a2);
                     } else {
                         var unk = document.createElement('p');
                         unk.className = 'doc-dash-empty';
-                        unk.textContent = 'Hindi maipakita ang preview ng file na ito.';
+                        unk.textContent = 'Preview is not available for this file.';
                         body.appendChild(unk);
                     }
                     card.appendChild(body);
@@ -1300,10 +1300,10 @@
                 var fileDateKey = dateKey(new Date(file.lastModified));
                 var todayKey = dateKey(new Date());
                 if (fileDateKey === todayKey) {
-                    photoDateNote.textContent = 'Petsa ng picture ay tumutugma sa araw na ito.';
+                    photoDateNote.textContent = 'Photo date matches today.';
                     photoDateNote.classList.add('show', 'ok');
                 } else {
-                    photoDateNote.textContent = 'Hindi pareho ang date ng picture sa pag-time in. Petsa ng file: ' + formatDateLabel(fileDateKey) + '. Dapat ay ngayong araw: ' + formatDateLabel(todayKey) + '.';
+                    photoDateNote.textContent = 'Photo date does not match time-in. File date: ' + formatDateLabel(fileDateKey) + '. It should be today: ' + formatDateLabel(todayKey) + '.';
                     photoDateNote.classList.add('show', 'error');
                 }
             }
@@ -1347,7 +1347,7 @@
                 if (!reopenedToday) {
                     if (!file) { alert('Please upload a photo for Time In.'); return; }
                     if (!checkFileDateMatchesToday(file)) {
-                        alert('Hindi pareho ang date ng picture sa pag-time in. Ang larawan ay dapat kinuha o ginawa ngayong araw. Pumili ng picture na may petsa ngayong araw.');
+                        alert('Photo date does not match time-in. The image must be taken or created today. Choose a photo dated today.');
                         return;
                     }
                 }
@@ -1367,7 +1367,7 @@
                         closeTimeInModal();
                         refreshAttendanceUI(false);
                     }).catch(function() {
-                        alert('Hindi na-save sa server. Subukan muli.');
+                        alert('Could not save to the server. Please try again.');
                     });
                 }
                 if (isExactDay && file && (!reopenedToday || checkFileDateMatchesToday(file))) {
@@ -1376,7 +1376,7 @@
                     reader.readAsDataURL(file);
                 } else {
                     if (file && !checkFileDateMatchesToday(file)) {
-                        alert('Sa nire-open na araw, ang picture ay dapat kinuha sa mismong araw na iyon. Itinatala na walang picture.');
+                        alert('For a reopened day, the photo must be from that same day. Saving time in without a photo.');
                     }
                     saveWithPhoto('');
                 }
@@ -1397,7 +1397,7 @@
                 var photoWrap = document.getElementById('timeInPhotoUploadWrap');
                 if (photoWrap) photoWrap.style.display = isExactDay ? 'block' : 'none';
                 var photoLabel = document.getElementById('timeInPhotoLabel');
-                if (photoLabel) photoLabel.textContent = isReopened ? 'Photo (optional – sa araw na ito lang pwede mag-upload)' : 'Photo (required)';
+                if (photoLabel) photoLabel.textContent = isReopened ? 'Photo (optional — upload only for this day)' : 'Photo (required)';
                 modal.classList.add('show');
             }
             document.getElementById('btnTimeInAM').addEventListener('click', function() {
@@ -1430,7 +1430,7 @@
                 var reopenedToday = !!reopenedDates[selKey];
                 if (reopenedToday) {
                     timeOutModalSession = session;
-                    timeOutModalTitle.textContent = 'Time Out ' + (session === 'AM' ? 'AM' : session === 'PM' ? 'PM' : 'O.T.') + ' — Set oras';
+                    timeOutModalTitle.textContent = 'Time Out ' + (session === 'AM' ? 'AM' : session === 'PM' ? 'PM' : 'O.T.') + ' — Set time';
                     setTimeInputToNow(timeOutTimeInput);
                     timeOutModal.classList.add('show');
                 } else {
@@ -1439,7 +1439,7 @@
                     saveRecords(records).then(function() {
                         refreshAttendanceUI(false);
                     }).catch(function() {
-                        alert('Hindi na-save sa server. Subukan muli.');
+                        alert('Could not save to the server. Please try again.');
                     });
                 }
             }
@@ -1460,7 +1460,7 @@
                     closeTimeOutModal();
                     refreshAttendanceUI(false);
                 }).catch(function() {
-                    alert('Hindi na-save sa server. Subukan muli.');
+                    alert('Could not save to the server. Please try again.');
                 });
             });
 
@@ -1508,7 +1508,7 @@
                 saveRecords(records).then(function() {
                     refreshAttendanceUI(false);
                 }).catch(function() {
-                    alert('Hindi na-save sa server. Subukan muli.');
+                    alert('Could not save to the server. Please try again.');
                 });
             });
 
@@ -1675,7 +1675,7 @@
                         if (textEl) textEl.value = '';
                         if (photoEl) photoEl.value = '';
                         if (photoUploadFailed) {
-                            alert('Daily log saved, pero hindi naisama ang photo. Check ojt-daily-logs storage bucket/policies.');
+                            alert('Daily log saved, but the photo could not be uploaded. Check ojt-daily-logs storage bucket/policies.');
                         } else {
                             alert('Daily log saved.');
                         }

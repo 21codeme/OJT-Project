@@ -215,7 +215,7 @@
                     <div class="field full">
                         <label for="editProfilePicture">Upload profile picture</label>
                         <input type="file" id="editProfilePicture" accept="image/*">
-                        <div id="previewProfilePicture" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <div id="previewProfilePicture" class="file-preview-slot empty">No file selected — preview will appear here.</div>
                     </div>
                 </div>
 
@@ -264,36 +264,36 @@
                 </div>
 
                 <div class="section-title">📄 Required Documents (optional in this prototype)</div>
-                <p class="small-note" style="margin:-6px 0 12px;">PDF o larawan lamang (hal. JPG, PNG). <strong>Hindi</strong> tinatanggap ang Word (.doc/.docx) at Excel (.xls/.xlsx).</p>
+                <p class="small-note" style="margin:-6px 0 12px;">PDF or images only (e.g. JPG, PNG). <strong>Word</strong> (.doc/.docx) and <strong>Excel</strong> (.xls/.xlsx) are not accepted.</p>
                 <div class="form-grid">
                     <div class="field">
                         <label for="editResume">Resume / CV</label>
                         <input type="file" id="editResume" accept="application/pdf,image/*,.pdf">
-                        <div id="previewResume" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <div id="previewResume" class="file-preview-slot empty">No file selected — preview will appear here.</div>
                         <button type="button" class="btn-delete-doc" data-doc-key="resume" aria-label="Remove resume">Remove</button>
                     </div>
                     <div class="field">
                         <label for="editEndorsement">Endorsement Letter</label>
                         <input type="file" id="editEndorsement" accept="application/pdf,image/*,.pdf">
-                        <div id="previewEndorsement" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <div id="previewEndorsement" class="file-preview-slot empty">No file selected — preview will appear here.</div>
                         <button type="button" class="btn-delete-doc" data-doc-key="endorsement" aria-label="Remove endorsement">Remove</button>
                     </div>
                     <div class="field">
                         <label for="editMOA">MOA</label>
                         <input type="file" id="editMOA" accept="application/pdf,image/*,.pdf">
-                        <div id="previewMOA" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <div id="previewMOA" class="file-preview-slot empty">No file selected — preview will appear here.</div>
                         <button type="button" class="btn-delete-doc" data-doc-key="moa" aria-label="Remove MOA">Remove</button>
                     </div>
                     <div class="field">
                         <label for="editMedical">Medical Certificate</label>
                         <input type="file" id="editMedical" accept="application/pdf,image/*,.pdf">
-                        <div id="previewMedical" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <div id="previewMedical" class="file-preview-slot empty">No file selected — preview will appear here.</div>
                         <button type="button" class="btn-delete-doc" data-doc-key="medical" aria-label="Remove medical certificate">Remove</button>
                     </div>
                     <div class="field full">
                         <label for="editIdPicture">ID Picture / Valid ID</label>
                         <input type="file" id="editIdPicture" accept="image/*">
-                        <div id="previewIdPicture" class="file-preview-slot empty">Walang napiling file — lalabas dito ang preview.</div>
+                        <div id="previewIdPicture" class="file-preview-slot empty">No file selected — preview will appear here.</div>
                         <button type="button" class="btn-delete-doc" data-doc-key="idPicture" aria-label="Remove ID picture">Remove</button>
                     </div>
                 </div>
@@ -436,7 +436,7 @@
             ];
 
             var OJT_DOCS_BUCKET = 'ojt-trainee-documents';
-            /** Max na chars ng base64 data URL na ise-save sa DB kung walang Storage (para makita ng admin). */
+            /** Max chars of base64 data URL saved to DB when Storage is unavailable (for admin preview). */
             var OJT_DOC_INLINE_MAX_CHARS = 900000;
             var serverDocMetaByType = {};
 
@@ -544,7 +544,7 @@
                 el.innerHTML = '';
                 if (!meta || !meta.fileName) {
                     el.classList.add('empty');
-                    el.textContent = 'Walang napiling file — lalabas dito ang preview.';
+                    el.textContent = 'No file selected — preview will appear here.';
                     return;
                 }
                 var cap = document.createElement('p');
@@ -579,30 +579,30 @@
                 if (kind === 'doc' && mediaSrc) {
                     var p = document.createElement('p');
                     p.className = 'file-preview-note';
-                    p.textContent = 'Ang lumang .doc ay hindi masilip nang buo sa browser. I-download at buksan sa Microsoft Word.';
+                    p.textContent = 'Legacy .doc files cannot be fully previewed in the browser. Download and open in Microsoft Word.';
                     el.appendChild(p);
                     var a = document.createElement('a');
                     a.className = 'doc-dl';
                     a.href = mediaSrc;
                     a.download = meta.fileName;
-                    a.textContent = 'I-download ang file';
+                    a.textContent = 'Download file';
                     el.appendChild(a);
                     return;
                 }
                 if (mediaSrc) {
                     var p2 = document.createElement('p');
                     p2.className = 'file-preview-note';
-                    p2.textContent = 'Preview hindi available — i-download ang file.';
+                    p2.textContent = 'Preview not available — download the file.';
                     el.appendChild(p2);
                     var a2 = document.createElement('a');
                     a2.className = 'doc-dl';
                     a2.href = mediaSrc;
                     a2.download = meta.fileName;
-                    a2.textContent = 'I-download';
+                    a2.textContent = 'Download';
                     el.appendChild(a2);
                     return;
                 }
-                el.appendChild(document.createTextNode('Hindi maipakita ang preview.'));
+                el.appendChild(document.createTextNode('Preview is not available.'));
             }
 
             function processFileForPreviewAndStorage(file) {
@@ -622,8 +622,8 @@
                             fileName: name,
                             kind: 'error',
                             error: office
-                                ? 'Hindi pinapayagan ang Word, Excel, o katulad na file. PDF o larawan lamang.'
-                                : 'PDF o larawan lamang ang tinatanggap dito.'
+                                ? 'Word, Excel, and similar files are not allowed. PDF or images only.'
+                                : 'Only PDF or images are accepted here.'
                         });
                         return;
                     }
@@ -638,7 +638,7 @@
                             });
                         };
                         r.onerror = function() {
-                            resolve({ fileName: name, mimeType: mime, kind: 'error', error: 'Hindi mabasa ang larawan.' });
+                            resolve({ fileName: name, mimeType: mime, kind: 'error', error: 'Could not read the image.' });
                         };
                         r.readAsDataURL(file);
                         return;
@@ -654,7 +654,7 @@
                             });
                         };
                         r2.onerror = function() {
-                            resolve({ fileName: name, kind: 'error', error: 'Hindi mabasa ang PDF.' });
+                            resolve({ fileName: name, kind: 'error', error: 'Could not read the PDF.' });
                         };
                         r2.readAsDataURL(file);
                         return;
@@ -662,7 +662,7 @@
                     resolve({
                         fileName: name,
                         kind: 'error',
-                        error: 'PDF o larawan lamang ang tinatanggap dito.'
+                        error: 'Only PDF or images are accepted here.'
                     });
                 });
             }
@@ -675,11 +675,11 @@
                     var f = input.files && input.files[0];
                     if (!f) {
                         prevEl.classList.add('empty');
-                        prevEl.innerHTML = 'Walang napiling file — lalabas dito ang preview.';
+                        prevEl.innerHTML = 'No file selected — preview will appear here.';
                         return;
                     }
                     prevEl.classList.remove('empty');
-                    prevEl.innerHTML = '<p class="file-preview-note">Naglo-load ng preview…</p>';
+                    prevEl.innerHTML = '<p class="file-preview-note">Loading preview…</p>';
                     processFileForPreviewAndStorage(f).then(function(meta) {
                         if (meta && meta.error) {
                             prevEl.classList.remove('empty');
@@ -713,7 +713,7 @@
                     });
                 } else {
                     prevEl.classList.add('empty');
-                    prevEl.textContent = 'Walang napiling file — lalabas dito ang preview.';
+                    prevEl.textContent = 'No file selected — preview will appear here.';
                 }
             })();
 
@@ -725,11 +725,11 @@
                     if (!prevEl) return;
                     if (!file) {
                         prevEl.classList.add('empty');
-                        prevEl.innerHTML = 'Walang napiling file — lalabas dito ang preview.';
+                        prevEl.innerHTML = 'No file selected — preview will appear here.';
                         return;
                     }
                     prevEl.classList.remove('empty');
-                    prevEl.innerHTML = '<p class="file-preview-note">Naglo-load ng preview…</p>';
+                    prevEl.innerHTML = '<p class="file-preview-note">Loading preview…</p>';
                     processFileForPreviewAndStorage(file).then(function(meta) {
                         if (meta && meta.error) {
                             prevEl.classList.remove('empty');
@@ -750,7 +750,7 @@
                     if (input) input.value = '';
                     if (prevEl) {
                         prevEl.classList.add('empty');
-                        prevEl.innerHTML = 'Walang napiling file — lalabas dito ang preview.';
+                        prevEl.innerHTML = 'No file selected — preview will appear here.';
                     }
                 });
                 serverDocMetaByType[slotKey] = null;
@@ -937,7 +937,7 @@
                         localStorage.setItem('ojt_trainee_documents', JSON.stringify(light));
                     } catch (err) {
                         if (err && err.name === 'QuotaExceededError') {
-                            alert('Puno na ang browser storage. Gamitin ang Supabase Storage (mas maliit na cache lang ang naka-save nang lokal).');
+                            alert('Browser storage is full. Use Supabase Storage (only a small cache is kept locally).');
                         }
                     }
                 };
@@ -1103,7 +1103,8 @@
                             })
                             .catch(function(err) {
                                 console.error(err);
-                                alert('Hindi na-save ang profile sa database:\n' + supabaseErrText(err) + '\n\nKung nakita mo ang tungkol sa NULL / email, panatilihing may laman ang Email.');
+                                alert('Could not save profile to the database:\n' + supabaseErrText(err) + '\n\nIf you see an error about NULL / email, keep the Email field filled.');
+
                                 saveLocalFallback(docsMeta);
                                 finish();
                             });

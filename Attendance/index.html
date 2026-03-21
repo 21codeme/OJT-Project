@@ -94,8 +94,8 @@
             <p class="sub">Multimedia and Speech Laboratory — Attendance</p>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="loginEmail">Email o Username</label>
-                    <input type="text" id="loginEmail" name="email" placeholder="Email o username" autocomplete="username" required>
+                    <label for="loginEmail">Email or username</label>
+                    <input type="text" id="loginEmail" name="email" placeholder="Email or username" autocomplete="username" required>
                 </div>
                 <div class="form-group form-group-password">
                     <label for="loginPassword">Password</label>
@@ -105,12 +105,12 @@
                     </div>
                 </div>
                 <div class="forgot-row">
-                    <button type="button" class="btn-forgot" id="showForgotPassword">Nakalimutan ang password?</button>
+                    <button type="button" class="btn-forgot" id="showForgotPassword">Forgot password?</button>
                 </div>
-                <p id="loginError" class="error-msg">Maling email o password.</p>
+                <p id="loginError" class="error-msg">Invalid email or password.</p>
                 <button type="submit" class="btn-login">Log in</button>
             </form>
-            <div class="divider">— o —</div>
+            <div class="divider">— or —</div>
             <a href="#" id="showCreateAccount" class="create-link">Create account</a>
 
         </div>
@@ -124,24 +124,24 @@
             <p class="sub">Multimedia and Speech Laboratory — Attendance</p>
 
             <div id="forgotStep1">
-                <p class="hint" style="margin-bottom:12px;">Gamitin ang <strong>email address</strong> na naka-register sa account (hindi username).</p>
+                <p class="hint" style="margin-bottom:12px;">Use the <strong>email address</strong> registered on your account (not your username).</p>
                 <form id="forgotRequestForm">
                     <div class="form-group">
                         <label for="forgotEmail">Email</label>
                         <input type="email" id="forgotEmail" name="forgotEmail" placeholder="name@example.com" autocomplete="email" required>
                     </div>
                     <p id="forgotRequestError" class="error-msg"></p>
-                    <button type="submit" class="btn-login" id="forgotSendCodeBtn">Ipadala ang code</button>
+                    <button type="submit" class="btn-login" id="forgotSendCodeBtn">Send code</button>
                 </form>
             </div>
 
             <div id="forgotStep2" class="hidden">
-                <p class="hint" style="margin-bottom:10px;">Nagpadala kami ng 6-digit code sa <strong id="forgotEmailDisplay"></strong>. <strong>Ilagay mo ang code mula sa email</strong> (o kopyahin mula sa kulay-orange na kahon kung hindi umabot ang email), saka ang bagong password.</p>
-                <p id="forgotEmailJsNote" class="hint hidden" style="color:#059669;">Naipadala ang code sa iyong email.</p>
+                <p class="hint" style="margin-bottom:10px;">We sent a 6-digit code to <strong id="forgotEmailDisplay"></strong>. <strong>Enter the code from your email</strong> (or copy it from the orange box below if the email did not arrive), then enter your new password.</p>
+                <p id="forgotEmailJsNote" class="hint hidden" style="color:#059669;">A code was sent to your email.</p>
                 <div id="forgotCodeFallback" class="forgot-code-box hidden">
-                    <span>Kung hindi umabot ang email (o may mali sa EmailJS), gamitin ang code na ito (15 min lang):</span><br>
+                    <span>If the email did not arrive (or EmailJS failed), use this code (valid for 15 minutes):</span><br>
                     <strong id="forgotCodeDisplay"></strong>
-                    <span class="hint" style="display:block;margin-top:8px;color:#7c2d12;">Naka-fill na rin ang code sa field sa ibaba; i-click lang ang <strong>I-save ang bagong password</strong> pagkatapos mag-set ng bagong password.</span>
+                    <span class="hint" style="display:block;margin-top:8px;color:#7c2d12;">Type this code in the field below with your new password, then click <strong>Save new password</strong>.</span>
                 </div>
                 <form id="forgotCompleteForm">
                     <div class="form-group">
@@ -149,21 +149,21 @@
                         <input type="text" id="forgotOtp" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required>
                     </div>
                     <div class="form-group form-group-password">
-                        <label for="forgotNewPass">Bagong password</label>
+                        <label for="forgotNewPass">New password</label>
                         <div class="password-wrap">
                             <input type="password" id="forgotNewPass" name="newPass" placeholder="Min. 6 characters" minlength="6" autocomplete="new-password" required>
                             <button type="button" class="pw-toggle" id="forgotNewPassToggle" title="Show password" aria-label="Show password">👁</button>
                         </div>
                     </div>
                     <div class="form-group form-group-password">
-                        <label for="forgotNewPass2">Confirm bagong password</label>
+                        <label for="forgotNewPass2">Confirm new password</label>
                         <div class="password-wrap">
-                            <input type="password" id="forgotNewPass2" name="newPass2" placeholder="Ulitin ang password" minlength="6" autocomplete="new-password" required>
+                            <input type="password" id="forgotNewPass2" name="newPass2" placeholder="Re-enter password" minlength="6" autocomplete="new-password" required>
                             <button type="button" class="pw-toggle" id="forgotNewPass2Toggle" title="Show password" aria-label="Show password">👁</button>
                         </div>
                     </div>
                     <p id="forgotCompleteError" class="error-msg"></p>
-                    <button type="submit" class="btn-login" id="forgotSavePassBtn">I-save ang bagong password</button>
+                    <button type="submit" class="btn-login" id="forgotSavePassBtn">Save new password</button>
                 </form>
             </div>
         </div>
@@ -432,7 +432,7 @@
                 return null;
             }
 
-            /** 6-digit string (may leading zeros) — parehong format sa DB at sa EmailJS */
+            /** 6-digit string (may include leading zeros) — same format as DB and EmailJS */
             function normalizeResetCode(code) {
                 var d = String(code != null ? code : '').replace(/\D/g, '');
                 if (!d.length) return '';
@@ -511,14 +511,14 @@
                     var sb = await waitForSupabaseReady(8000);
                     if (!sb) {
                         if (forgotRequestError) {
-                            forgotRequestError.textContent = 'Walang koneksyon sa server. Subukan mamaya.';
+                            forgotRequestError.textContent = 'No server connection. Try again later.';
                             forgotRequestError.classList.add('show');
                         }
                         return;
                     }
                     if (forgotSendCodeBtn) {
                         forgotSendCodeBtn.disabled = true;
-                        forgotSendCodeBtn.textContent = 'Nagpapadala...';
+                        forgotSendCodeBtn.textContent = 'Sending...';
                     }
                     try {
                         var res = await sb.rpc('trainee_password_reset_request', { p_email: email });
@@ -526,21 +526,21 @@
                         if (res.error) throw res.error;
                         if (!data) {
                             if (forgotRequestError) {
-                                forgotRequestError.textContent = 'Hindi available ang reset. I-run ang database/ojt-trainee-password-reset.sql sa Supabase SQL Editor.';
+                                forgotRequestError.textContent = 'Password reset is not available. Run database/ojt-trainee-password-reset.sql in the Supabase SQL Editor.';
                                 forgotRequestError.classList.add('show');
                             }
                             return;
                         }
                         if (data.error === 'too_many_requests') {
                             if (forgotRequestError) {
-                                forgotRequestError.textContent = 'Sobrang daming request. Subukan ulit mamaya.';
+                                forgotRequestError.textContent = 'Too many requests. Try again later.';
                                 forgotRequestError.classList.add('show');
                             }
                             return;
                         }
                         if (data.error === 'invalid_email') {
                             if (forgotRequestError) {
-                                forgotRequestError.textContent = 'Maglagay ng wastong email address.';
+                                forgotRequestError.textContent = 'Please enter a valid email address.';
                                 forgotRequestError.classList.add('show');
                             }
                             return;
@@ -563,18 +563,18 @@
                                 otpEl.focus();
                             }
                         } else if (forgotRequestError) {
-                            forgotRequestError.textContent = 'Kung may account ang email na iyon, makakatanggap ka ng code. Tingnan ang inbox (o spam folder).';
+                            forgotRequestError.textContent = 'If an account exists for that email, you will receive a code. Check your inbox (or spam folder).';
                             forgotRequestError.classList.add('show');
                         }
                     } catch (ex) {
                         if (forgotRequestError) {
-                            forgotRequestError.textContent = 'Error: ' + ((ex && ex.message) ? ex.message : 'Subukan ulit.');
+                            forgotRequestError.textContent = 'Error: ' + ((ex && ex.message) ? ex.message : 'Please try again.');
                             forgotRequestError.classList.add('show');
                         }
                     } finally {
                         if (forgotSendCodeBtn) {
                             forgotSendCodeBtn.disabled = false;
-                            forgotSendCodeBtn.textContent = 'Ipadala ang code';
+                            forgotSendCodeBtn.textContent = 'Send code';
                         }
                     }
                 });
@@ -599,7 +599,7 @@
                     }
                     if (!otp || otp.length !== 6) {
                         if (forgotCompleteError) {
-                            forgotCompleteError.textContent = 'Ilagay ang buong 6-digit code.';
+                            forgotCompleteError.textContent = 'Enter the full 6-digit code.';
                             forgotCompleteError.classList.add('show');
                         }
                         return;
@@ -608,21 +608,21 @@
                     var p2 = pass2El ? pass2El.value : '';
                     if (p1 !== p2) {
                         if (forgotCompleteError) {
-                            forgotCompleteError.textContent = 'Hindi magkatugma ang password.';
+                            forgotCompleteError.textContent = 'Passwords do not match.';
                             forgotCompleteError.classList.add('show');
                         }
                         return;
                     }
                     if (!p1 || p1.length < 6) {
                         if (forgotCompleteError) {
-                            forgotCompleteError.textContent = 'Min. 6 characters ang password.';
+                            forgotCompleteError.textContent = 'Password must be at least 6 characters.';
                             forgotCompleteError.classList.add('show');
                         }
                         return;
                     }
                     if (!pendingForgotEmail) {
                         if (forgotCompleteError) {
-                            forgotCompleteError.textContent = 'Magpadala muna ng code mula sa hakbang 1.';
+                            forgotCompleteError.textContent = 'Request a code from step 1 first.';
                             forgotCompleteError.classList.add('show');
                         }
                         return;
@@ -630,14 +630,14 @@
                     var sb = await waitForSupabaseReady(8000);
                     if (!sb) {
                         if (forgotCompleteError) {
-                            forgotCompleteError.textContent = 'Walang koneksyon sa server.';
+                            forgotCompleteError.textContent = 'No server connection.';
                             forgotCompleteError.classList.add('show');
                         }
                         return;
                     }
                     if (forgotSavePassBtn) {
                         forgotSavePassBtn.disabled = true;
-                        forgotSavePassBtn.textContent = 'Sine-save...';
+                        forgotSavePassBtn.textContent = 'Saving...';
                     }
                     try {
                         var res2 = await sb.rpc('trainee_password_reset_complete', {
@@ -650,14 +650,14 @@
                         if (!d2 || !d2.ok) {
                             var er = (d2 && d2.error) || '';
                             if (forgotCompleteError) {
-                                if (er === 'invalid_code') forgotCompleteError.textContent = 'Mali o expired na ang code.';
-                                else if (er === 'invalid_input') forgotCompleteError.textContent = 'Suriin ang code at password (min. 6 characters).';
-                                else forgotCompleteError.textContent = 'Hindi na-update. Subukan ulit.';
+                                if (er === 'invalid_code') forgotCompleteError.textContent = 'Invalid or expired code.';
+                                else if (er === 'invalid_input') forgotCompleteError.textContent = 'Check the code and password (min. 6 characters).';
+                                else forgotCompleteError.textContent = 'Could not update. Please try again.';
                                 forgotCompleteError.classList.add('show');
                             }
                             return;
                         }
-                        alert('Na-update ang password. Maaari ka nang mag-log in gamit ang bagong password.');
+                        alert('Your password was updated. You can log in with your new password.');
                         resetForgotPanels();
                         forgotPanel.classList.remove('active');
                         loginPanel.classList.add('active');
@@ -669,7 +669,7 @@
                     } finally {
                         if (forgotSavePassBtn) {
                             forgotSavePassBtn.disabled = false;
-                            forgotSavePassBtn.textContent = 'I-save ang bagong password';
+                            forgotSavePassBtn.textContent = 'Save new password';
                         }
                     }
                 });
@@ -822,7 +822,7 @@
                         var row = r.data;
                         var storedPass = row.password_hash || '';
                         if (storedPass && storedPass !== pass) {
-                            loginError.textContent = 'Maling email o password.';
+                            loginError.textContent = 'Invalid email or password.';
                             loginError.classList.add('show');
                             return;
                         }
@@ -911,12 +911,12 @@
                     return;
                 }
                 if (pass !== confirmVal) {
-                    createError.textContent = 'Password at confirm password ay hindi match.';
+                    createError.textContent = 'Password and confirmation do not match.';
                     createError.classList.add('show');
                     return;
                 }
                 if (pass.length < 6) {
-                    createError.textContent = 'Password dapat at least 6 characters.';
+                    createError.textContent = 'Password must be at least 6 characters.';
                     createError.classList.add('show');
                     return;
                 }
