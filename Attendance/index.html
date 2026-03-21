@@ -139,7 +139,7 @@
                 <p class="hint" style="margin-bottom:10px;">Nagpadala kami ng 6-digit code sa <strong id="forgotEmailDisplay"></strong>. Ilagay ang code at bagong password.</p>
                 <p id="forgotEmailJsNote" class="hint hidden" style="color:#059669;">Naipadala ang code sa iyong email.</p>
                 <div id="forgotCodeFallback" class="forgot-code-box hidden">
-                    <span>Walang EmailJS setup — ito ang code mo (15 min lang):</span><br>
+                    <span>Kung hindi umabot ang email (o may mali sa EmailJS), gamitin ang code na ito (15 min lang):</span><br>
                     <strong id="forgotCodeDisplay"></strong>
                     <span class="hint" style="display:block;margin-top:8px;color:#7c2d12;">Naka-fill na rin ang code sa field sa ibaba; i-click lang ang <strong>I-save ang bagong password</strong> pagkatapos mag-set ng bagong password.</span>
                 </div>
@@ -422,11 +422,22 @@
 
             function getEmailJsConfig() {
                 var c = window.OJT_PASSWORD_RESET_EMAILJS || {};
-                var pk = (c.publicKey || '').trim();
-                var sid = (c.serviceId || '').trim();
-                var tid = (c.templateId || '').trim();
+                function stripInvisible(s) {
+                    return String(s || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+                }
+                var pk = stripInvisible(c.publicKey);
+                var sid = stripInvisible(c.serviceId);
+                var tid = stripInvisible(c.templateId);
                 if (pk && sid && tid) return { publicKey: pk, serviceId: sid, templateId: tid };
                 return null;
+            }
+
+            /** 6-digit string (may leading zeros) — parehong format sa DB at sa EmailJS */
+            function normalizeResetCode(code) {
+                var d = String(code != null ? code : '').replace(/\D/g, '');
+                if (!d.length) return '';
+                if (d.length <= 6) return d.padStart(6, '0');
+                return d.slice(0, 6);
             }
 
             function loadEmailJsScript(cb) {
@@ -441,22 +452,22 @@
             function trySendResetEmail(email, code) {
                 var cfg = getEmailJsConfig();
                 if (!cfg) return Promise.resolve(false);
+                var code6 = normalizeResetCode(code);
+                if (!code6) return Promise.resolve(false);
                 return new Promise(function(resolve) {
                     loadEmailJsScript(function() {
                         if (typeof emailjs === 'undefined') return resolve(false);
-                        try {
-                            emailjs.init({ publicKey: cfg.publicKey });
-                        } catch (e1) {
-                            try { emailjs.init(cfg.publicKey); } catch (e2) {}
-                        }
+                        emailjs.init({ publicKey: cfg.publicKey });
                         var params = {
                             to_email: email,
                             email: email,
-                            reset_code: code,
-                            code: code,
-                            message: 'Your OJT password reset code is: ' + code
+                            user_email: email,
+                            reset_code: code6,
+                            code: code6,
+                            message: 'Your OJT password reset code is: ' + code6
                         };
-                        emailjs.send(cfg.serviceId, cfg.templateId, params).then(function() {
+                        var sendOpts = { publicKey: cfg.publicKey };
+                        emailjs.send(cfg.serviceId, cfg.templateId, params, sendOpts).then(function() {
                             resolve(true);
                         }).catch(function(err) {
                             var msg = (err && err.text) ? String(err.text) : String(err || '');
@@ -537,17 +548,18 @@
                         if (data.ok && data.code) {
                             pendingForgotEmail = email.toLowerCase();
                             if (forgotEmailDisplay) forgotEmailDisplay.textContent = email;
-                            var emailed = await trySendResetEmail(email, data.code);
+                            var code6 = normalizeResetCode(data.code);
+                            var emailed = await trySendResetEmail(email, code6 || data.code);
                             if (emailed && forgotEmailJsNote) forgotEmailJsNote.classList.remove('hidden');
                             if (!emailed && forgotCodeFallback && forgotCodeDisplay) {
-                                forgotCodeDisplay.textContent = data.code;
+                                forgotCodeDisplay.textContent = code6 || String(data.code);
                                 forgotCodeFallback.classList.remove('hidden');
                             }
                             if (forgotStep1) forgotStep1.classList.add('hidden');
                             if (forgotStep2) forgotStep2.classList.remove('hidden');
                             var otpEl = document.getElementById('forgotOtp');
                             if (otpEl) {
-                                otpEl.value = String(data.code);
+                                otpEl.value = code6 || String(data.code);
                                 otpEl.focus();
                                 try { otpEl.select(); } catch (e) {}
                             }

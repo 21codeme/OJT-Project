@@ -50,9 +50,14 @@ This folder contains all database-related files for the Lab Inventory Management
 8. **Trainee forgot password (Attendance login)**
    - I-run ang **`database/ojt-trainee-password-reset.sql`** sa SQL Editor (kailangan umiiral na ang `ojt_trainees`).
    - Sa login page: **Nakalimutan ang password?** → email → 6-digit code → bagong password.
-   - **Email (opsyonal):** Sa `config.js`, punan ang `OJT_PASSWORD_RESET_EMAILJS` (EmailJS public key, service ID, template ID). Sa EmailJS template, gumamit ng variable gaya ng `{{reset_code}}` o `{{code}}`.
-   - **Handa nang i-paste na HTML template:** `database/emailjs-template-password-reset.html` — i-copy ang buong HTML sa EmailJS → Email Templates → content (Subject: hal. *Password reset code — OJT Attendance*). Sa “To”, kung kailangan ng field: `{{to_email}}`.
-   - Kung walang EmailJS, lalabas ang code sa page pagkatapos mag-request (**para sa lab/demo**; sa production ay i-set up ang EmailJS o ibang email service).
+   - **Email (opsyonal):** Sa `config.js`, punan ang `OJT_PASSWORD_RESET_EMAILJS`:
+     - **publicKey** — EmailJS → Account → API Keys → Public Key (i-copy; dapat tumugma byte-per-byte).
+     - **serviceId** — Email Services → ang service (hal. `service_...`).
+     - **templateId** — mula sa URL ng template editor (hal. `.../templates/3td75xs` → `3td75xs`). Hindi palaging `template_xxxxx`.
+   - Sa EmailJS template: **To email** = `{{to_email}}`; sa content: `{{reset_code}}`, at `{{email}}` kung kailangan sa Reply-To.
+   - **Handa nang i-paste na HTML:** `database/emailjs-template-password-reset.html`.
+   - Account → **Allowed domains:** idagdag ang production domain (hal. `ojt-project-laboratory.vercel.app`) at `localhost`.
+   - Kung walang EmailJS o mali ang config, lalabas ang code sa page pagkatapos mag-request (**fallback**).
 
 ## Database Schema
 
