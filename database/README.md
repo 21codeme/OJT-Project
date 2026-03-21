@@ -42,10 +42,10 @@ This folder contains all database-related files for the Lab Inventory Management
    - Ang mga file ay naka-upload sa path na `{trainee_id}/{doc_type}{extension}`; ang metadata at public URL ay nasa table na `ojt_trainee_documents.file_data` (JSON).
 
 7. **OJT Daily Logs photos (Dashboard → Daily Logs)**
-   - Sa **Storage** → **New bucket**: name `ojt-daily-logs`, **Public: ON**
-   - I-run ang **`database/ojt-daily-logs-storage.sql`** sa SQL Editor
-   - Siguraduhing na-run din ang latest `database/ojt-tables.sql` para sa table na `ojt_daily_logs`
-   - Photo uploads use path format: `{trainee_id}/{log_date}/{timestamp}.{ext}`
+   - **Mabilis na fix (404 sa REST, 400 sa Storage):** i-run ang **`database/setup-ojt-daily-logs-one-shot.sql`** sa SQL Editor — gumagawa ng table `ojt_daily_logs`, bucket `ojt-daily-logs`, storage policies, at `NOTIFY` para sa schema cache.
+   - Kailangan umiiral na ang `ojt_trainees`. Kung hindi pa, i-run muna ang buong **`database/ojt-tables.sql`**.
+   - **Manwal (kung ayaw mo ng one-shot):** Storage → New bucket `ojt-daily-logs` (Public ON) → run **`ojt-daily-logs-storage.sql`** → siguraduhing may `ojt_daily_logs` mula sa **`ojt-tables.sql`**
+   - Photo path: `{trainee_id}/{log_date}/{timestamp}.{ext}`
 
 ## Database Schema
 
