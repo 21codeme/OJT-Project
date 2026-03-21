@@ -53,7 +53,7 @@ This folder contains all database-related files for the Lab Inventory Management
    - **Email (opsyonal):** Sa `config.js`, punan ang `OJT_PASSWORD_RESET_EMAILJS`:
      - **publicKey** — EmailJS → Account → API Keys → Public Key (i-copy; dapat tumugma byte-per-byte).
      - **serviceId** — Email Services → ang service (hal. `service_...`).
-     - **templateId** — mula sa URL ng template editor (hal. `.../templates/3td75xs` → `3td75xs`). Hindi palaging `template_xxxxx`.
+     - **templateId** — Email Templates → template → **Settings** → **Template ID** (hal. `template_05sxotw`). Huwag gamitin ang slug sa URL kung iba ito sa Template ID.
    - Sa EmailJS template: **To email** = `{{to_email}}`; sa content: `{{reset_code}}`, at `{{email}}` kung kailangan sa Reply-To.
    - **Handa nang i-paste na HTML:** `database/emailjs-template-password-reset.html`.
    - Account → **Allowed domains:** idagdag ang production domain (hal. `ojt-project-laboratory.vercel.app`) at `localhost`.

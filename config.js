@@ -12,11 +12,12 @@ const SUPABASE_CONFIG = {
 // (2) Email Templates → template mo → "To email" = {{to_email}} (3) Public/Service/Template ID = copy-paste, huwag i-type.
 //
 // 404 "Account not found": maling Public Key — Account → API Keys → **Copy** public key → paste dito.
-// Ang templateId ay ang slug sa URL (hal. .../templates/3td75xs → `3td75xs`), hindi palaging `template_xxxxx`.
+// Ang templateId ay nasa Email Templates → template mo → **Settings** (hal. `template_05sxotw`). Ang slug sa URL
+// (hal. `3td75xs`) ay hindi palaging pareho sa API ID — kopyahin ang "Template ID" sa Settings.
 window.OJT_PASSWORD_RESET_EMAILJS = {
     publicKey: '8I5kiXjS7akYHVvUK',
     serviceId: 'service_7fngazd',
-    templateId: '3td75xs'
+    templateId: 'template_05sxotw'
 };
 
 // Initialize Supabase client (use window object to avoid conflicts)
