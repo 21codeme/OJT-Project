@@ -518,9 +518,9 @@
                         </div>
 
                         <div class="tab-content" data-content="documents" style="display:none;">
-                            <p class="muted" style="margin-bottom:12px;font-size:0.9rem;">Mga dokumentong na-upload ng trainee. Dito makikita ang aktwal na file (larawan / PDF / Word) kapag na-sync sa cloud.</p>
+                            <p class="muted" style="margin-bottom:12px;font-size:0.9rem;">Documents uploaded by the trainee. Actual files (image / PDF / Word) appear here when synced to the cloud.</p>
                             <div class="doc-list" id="docsList"></div>
-                            <p class="muted" id="docsEmpty" style="display:none;margin-top:10px;">Pumili muna ng trainee.</p>
+                            <p class="muted" id="docsEmpty" style="display:none;margin-top:10px;">Select a trainee first.</p>
                         </div>
 
                         <div class="tab-content" data-content="attendance" style="display:none;">
@@ -558,7 +558,7 @@
                         <div class="tab-content" data-content="dailylogs" style="display:none;">
                             <p class="muted" style="margin-bottom:12px;font-size:0.9rem;">Daily logs submitted by the trainee are shown here.</p>
                             <div id="adminDailyLogsList" class="admin-dailylogs-list"></div>
-                            <p class="muted" id="adminDailyLogsEmpty">Pumili muna ng trainee.</p>
+                            <p class="muted" id="adminDailyLogsEmpty">Select a trainee first.</p>
                         </div>
                     </div>
                 </section>
@@ -761,7 +761,7 @@
                 if (entry == null) {
                     var p0 = document.createElement('p');
                     p0.className = 'muted';
-                    p0.textContent = 'Walang na-upload na dokumento dito.';
+                    p0.textContent = 'No documents uploaded here.';
                     body.appendChild(p0);
                     card.appendChild(body);
                     container.appendChild(card);
@@ -771,12 +771,12 @@
                 if (typeof entry === 'string') {
                     var pStr = document.createElement('p');
                     pStr.className = 'muted';
-                    pStr.textContent = 'Sa records: ';
+                    pStr.textContent = 'On record: ';
                     var strong = document.createElement('strong');
                     strong.textContent = entry;
                     pStr.appendChild(strong);
                     var span = document.createElement('span');
-                    span.textContent = ' — walang preview (lumang format). Dapat mag-upload muli ang trainee.';
+                    span.textContent = ' — no preview (legacy format). The trainee should upload again.';
                     pStr.appendChild(span);
                     body.appendChild(pStr);
                     card.appendChild(body);
@@ -843,30 +843,30 @@
                     var note = document.createElement('p');
                     note.className = 'muted';
                     note.style.fontSize = '0.88rem';
-                    note.textContent = '.doc — i-download at buksan sa Word.';
+                    note.textContent = '.doc — download and open in Word.';
                     body.appendChild(note);
                     var a = document.createElement('a');
                     a.className = 'admin-doc-dl';
                     a.href = src;
                     a.download = fn;
-                    a.textContent = 'I-download';
+                    a.textContent = 'Download';
                     body.appendChild(a);
                 } else if (src) {
                     var a2 = document.createElement('a');
                     a2.className = 'admin-doc-dl';
                     a2.href = src;
                     a2.download = fn;
-                    a2.textContent = 'I-download ang file';
+                    a2.textContent = 'Download file';
                     body.appendChild(a2);
                 } else if (entry.kind === 'legacy') {
                     var pLeg = document.createElement('p');
                     pLeg.className = 'muted';
-                    pLeg.textContent = 'Walang naka-link na file sa storage — historical record lang.';
+                    pLeg.textContent = 'No file linked in storage — historical record only.';
                     body.appendChild(pLeg);
                 } else {
                     var unk = document.createElement('p');
                     unk.className = 'muted';
-                    unk.textContent = 'Hindi maipakita ang preview.';
+                    unk.textContent = 'Preview not available.';
                     body.appendChild(unk);
                 }
 
@@ -1112,7 +1112,7 @@
                 if (!listEl || !emptyEl) return;
                 listEl.innerHTML = '';
                 if (!selectedKey || !selectedTrainee) {
-                    emptyEl.textContent = 'Pumili muna ng trainee.';
+                    emptyEl.textContent = 'Select a trainee first.';
                     emptyEl.style.display = 'block';
                     return;
                 }

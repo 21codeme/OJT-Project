@@ -1413,7 +1413,7 @@
                 if (idx < 0) {
                     mergedSheets.push(JSON.parse(JSON.stringify(s)));
                 } else {
-                    // Merge entries: i-keep lahat ng nasa backup (binurang row hindi mawawala), i-add o i-update mula sa current
+                    // Merge entries: keep all backup rows (deleted rows stay), add/update from current
                     var existingEntries = mergedSheets[idx].entries || [];
                     currentEntries.forEach(function(e) {
                         var cur = JSON.parse(JSON.stringify(e));
@@ -1645,13 +1645,13 @@
                 var sheet = getActiveSheet();
                 if (!sheet) return;
                 if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
-                var raw = prompt('Oras ng bagong row (hal. 6:00 - 7:00 PM o 18:00 - 19:00):', '');
+                var raw = prompt('Time for the new row (e.g. 6:00 - 7:00 PM or 18:00 - 19:00):', '');
                 if (raw == null) return;
                 var trimmed = (raw || '').trim();
                 if (!trimmed) return;
                 var range = parseTimeRange(trimmed);
                 if (range.start === 0 && range.end === 0) {
-                    alert('Hindi na-parse ang oras. Gamitin ang format hal. 1:00 - 2:30 PM o 13:00 - 14:30');
+                    alert('Could not parse time. Use a format like 1:00 - 2:30 PM or 13:00 - 14:30');
                     return;
                 }
                 if (range.end <= range.start) range.end = range.start + 60;
@@ -1659,7 +1659,7 @@
                 saveBackupSnapshot();
                 renderScheduleGrid();
                 if (checkSupabaseConnection()) syncBackupToSupabase();
-                alert('Naidagdag ang row: ' + trimmed);
+                alert('Row added: ' + trimmed);
             });
         }
         var importBtn = document.getElementById('importExcelBtn');
@@ -1712,9 +1712,9 @@
             if (restoreBtn) {
                 restoreBtn.addEventListener('click', function() {
                     var activeSheet = getActiveSheet();
-                    if (!activeSheet || !activeSheet.entries) { alert('Walang data sa sheet na ito para i-restore.'); return; }
+                    if (!activeSheet || !activeSheet.entries) { alert('No data in this sheet to restore.'); return; }
                     var sheetName = (activeSheet.name || 'Sheet').toString();
-                    if (!confirm('I-restore lang ang sheet na "' + sheetName + '" sa Class Schedule? Ang ibang sheet ay hindi papalitan.')) return;
+                    if (!confirm('Restore only the sheet "' + sheetName + '" to Class Schedule? Other sheets will not be changed.')) return;
                     try {
                         var payload = { restoreOneSheet: true, sheet: JSON.parse(JSON.stringify(activeSheet)) };
                         localStorage.setItem(RESTORE_PAYLOAD_KEY, JSON.stringify(payload));
@@ -1830,7 +1830,7 @@
             });
         });
         if (isBackupMode) {
-            // Unahin ang Supabase backup — doon hindi nabubura ang sheet kahit mag-delete sa Class Schedule (merge-only).
+            // Prefer Supabase backup — sheets there are not wiped when deleting in Class Schedule (merge-only).
             (function waitThenLoad(attempt) {
                 if (attempt > 25) {
                     var snap = loadBackupSnapshot();
@@ -2001,13 +2001,13 @@
         }
         function onFormSave() {
             if (!getActiveSheet()) {
-                alert('Walang active sheet. Pumili muna ng sheet tab.');
+                alert('No active sheet. Select a sheet tab first.');
                 return;
             }
             var day = selectedDayLabel ? selectedDayLabel.textContent : '';
             var timeSlot = formTimeSlot ? formTimeSlot.value.trim() : '';
             if (!day || !timeSlot || !formType) {
-                if (!timeSlot) alert('Ilagay ang time slot (hal. 7:30 - 9:30 AM o gamitin ang orasan).');
+                if (!timeSlot) alert('Enter a time slot (e.g. 7:30 - 9:30 AM) or use the clock picker.');
                 return;
             }
             var type = formType.value || '';

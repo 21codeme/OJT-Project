@@ -84,21 +84,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             document.querySelectorAll('.sheet-tab-menu').forEach(function(el) { el.style.display = 'none'; });
             document.querySelectorAll('.sheet-tab .close-sheet').forEach(function(el) { el.style.display = 'none'; });
         } else {
-            document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No backup data yet. I-open muna ang main Inventory page (walang ?backup=1), hintayin mag-load ang data, tapos balik dito. O i-refresh ang main Inventory bago buksan ang Backup.</td></tr>';
+            document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No backup data yet. Open the main Inventory page first (without ?backup=1), wait for data to load, then return here. Or refresh the main Inventory before opening Backup.</td></tr>';
         }
         document.getElementById('restoreBackupBtn').addEventListener('click', async function() {
             var sid = currentSheetId;
             var sheet = sheets[sid];
-            if (!sheet || !sheet.data) { alert('Walang data sa sheet na ito para i-restore.'); return; }
+            if (!sheet || !sheet.data) { alert('No data in this sheet to restore.'); return; }
             var sheetName = (sheet.name || sid || 'Sheet').toString();
-            if (!confirm('I-restore lang ang sheet na "' + sheetName + '" sa Inventory? Ang ibang sheet sa Inventory ay hindi papalitan.')) return;
+            if (!confirm('Restore only the sheet "' + sheetName + '" to Inventory? Other sheets will not be changed.')) return;
             try {
                 localStorage.setItem(RESTORE_ONE_SHEET_KEY, JSON.stringify({
                     sheetId: sid,
                     sheet: { id: sheet.id, name: sheet.name, data: sheet.data.slice(), hasData: sheet.hasData, highlightStates: (sheet.highlightStates || []).slice(), pictureUrls: (sheet.pictureUrls || []).slice() },
                     savedAt: Date.now()
                 }));
-            } catch (e) { alert('Hindi ma-save ang restore data.'); return; }
+            } catch (e) { alert('Could not save restore data.'); return; }
             window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
         });
         })();
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 const BACKUP_KEY = 'inventory_lab_backup';
-const BACKUP_SNAPSHOT_KEY = 'inventory_lab_backup_snapshot'; // Hindi naaapektuhan ng Clear Data; gamit sa Backup page
+const BACKUP_SNAPSHOT_KEY = 'inventory_lab_backup_snapshot'; // Not affected by Clear Data; used on Backup page
 const PERMANENT_BACKUP_KEY = 'inventory_lab_permanent_backup'; // Accumulative — rows never deleted even if removed from main table
 const RESTORE_ONE_SHEET_KEY = 'inventory_lab_restore_one_sheet'; // Kapag sa Backup page, Restore = current sheet lang
 
@@ -691,7 +691,7 @@ function createActionCell() {
         // Alisin muna ang row sa DOM
         tr.remove();
 
-        // I-save ang current sheet data batay sa bagong table (kasama na ang delete)
+        // Save current sheet data from the new table (including deletes)
         saveCurrentSheetData();
 
         // I-redraw ang buong table mula sa data para ma-reset nang maayos ang lahat ng columns/rowSpan
@@ -1628,7 +1628,7 @@ function displayData(data, readOnlyForBackup) {
     
     if (!data || data.length === 0) {
         var msg = readOnlyForBackup
-            ? 'No backup data yet. I-open muna ang main Inventory page (walang ?backup=1), hintayin mag-load ang data, tapos balik dito.'
+            ? 'No backup data yet. Open the main Inventory page first (without ?backup=1), wait for data to load, then return here.'
             : 'No data found in the Excel file.';
         tbody.innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">' + msg + '</td></tr>';
         console.log('⚠️ No data to display');
@@ -1848,7 +1848,7 @@ function setupSheetTabMenu(tab, sheetId) {
                 saveBackupToLocalStorage();
                 syncBackupToSupabase().catch(function(err) { console.warn('Backup sync after rename failed:', err); });
             } else {
-                alert('Na-save ang pangalan dito sa browser, pero hindi na-update sa server. I-check ang internet at subukan ang "Refresh from server" mamaya.');
+                alert('The name was saved in this browser but could not be updated on the server. Check your internet and try "Refresh from server" later.');
             }
         }
     });
@@ -2287,7 +2287,7 @@ async function syncToSupabase() {
             } catch (insertError) {
                 console.error('❌ Error inserting items to Supabase:', insertError);
                 if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
-                alert(`Error saving items to database: ${insertError.message}\n\nKung marami na ang rows (hal. PC 20+), pwedeng mag-fail kapag isang bagsakan. Inayos na ito to batch-save, pero kung offline/mahina net, subukan ulit.`);                
+                alert(`Error saving items to database: ${insertError.message}\n\nWith many rows (e.g. PC 20+), a single bulk request may still fail. Batch saves are enabled; if offline or on a weak network, try again.`);                
             }
         } else {
             console.log('⚠️ No items to sync to Supabase (all rows are empty)');
@@ -2716,7 +2716,7 @@ async function deleteSheet(sheetId) {
                     if (attempt === 1) { itemsErr = itemsErr || e; sheetErr = sheetErr || e; }
                 }
             }
-            if (itemsErr || sheetErr) alert('Hindi na-delete sa server. Subukan ang "Refresh from server" o i-check ang internet. Sa refresh ay maaaring bumalik ang sheet.');
+            if (itemsErr || sheetErr) alert('Could not delete on the server. Try "Refresh from server" or check your internet. The sheet may reappear after refresh.');
         }
         
         delete sheets[sheetId];
