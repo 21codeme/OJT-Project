@@ -422,7 +422,10 @@
 
             function getEmailJsConfig() {
                 var c = window.OJT_PASSWORD_RESET_EMAILJS || {};
-                if (c.publicKey && c.serviceId && c.templateId) return c;
+                var pk = (c.publicKey || '').trim();
+                var sid = (c.serviceId || '').trim();
+                var tid = (c.templateId || '').trim();
+                if (pk && sid && tid) return { publicKey: pk, serviceId: sid, templateId: tid };
                 return null;
             }
 
@@ -442,7 +445,7 @@
                     loadEmailJsScript(function() {
                         if (typeof emailjs === 'undefined') return resolve(false);
                         try {
-                            if (emailjs.init) emailjs.init({ publicKey: cfg.publicKey });
+                            emailjs.init({ publicKey: cfg.publicKey });
                         } catch (e1) {
                             try { emailjs.init(cfg.publicKey); } catch (e2) {}
                         }
@@ -453,11 +456,14 @@
                             code: code,
                             message: 'Your OJT password reset code is: ' + code
                         };
-                        var sendOpts = { publicKey: cfg.publicKey };
-                        emailjs.send(cfg.serviceId, cfg.templateId, params, sendOpts).then(function() {
+                        emailjs.send(cfg.serviceId, cfg.templateId, params).then(function() {
                             resolve(true);
                         }).catch(function(err) {
-                            console.warn('EmailJS send failed:', err && err.text ? err.text : err);
+                            var msg = (err && err.text) ? String(err.text) : String(err || '');
+                            console.warn('EmailJS send failed:', msg, err);
+                            if (/account not found/i.test(msg)) {
+                                console.warn('EmailJS: Copy a fresh Public Key from https://dashboard.emailjs.com/admin/account into config.js (keys may have been refreshed).');
+                            }
                             resolve(false);
                         });
                     });

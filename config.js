@@ -8,8 +8,13 @@ const SUPABASE_CONFIG = {
 };
 
 // EmailJS — forgot password (https://www.emailjs.com). Kung blangko, lalabas ang code sa page na lang.
-// Sa EmailJS Account → Allowed domains: idagdag ang Vercel domain mo para sa production.
+// Sa EmailJS: Account → Allowed domains → idagdag ang `ojt-project-laboratory.vercel.app` (o localhost para sa test).
+//
+// ERROR "Account not found" / 404: ang Public Key ay hindi na valid (hal. nag-"Refresh Keys" sa dashboard).
+// Buksan: https://dashboard.emailjs.com/admin/account → API Keys → kopyahin ang **Public Key** ngayon → i-paste sa ibaba.
+// Siguraduhing tumutugma ang serviceId / templateId sa Email Services at Email Templates (case-sensitive).
 window.OJT_PASSWORD_RESET_EMAILJS = {
+    // Palitan ng bagong key mula sa EmailJS → Account kung error na "Account not found"
     publicKey: '8l5kiXjS7akYHVVUK',
     serviceId: 'service_7fngazd',
     templateId: 'template_05sxotw'
