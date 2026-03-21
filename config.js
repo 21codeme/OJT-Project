@@ -14,8 +14,8 @@ const SUPABASE_CONFIG = {
 // Buksan: https://dashboard.emailjs.com/admin/account → API Keys → kopyahin ang **Public Key** ngayon → i-paste sa ibaba.
 // Siguraduhing tumutugma ang serviceId / templateId sa Email Services at Email Templates (case-sensitive).
 window.OJT_PASSWORD_RESET_EMAILJS = {
-    // Palitan ng bagong key mula sa EmailJS → Account kung error na "Account not found"
-    publicKey: '8l5kiXjS7akYHVVUK',
+    // Public Key mula sa EmailJS → Account → API Keys (huwag gamitin ang Private Key dito)
+    publicKey: '8I5kIXjS7akYHVuUK',
     serviceId: 'service_7fngazd',
     templateId: 'template_05sxotw'
 };
