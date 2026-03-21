@@ -295,7 +295,54 @@
         #photoPreviewModal .modal-inner .modal-close { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #1e3c72; color: #fff; font-size: 1.2rem; cursor: pointer; line-height: 1; }
         #photoPreviewModal .modal-inner .modal-close:hover { background: #2a5298; }
         #photoPreviewModal .modal-caption { margin-top: 8px; font-weight: 700; color: #333; font-size: 0.9rem; }
-        .top-header-actions { position: relative; }
+        .top-header-actions { position: relative; align-items: center; }
+        .settings-wrap { position: relative; }
+        .btn-icon {
+            width: 44px; height: 44px; padding: 0;
+            display: none; align-items: center; justify-content: center;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #fff;
+            cursor: pointer;
+        }
+        .btn-icon:hover { background: rgba(255,255,255,0.24); }
+        .btn-icon svg { width: 22px; height: 22px; fill: currentColor; }
+        .settings-dropdown {
+            position: absolute; top: calc(100% + 8px); right: 0;
+            min-width: 220px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 12px 34px rgba(15, 23, 42, 0.22);
+            border: 1px solid #e5e7eb;
+            padding: 6px;
+            display: none;
+            z-index: 1001;
+        }
+        .settings-dropdown.open { display: block; }
+        .settings-item {
+            display: block; width: 100%; text-align: left;
+            padding: 12px 14px; border: none; background: none;
+            font-family: inherit; font-size: 0.95rem; font-weight: 700;
+            color: #1e3c72; cursor: pointer; border-radius: 8px;
+        }
+        .settings-item:hover { background: #f1f5f9; }
+        .admin-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: 10002;
+            align-items: center; justify-content: center;
+            padding: 20px; box-sizing: border-box;
+        }
+        .admin-modal-overlay.show { display: flex; }
+        .admin-modal-box {
+            background: #fff; border-radius: 16px; padding: 22px 24px;
+            max-width: 420px; width: 100%;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+        }
+        .admin-modal-box h3 { color: #1e3c72; margin-bottom: 16px; font-size: 1.15rem; }
+        .admin-modal-box .field { margin-bottom: 12px; }
+        .admin-modal-box .error { margin-top: 8px; font-size: 0.88rem; }
         #reopenActions {
             position: absolute;
             top: 110%;
@@ -391,6 +438,15 @@
             <span>OJT Admin</span>
         </div>
         <div class="top-header-actions" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div class="settings-wrap">
+                <button class="btn-icon" type="button" id="btnSettings" aria-label="Settings" title="Account settings" style="display:none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.6.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.31-.07.63-.07.94s.02.63.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                </button>
+                <div id="settingsDropdown" class="settings-dropdown" role="menu">
+                    <button type="button" class="settings-item" id="menuChangePassword" role="menuitem">Change password</button>
+                    <button type="button" class="settings-item" id="menuChangeUsername" role="menuitem">Change username</button>
+                </div>
+            </div>
             <button class="btn btn-primary" type="button" id="btnReopenMenu" style="display:none;" title="Show re-open options">Re-open</button>
             <div id="reopenActions">
                 <div class="reopen-grid">
@@ -605,11 +661,54 @@
         </div>
     </div>
 
+    <div id="modalAdminPassword" class="admin-modal-overlay" aria-hidden="true">
+        <div class="admin-modal-box" role="dialog" aria-labelledby="modalPwdTitle">
+            <h3 id="modalPwdTitle">Change password</h3>
+            <div class="field">
+                <label for="admCurPass">Current password</label>
+                <input id="admCurPass" type="password" autocomplete="current-password">
+            </div>
+            <div class="field">
+                <label for="admNewPass">New password</label>
+                <input id="admNewPass" type="password" autocomplete="new-password" minlength="6">
+            </div>
+            <div class="field">
+                <label for="admNewPass2">Confirm new password</label>
+                <input id="admNewPass2" type="password" autocomplete="new-password" minlength="6">
+            </div>
+            <div id="admPassErr" class="error"></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn btn-secondary" id="admPassCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="admPassSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalAdminUsername" class="admin-modal-overlay" aria-hidden="true">
+        <div class="admin-modal-box" role="dialog" aria-labelledby="modalUserTitle">
+            <h3 id="modalUserTitle">Change username</h3>
+            <div class="field">
+                <label for="admUserCurPass">Current password</label>
+                <input id="admUserCurPass" type="password" autocomplete="current-password">
+            </div>
+            <div class="field">
+                <label for="admNewUsername">New username</label>
+                <input id="admNewUsername" type="text" autocomplete="username" minlength="2" maxlength="80">
+            </div>
+            <div id="admUserErr" class="error"></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn btn-secondary" id="admUserCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="admUserSave">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function() {
             var REQUIRED_ADMIN_USERNAME = 'admin';
             var REQUIRED_ADMIN_PASSWORD = 'admin123';
             var ADMIN_SESSION_KEY = 'ojt_admin_session';
+            var ADMIN_USERNAME_KEY = 'ojt_admin_username';
             var DB_KEY = 'ojt_trainees_db';
             var DOCS_DB_KEY = 'ojt_trainee_documents_db';
 
@@ -638,6 +737,51 @@
             var btnCloseReopenDate = document.getElementById('btnCloseReopenDate');
             var btnCloseReopenRange = document.getElementById('btnCloseReopenRange');
             var btnCloseReopenAll = document.getElementById('btnCloseReopenAll');
+            var btnSettings = document.getElementById('btnSettings');
+            var settingsDropdown = document.getElementById('settingsDropdown');
+            var menuChangePassword = document.getElementById('menuChangePassword');
+            var menuChangeUsername = document.getElementById('menuChangeUsername');
+            var modalAdminPassword = document.getElementById('modalAdminPassword');
+            var modalAdminUsername = document.getElementById('modalAdminUsername');
+
+            function getStoredAdminUsername() {
+                try {
+                    var u = localStorage.getItem(ADMIN_USERNAME_KEY);
+                    if (u && String(u).trim()) return String(u).trim().toLowerCase();
+                } catch (e) {}
+                return 'admin';
+            }
+            function ensureAdminUsernameStored() {
+                try {
+                    if (!localStorage.getItem(ADMIN_USERNAME_KEY)) localStorage.setItem(ADMIN_USERNAME_KEY, 'admin');
+                } catch (e) {}
+            }
+            function closeSettingsDropdown() {
+                if (settingsDropdown) settingsDropdown.classList.remove('open');
+            }
+            function openModalPwd() {
+                closeSettingsDropdown();
+                var e1 = document.getElementById('admPassErr');
+                if (e1) { e1.textContent = ''; e1.classList.remove('show'); }
+                document.getElementById('admCurPass').value = '';
+                document.getElementById('admNewPass').value = '';
+                document.getElementById('admNewPass2').value = '';
+                if (modalAdminPassword) { modalAdminPassword.classList.add('show'); modalAdminPassword.setAttribute('aria-hidden', 'false'); }
+            }
+            function closeModalPwd() {
+                if (modalAdminPassword) { modalAdminPassword.classList.remove('show'); modalAdminPassword.setAttribute('aria-hidden', 'true'); }
+            }
+            function openModalUser() {
+                closeSettingsDropdown();
+                var e2 = document.getElementById('admUserErr');
+                if (e2) { e2.textContent = ''; e2.classList.remove('show'); }
+                document.getElementById('admUserCurPass').value = '';
+                document.getElementById('admNewUsername').value = '';
+                if (modalAdminUsername) { modalAdminUsername.classList.add('show'); modalAdminUsername.setAttribute('aria-hidden', 'false'); }
+            }
+            function closeModalUser() {
+                if (modalAdminUsername) { modalAdminUsername.classList.remove('show'); modalAdminUsername.setAttribute('aria-hidden', 'true'); }
+            }
 
             var traineeSearch = document.getElementById('traineeSearch');
             var traineeListEl = document.getElementById('traineeList');
@@ -671,10 +815,12 @@
                 goToAttendanceLogin();
                 return;
             }
+            ensureAdminUsernameStored();
             if (isAuthedNow) {
                 if (loginPanel) loginPanel.classList.remove('active');
                 if (adminPanel) adminPanel.classList.add('active');
                 if (btnLogout) btnLogout.style.display = 'inline-block';
+                if (btnSettings) btnSettings.style.display = 'inline-flex';
                 if (btnReopenMenu) btnReopenMenu.style.display = 'inline-block';
                 if (btnReopen) btnReopen.style.display = 'inline-block';
                 if (btnReopenRange) btnReopenRange.style.display = 'inline-block';
@@ -685,6 +831,7 @@
                 if (loginPanel) loginPanel.classList.add('active');
                 if (adminPanel) adminPanel.classList.remove('active');
                 if (btnLogout) btnLogout.style.display = 'none';
+                if (btnSettings) btnSettings.style.display = 'none';
                 if (btnReopenMenu) btnReopenMenu.style.display = 'none';
                 if (btnReopen) btnReopen.style.display = 'none';
                 if (btnReopenRange) btnReopenRange.style.display = 'none';
@@ -1496,6 +1643,7 @@
                         return;
                     }
                     localStorage.setItem(ADMIN_SESSION_KEY, '1');
+                    try { localStorage.setItem(ADMIN_USERNAME_KEY, username.toLowerCase()); } catch (e2) {}
                     location.reload();
                 });
             }
@@ -1503,7 +1651,138 @@
             if (btnLogout) {
                 btnLogout.addEventListener('click', function() {
                     localStorage.removeItem(ADMIN_SESSION_KEY);
+                    try { localStorage.removeItem(ADMIN_USERNAME_KEY); } catch (e) {}
                     goToAttendanceLogin();
+                });
+            }
+
+            if (btnSettings) {
+                btnSettings.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (settingsDropdown) settingsDropdown.classList.toggle('open');
+                });
+            }
+            document.addEventListener('click', function() { closeSettingsDropdown(); });
+            if (menuChangePassword) {
+                menuChangePassword.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openModalPwd();
+                });
+            }
+            if (menuChangeUsername) {
+                menuChangeUsername.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openModalUser();
+                });
+            }
+            if (modalAdminPassword) {
+                modalAdminPassword.addEventListener('click', function(e) { if (e.target === modalAdminPassword) closeModalPwd(); });
+            }
+            if (modalAdminUsername) {
+                modalAdminUsername.addEventListener('click', function(e) { if (e.target === modalAdminUsername) closeModalUser(); });
+            }
+            var admPassCancel = document.getElementById('admPassCancel');
+            var admPassSave = document.getElementById('admPassSave');
+            var admUserCancel = document.getElementById('admUserCancel');
+            var admUserSave = document.getElementById('admUserSave');
+            if (admPassCancel) admPassCancel.addEventListener('click', closeModalPwd);
+            if (admUserCancel) admUserCancel.addEventListener('click', closeModalUser);
+            if (admPassSave) {
+                admPassSave.addEventListener('click', async function() {
+                    var errEl = document.getElementById('admPassErr');
+                    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+                    var curPass = (document.getElementById('admCurPass').value || '').trim();
+                    var newPass = (document.getElementById('admNewPass').value || '').trim();
+                    var newPass2 = (document.getElementById('admNewPass2').value || '').trim();
+                    if (!curPass) {
+                        if (errEl) { errEl.textContent = 'Enter your current password.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    if (!newPass || newPass.length < 6) {
+                        if (errEl) { errEl.textContent = 'New password must be at least 6 characters.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    if (newPass !== newPass2) {
+                        if (errEl) { errEl.textContent = 'New passwords do not match.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var sb = await waitForSupabaseReady(10000);
+                    if (!sb) {
+                        if (errEl) { errEl.textContent = 'Could not connect to the server.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var uname = getStoredAdminUsername();
+                    var sel = await sb.from('ojt_admin').select('id,password_hash').eq('username', uname).maybeSingle();
+                    if (sel.error || !sel.data) {
+                        if (errEl) { errEl.textContent = 'Admin account not found in the database.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    if (sel.data.password_hash !== curPass) {
+                        if (errEl) { errEl.textContent = 'Current password is incorrect.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var upd = await sb.from('ojt_admin').update({ password_hash: newPass }).eq('id', sel.data.id);
+                    if (upd.error) {
+                        if (errEl) { errEl.textContent = (upd.error.message || 'Could not update password.'); errEl.classList.add('show'); }
+                        return;
+                    }
+                    closeModalPwd();
+                    alert('Password updated.');
+                });
+            }
+            document.addEventListener('keydown', function(ev) {
+                if (ev.key !== 'Escape') return;
+                if (modalAdminPassword && modalAdminPassword.classList.contains('show')) closeModalPwd();
+                if (modalAdminUsername && modalAdminUsername.classList.contains('show')) closeModalUser();
+                closeSettingsDropdown();
+            });
+
+            if (admUserSave) {
+                admUserSave.addEventListener('click', async function() {
+                    var errEl = document.getElementById('admUserErr');
+                    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+                    var curPass = (document.getElementById('admUserCurPass').value || '').trim();
+                    var newName = (document.getElementById('admNewUsername').value || '').trim().toLowerCase();
+                    if (!curPass) {
+                        if (errEl) { errEl.textContent = 'Enter your current password.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    if (!newName || newName.length < 2) {
+                        if (errEl) { errEl.textContent = 'Enter a valid username (at least 2 characters).'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var oldName = getStoredAdminUsername();
+                    if (newName === oldName) {
+                        if (errEl) { errEl.textContent = 'Choose a different username.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var sb = await waitForSupabaseReady(10000);
+                    if (!sb) {
+                        if (errEl) { errEl.textContent = 'Could not connect to the server.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var sel = await sb.from('ojt_admin').select('id,password_hash').eq('username', oldName).maybeSingle();
+                    if (sel.error || !sel.data) {
+                        if (errEl) { errEl.textContent = 'Admin account not found in the database.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    if (sel.data.password_hash !== curPass) {
+                        if (errEl) { errEl.textContent = 'Current password is incorrect.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var taken = await sb.from('ojt_admin').select('id').eq('username', newName).maybeSingle();
+                    if (taken.data) {
+                        if (errEl) { errEl.textContent = 'That username is already taken.'; errEl.classList.add('show'); }
+                        return;
+                    }
+                    var upd = await sb.from('ojt_admin').update({ username: newName }).eq('id', sel.data.id);
+                    if (upd.error) {
+                        if (errEl) { errEl.textContent = (upd.error.message || 'Could not update username.'); errEl.classList.add('show'); }
+                        return;
+                    }
+                    try { localStorage.setItem(ADMIN_USERNAME_KEY, newName); } catch (e) {}
+                    closeModalUser();
+                    alert('Username updated. Use the new username next time you log in.');
                 });
             }
             if (btnReopenMenu) {
@@ -1706,6 +1985,7 @@
                 loginPanel.classList.remove('active');
                 adminPanel.classList.add('active');
                 btnLogout.style.display = 'inline-block';
+                if (btnSettings) btnSettings.style.display = 'inline-flex';
                 if (btnReopenMenu) btnReopenMenu.style.display = 'inline-block';
                 if (btnReopen) btnReopen.style.display = 'inline-block';
                 if (btnReopenRange) btnReopenRange.style.display = 'inline-block';
@@ -1725,6 +2005,7 @@
                 loginPanel.classList.add('active');
                 adminPanel.classList.remove('active');
                 btnLogout.style.display = 'none';
+                if (btnSettings) btnSettings.style.display = 'none';
                 if (btnReopenMenu) btnReopenMenu.style.display = 'none';
                 if (btnReopen) btnReopen.style.display = 'none';
                 if (btnReopenRange) btnReopenRange.style.display = 'none';

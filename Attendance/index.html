@@ -804,7 +804,10 @@
                     }
                     if (!adminOk && pass === REQUIRED_ADMIN_PASSWORD) adminOk = true;
                     if (adminOk) {
-                        try { localStorage.setItem('ojt_admin_session', '1'); } catch (err) {}
+                        try {
+                            localStorage.setItem('ojt_admin_session', '1');
+                            localStorage.setItem('ojt_admin_username', usernameOrEmail.toLowerCase());
+                        } catch (err) {}
                         window.location.href = '../Admin/index.html?autologin=1';
                         return;
                     }
