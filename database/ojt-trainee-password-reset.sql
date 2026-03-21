@@ -73,12 +73,19 @@ SET search_path = public
 AS $$
 DECLARE
     v_email text := lower(trim(p_email));
-    v_code text := trim(p_code);
+    v_code text;
+    v_digits text;
     v_row ojt_password_reset_codes%ROWTYPE;
     v_updated int;
 BEGIN
-    IF v_email = '' OR v_code = '' OR p_new_password IS NULL OR length(trim(p_new_password)) < 6 THEN
+    v_digits := regexp_replace(coalesce(trim(p_code), ''), '\D', '', 'g');
+    IF v_email = '' OR length(v_digits) = 0 OR p_new_password IS NULL OR length(trim(p_new_password)) < 6 THEN
         RETURN json_build_object('ok', false, 'error', 'invalid_input');
+    END IF;
+    IF length(v_digits) <= 6 THEN
+        v_code := lpad(v_digits, 6, '0');
+    ELSE
+        v_code := left(v_digits, 6);
     END IF;
 
     SELECT * INTO v_row

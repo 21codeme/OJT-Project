@@ -141,6 +141,7 @@
                 <div id="forgotCodeFallback" class="forgot-code-box hidden">
                     <span>Walang EmailJS setup — ito ang code mo (15 min lang):</span><br>
                     <strong id="forgotCodeDisplay"></strong>
+                    <span class="hint" style="display:block;margin-top:8px;color:#7c2d12;">Naka-fill na rin ang code sa field sa ibaba; i-click lang ang <strong>I-save ang bagong password</strong> pagkatapos mag-set ng bagong password.</span>
                 </div>
                 <form id="forgotCompleteForm">
                     <div class="form-group">
@@ -537,7 +538,11 @@
                             if (forgotStep1) forgotStep1.classList.add('hidden');
                             if (forgotStep2) forgotStep2.classList.remove('hidden');
                             var otpEl = document.getElementById('forgotOtp');
-                            if (otpEl) otpEl.focus();
+                            if (otpEl) {
+                                otpEl.value = String(data.code);
+                                otpEl.focus();
+                                try { otpEl.select(); } catch (e) {}
+                            }
                         } else if (forgotRequestError) {
                             forgotRequestError.textContent = 'Kung may account ang email na iyon, makakatanggap ka ng code. Tingnan ang inbox (o spam folder).';
                             forgotRequestError.classList.add('show');
@@ -566,7 +571,20 @@
                     var otpEl = document.getElementById('forgotOtp');
                     var passEl = document.getElementById('forgotNewPass');
                     var pass2El = document.getElementById('forgotNewPass2');
-                    var otp = otpEl && otpEl.value ? otpEl.value.trim() : '';
+                    var otpRaw = otpEl && otpEl.value ? otpEl.value.trim() : '';
+                    var otpDigits = otpRaw.replace(/\D/g, '');
+                    var otp = '';
+                    if (otpDigits.length) {
+                        if (otpDigits.length <= 6) otp = otpDigits.padStart(6, '0');
+                        else otp = otpDigits.slice(0, 6);
+                    }
+                    if (!otp || otp.length !== 6) {
+                        if (forgotCompleteError) {
+                            forgotCompleteError.textContent = 'Ilagay ang buong 6-digit code.';
+                            forgotCompleteError.classList.add('show');
+                        }
+                        return;
+                    }
                     var p1 = passEl ? passEl.value : '';
                     var p2 = pass2El ? pass2El.value : '';
                     if (p1 !== p2) {
