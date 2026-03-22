@@ -860,6 +860,9 @@
                         window.location.href = 'dashboard.html';
                         return;
                     }
+                    loginError.textContent = 'Invalid email or password.';
+                    loginError.classList.add('show');
+                    return;
                 }
                 try {
                     var saved = localStorage.getItem('ojt_trainee_profile');
