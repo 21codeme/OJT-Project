@@ -253,6 +253,14 @@
         .btn-save-log { border: none; border-radius: 8px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; font-weight: 700; padding: 10px 14px; cursor: pointer; }
         .btn-save-log:hover { opacity: 0.95; }
         .dailylog-item { background: #fff; border: 1px solid #e8eaed; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+        .dailylog-item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+        .dailylog-item-head .dailylog-meta { margin-bottom: 0; flex: 1; min-width: 0; }
+        .btn-dailylog-delete {
+            flex-shrink: 0; padding: 5px 10px; border-radius: 8px; border: 1px solid #fecaca;
+            background: #fef2f2; color: #b91c1c; font-size: 0.78rem; font-weight: 800; cursor: pointer;
+        }
+        .btn-dailylog-delete:hover:not(:disabled) { background: #fee2e2; border-color: #f87171; }
+        .btn-dailylog-delete:disabled { opacity: 0.55; cursor: not-allowed; }
         .dailylog-meta { font-size: 0.82rem; color: #64748b; margin-bottom: 6px; font-weight: 700; }
         .dailylog-text { white-space: pre-wrap; color: #1f2937; font-size: 0.92rem; }
         .dailylog-photo { display: block; margin-top: 8px; max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid #e8eaed; object-fit: contain; background: #fff; }
@@ -2269,13 +2277,23 @@
                 arr.forEach(function(log) {
                     var item = document.createElement('div');
                     item.className = 'dailylog-item';
+                    var head = document.createElement('div');
+                    head.className = 'dailylog-item-head';
                     var meta = document.createElement('div');
                     meta.className = 'dailylog-meta';
                     meta.textContent = (log.log_date || '') + (log.created_at ? (' • ' + new Date(log.created_at).toLocaleString()) : '');
+                    head.appendChild(meta);
+                    var delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.className = 'btn-dailylog-delete';
+                    delBtn.textContent = 'Delete';
+                    delBtn.setAttribute('aria-label', 'Delete this daily log');
+                    delBtn.setAttribute('data-log-id', log.id != null ? String(log.id) : '');
+                    head.appendChild(delBtn);
+                    item.appendChild(head);
                     var txt = document.createElement('div');
                     txt.className = 'dailylog-text';
                     txt.textContent = log.log_text || '';
-                    item.appendChild(meta);
                     item.appendChild(txt);
                     if (log.photo_url) {
                         var a = document.createElement('a');
@@ -2290,6 +2308,59 @@
                         item.appendChild(a);
                     }
                     listEl.appendChild(item);
+                });
+            }
+
+            function storageObjectPathFromPhotoUrl(url, bucket) {
+                if (!url || !bucket || typeof url !== 'string') return '';
+                var key = '/object/public/' + bucket + '/';
+                var i = url.indexOf(key);
+                if (i === -1) return '';
+                var path = url.slice(i + key.length).split(/[?#]/)[0];
+                try { path = decodeURIComponent(path); } catch (e) {}
+                return path;
+            }
+
+            async function deleteDailyLogById(logId, photoUrl) {
+                var sb = await waitForSupabaseReady(7000);
+                if (!sb || !traineeId) throw new Error('Could not connect. Please log in again.');
+                if (!logId || String(logId).indexOf('local-') === 0) {
+                    throw new Error('This entry is not saved on the server yet. Refresh the page and try again.');
+                }
+                var del = await sb.from('ojt_daily_logs').delete().eq('id', logId).eq('trainee_id', traineeId);
+                if (del.error) throw del.error;
+                var path = storageObjectPathFromPhotoUrl(photoUrl, DAILY_LOGS_BUCKET);
+                if (path) {
+                    try {
+                        await sb.storage.from(DAILY_LOGS_BUCKET).remove([path]);
+                    } catch (e) {}
+                }
+            }
+
+            if (listEl) {
+                listEl.addEventListener('click', function(e) {
+                    var btn = e.target && e.target.closest ? e.target.closest('.btn-dailylog-delete') : null;
+                    if (!btn || !listEl.contains(btn)) return;
+                    var logId = btn.getAttribute('data-log-id');
+                    if (!logId) return;
+                    var entry = null;
+                    for (var i = 0; i < logsCache.length; i++) {
+                        if (String(logsCache[i].id) === logId) {
+                            entry = logsCache[i];
+                            break;
+                        }
+                    }
+                    if (!entry) return;
+                    if (!window.confirm('Delete this daily log? This cannot be undone.')) return;
+                    btn.disabled = true;
+                    deleteDailyLogById(logId, entry.photo_url || '').then(function() {
+                        logsCache = logsCache.filter(function(x) { return String(x.id) !== logId; });
+                        renderLogs();
+                    }).catch(function(err) {
+                        var msg = (err && err.message) ? err.message : 'Could not delete the log.';
+                        alert(msg);
+                        btn.disabled = false;
+                    });
                 });
             }
 
