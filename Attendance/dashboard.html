@@ -163,6 +163,19 @@
         }
         .training-hours-summary .th-sep { margin: 0 10px; color: #86efac; }
         .training-hours-summary .th-label { opacity: 0.9; }
+        .attendance-toolbar {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+            margin-bottom: 4px;
+        }
+        .attendance-toolbar .training-hours-summary { flex: 1; min-width: min(100%, 280px); margin-bottom: 0; }
+        .btn-download-attendance-pdf {
+            padding: 10px 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.9rem;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff;
+            box-shadow: 0 2px 10px rgba(30,60,114,0.2);
+            white-space: nowrap;
+        }
+        .btn-download-attendance-pdf:hover:not(:disabled) { opacity: 0.95; }
+        .btn-download-attendance-pdf:disabled { opacity: 0.55; cursor: not-allowed; }
         .attendance-now {
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
             padding: 20px 24px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -554,12 +567,15 @@
         <section id="section-attendance" class="section">
             <h2>Attendance</h2>
             <div class="attendance-wrap">
-                <div id="trainingHoursSummary" class="training-hours-summary">
-                    <span class="th-label">Training Hours Required:</span> <span id="thRequired">—</span>
-                    <span class="th-sep">|</span>
-                    <span class="th-label">Completed:</span> <span id="thCompleted">—</span>
-                    <span class="th-sep">|</span>
-                    <span class="th-label">Remaining:</span> <span id="thRemaining">—</span>
+                <div class="attendance-toolbar">
+                    <div id="trainingHoursSummary" class="training-hours-summary">
+                        <span class="th-label">Training Hours Required:</span> <span id="thRequired">—</span>
+                        <span class="th-sep">|</span>
+                        <span class="th-label">Completed:</span> <span id="thCompleted">—</span>
+                        <span class="th-sep">|</span>
+                        <span class="th-label">Remaining:</span> <span id="thRemaining">—</span>
+                    </div>
+                    <button type="button" id="btnDownloadAttendancePdf" class="btn-download-attendance-pdf" title="Save attendance summary and log as PDF">Download PDF</button>
                 </div>
                 <div class="attendance-now">
                     <div>
@@ -1713,7 +1729,7 @@
                 });
                 return Math.round(totalMins / 60 * 10) / 10;
             }
-            function updateTrainingHoursSummary() {
+            function getTrainingHoursSummaryValues() {
                 var required = 0;
                 try {
                     var prof = localStorage.getItem('ojt_trainee_profile');
@@ -1725,12 +1741,16 @@
                 } catch (e) {}
                 var completed = computeCompletedHours();
                 var remaining = Math.max(0, required - completed);
+                return { required: required, completed: completed, remaining: remaining };
+            }
+            function updateTrainingHoursSummary() {
+                var v = getTrainingHoursSummaryValues();
                 var elReq = document.getElementById('thRequired');
                 var elComp = document.getElementById('thCompleted');
                 var elRem = document.getElementById('thRemaining');
-                if (elReq) elReq.textContent = required ? (required + ' hrs') : '—';
-                if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
-                if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
+                if (elReq) elReq.textContent = v.required ? (v.required + ' hrs') : '—';
+                if (elComp) elComp.textContent = v.completed ? (v.completed + ' hrs') : '0 hrs';
+                if (elRem) elRem.textContent = v.required ? (v.remaining + ' hrs') : '—';
             }
             function refreshAttendanceUIFromLocal() {
                 updateTodayStatus();
@@ -2010,6 +2030,165 @@
                     alert('Could not save to the server. Please try again.');
                 });
             });
+
+            function loadJsPdfAttendance(cb) {
+                if ((window.jspdf && window.jspdf.jsPDF) || window.jsPDF) {
+                    cb();
+                    return;
+                }
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                s.onload = function() { cb(); };
+                s.onerror = function() {
+                    alert('Could not load the PDF library. Check your network and try again.');
+                };
+                document.head.appendChild(s);
+            }
+            function loadAutoTableAttendance(cb) {
+                var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+                if (!JsPDF) {
+                    cb();
+                    return;
+                }
+                try {
+                    var test = new JsPDF();
+                    if (typeof test.autoTable === 'function') {
+                        cb();
+                        return;
+                    }
+                } catch (e) {}
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js';
+                s.onload = function() { cb(); };
+                s.onerror = function() {
+                    alert('Could not load the PDF table helper. Check your network and try again.');
+                };
+                document.head.appendChild(s);
+            }
+            function runAttendancePdfExport() {
+                var btn = document.getElementById('btnDownloadAttendancePdf');
+                if (btn) btn.disabled = true;
+                loadJsPdfAttendance(function() {
+                    loadAutoTableAttendance(function() {
+                        try {
+                            var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+                            if (!JsPDF) {
+                                alert('PDF library not available.');
+                                if (btn) btn.disabled = false;
+                                return;
+                            }
+                            var doc = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                            if (typeof doc.autoTable !== 'function') {
+                                alert('PDF table plugin failed to load.');
+                                if (btn) btn.disabled = false;
+                                return;
+                            }
+                            var profile = null;
+                            try {
+                                var pr = localStorage.getItem('ojt_trainee_profile');
+                                if (pr) profile = JSON.parse(pr);
+                            } catch (e) {}
+                            var y = 12;
+                            doc.setFontSize(15);
+                            doc.setTextColor(30, 60, 114);
+                            doc.text('OJT Attendance Record', 14, y);
+                            y += 7;
+                            doc.setFontSize(9);
+                            doc.setTextColor(80);
+                            doc.text('Occidental Mindoro State College — Multimedia and Speech Laboratory', 14, y);
+                            y += 5;
+                            doc.setTextColor(0);
+                            var nameLine = '';
+                            if (profile) {
+                                nameLine = (profile.fullName || profile.username || '').trim();
+                                if (profile.studentId) nameLine += (nameLine ? ' · ' : '') + 'Student ID: ' + profile.studentId;
+                            }
+                            if (nameLine) {
+                                doc.setFontSize(10);
+                                doc.text(nameLine, 14, y);
+                                y += 5;
+                            }
+                            var sum = getTrainingHoursSummaryValues();
+                            doc.setFontSize(10);
+                            doc.setFont('helvetica', 'bold');
+                            var sumLine = 'Training Hours Required: ' + (sum.required ? (sum.required + ' hrs') : '—') +
+                                '  |  Completed: ' + (sum.completed ? (sum.completed + ' hrs') : '0 hrs') +
+                                '  |  Remaining: ' + (sum.required ? (sum.remaining + ' hrs') : '—');
+                            doc.text(sumLine, 14, y);
+                            y += 5;
+                            doc.setFont('helvetica', 'normal');
+                            doc.setFontSize(8);
+                            doc.setTextColor(90);
+                            doc.text('Generated: ' + new Date().toLocaleString(), 14, y);
+                            doc.setTextColor(0);
+                            y += 7;
+
+                            var list = getRecords().slice().filter(function(r) { return hasAny(r); });
+                            list.sort(function(a, b) { return a.date.localeCompare(b.date); });
+                            var body = list.map(function(r) {
+                                r = normalizeRec(r);
+                                var amIn = amInTime(r);
+                                var pmIn = pmInTime(r);
+                                var otIn = otInTime(r);
+                                var otInCell = otIn || '—';
+                                if (otIn && !isOtInApprovedForTrainee(r)) otInCell = otIn + ' (pending admin)';
+                                var amInPhoto = r.amIn && typeof r.amIn === 'object' && r.amIn.photo;
+                                var pmInPhoto = r.pmIn && typeof r.pmIn === 'object' && r.pmIn.photo;
+                                var otInPhoto = r.otIn && typeof r.otIn === 'object' && r.otIn.photo;
+                                var photoBits = [];
+                                if (amInPhoto) photoBits.push('AM');
+                                if (pmInPhoto) photoBits.push('PM');
+                                if (otInPhoto) photoBits.push('OT');
+                                var photoCol = photoBits.length ? photoBits.join(', ') : '—';
+                                return [
+                                    r.date,
+                                    amIn || '—',
+                                    r.amOut || '—',
+                                    pmIn || '—',
+                                    r.pmOut || '—',
+                                    otInCell,
+                                    r.otOut || '—',
+                                    photoCol
+                                ];
+                            });
+                            if (body.length === 0) {
+                                body = [['(no recorded days yet)', '—', '—', '—', '—', '—', '—', '—']];
+                            }
+                            doc.autoTable({
+                                startY: y,
+                                head: [['Date', 'AM In', 'AM Out', 'PM In', 'PM Out', 'O.T. In', 'O.T. Out', 'Photo (time-in)']],
+                                body: body,
+                                styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak' },
+                                headStyles: { fillColor: [30, 60, 114], textColor: 255, fontStyle: 'bold' },
+                                margin: { left: 14, right: 14 },
+                                tableWidth: 'auto'
+                            });
+                            var base = 'OJT-Attendance';
+                            try {
+                                if (profile && (profile.studentId || profile.fullName)) {
+                                    base = String(profile.studentId || profile.fullName)
+                                        .replace(/[^\w\-\s]/g, '')
+                                        .trim()
+                                        .replace(/\s+/g, '_')
+                                        .slice(0, 40) || 'OJT-Attendance';
+                                }
+                            } catch (e2) {}
+                            base += '-' + dateKey(new Date());
+                            doc.save(base + '.pdf');
+                        } catch (err) {
+                            try { console.error('attendance pdf', err); } catch (e3) {}
+                            alert('Could not create the PDF. Please try again.');
+                        }
+                        if (btn) btn.disabled = false;
+                    });
+                });
+            }
+            var btnDownloadAttendancePdf = document.getElementById('btnDownloadAttendancePdf');
+            if (btnDownloadAttendancePdf) {
+                btnDownloadAttendancePdf.addEventListener('click', function() {
+                    runAttendancePdfExport();
+                });
+            }
 
             var sectionAttendance = document.getElementById('section-attendance');
             if (sectionAttendance) {
