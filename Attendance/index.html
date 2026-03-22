@@ -786,34 +786,35 @@
                 var pass = document.getElementById('loginPassword').value.trim();
                 if (!usernameOrEmail || !pass) return;
 
-                // Admin login: Supabase ojt_admin only when online; hardcoded fallback only if no Supabase client.
-                if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME) {
-                    var adminOk = false;
-                    var supabaseForAdmin = window.supabaseClient;
-                    if (supabaseForAdmin) {
-                        try {
-                            var adminRes = await supabaseForAdmin
-                                .from('ojt_admin')
-                                .select('username,password_hash')
-                                .eq('username', usernameOrEmail.toLowerCase())
-                                .maybeSingle();
-                            if (adminRes && adminRes.data && adminRes.data.password_hash === pass) {
-                                adminOk = true;
+                // Admin login: any username that exists in ojt_admin (so renames still work). Wrong password on that row = admin error, not trainee.
+                var supabaseForAdmin = window.supabaseClient;
+                if (supabaseForAdmin) {
+                    try {
+                        var adminRes = await supabaseForAdmin
+                            .from('ojt_admin')
+                            .select('username,password_hash')
+                            .eq('username', usernameOrEmail.toLowerCase())
+                            .maybeSingle();
+                        if (adminRes && adminRes.data) {
+                            if (adminRes.data.password_hash === pass) {
+                                try {
+                                    localStorage.setItem('ojt_admin_session', '1');
+                                    localStorage.setItem('ojt_admin_username', adminRes.data.username || usernameOrEmail.toLowerCase());
+                                } catch (err) {}
+                                window.location.href = '../Admin/index.html?autologin=1';
+                                return;
                             }
-                        } catch (err) {}
-                    } else if (pass === REQUIRED_ADMIN_PASSWORD) {
-                        adminOk = true;
-                    }
-                    if (adminOk) {
-                        try {
-                            localStorage.setItem('ojt_admin_session', '1');
-                            localStorage.setItem('ojt_admin_username', usernameOrEmail.toLowerCase());
-                        } catch (err) {}
-                        window.location.href = '../Admin/index.html?autologin=1';
-                        return;
-                    }
-                    loginError.textContent = 'Invalid admin username/password.';
-                    loginError.classList.add('show');
+                            loginError.textContent = 'Invalid admin username/password.';
+                            loginError.classList.add('show');
+                            return;
+                        }
+                    } catch (err) {}
+                } else if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME && pass === REQUIRED_ADMIN_PASSWORD) {
+                    try {
+                        localStorage.setItem('ojt_admin_session', '1');
+                        localStorage.setItem('ojt_admin_username', REQUIRED_ADMIN_USERNAME);
+                    } catch (err2) {}
+                    window.location.href = '../Admin/index.html?autologin=1';
                     return;
                 }
 
