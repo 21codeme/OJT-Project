@@ -2349,10 +2349,11 @@
                     loginError.classList.remove('show');
                     var username = (document.getElementById('adminUser').value || '').trim();
                     var pass = (document.getElementById('adminPass').value || '').trim();
-                    var allowed = (username === REQUIRED_ADMIN_USERNAME && pass === REQUIRED_ADMIN_PASSWORD);
-                    if (!allowed && window.supabaseClient) {
+                    var allowed = false;
+                    var sbLogin = window.supabaseClient;
+                    if (sbLogin) {
                         try {
-                            var adminRes = await window.supabaseClient
+                            var adminRes = await sbLogin
                                 .from('ojt_admin')
                                 .select('username,password_hash')
                                 .eq('username', username.toLowerCase())
@@ -2361,6 +2362,8 @@
                                 allowed = true;
                             }
                         } catch (e) {}
+                    } else {
+                        allowed = (username === REQUIRED_ADMIN_USERNAME && pass === REQUIRED_ADMIN_PASSWORD);
                     }
                     if (!allowed) {
                         loginError.classList.add('show');

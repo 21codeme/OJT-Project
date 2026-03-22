@@ -786,7 +786,7 @@
                 var pass = document.getElementById('loginPassword').value.trim();
                 if (!usernameOrEmail || !pass) return;
 
-                // Admin login (Supabase-backed; fallback to local prototype values).
+                // Admin login: Supabase ojt_admin only when online; hardcoded fallback only if no Supabase client.
                 if (usernameOrEmail.toLowerCase() === REQUIRED_ADMIN_USERNAME) {
                     var adminOk = false;
                     var supabaseForAdmin = window.supabaseClient;
@@ -801,8 +801,9 @@
                                 adminOk = true;
                             }
                         } catch (err) {}
+                    } else if (pass === REQUIRED_ADMIN_PASSWORD) {
+                        adminOk = true;
                     }
-                    if (!adminOk && pass === REQUIRED_ADMIN_PASSWORD) adminOk = true;
                     if (adminOk) {
                         try {
                             localStorage.setItem('ojt_admin_session', '1');
