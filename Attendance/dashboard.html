@@ -220,11 +220,27 @@
         .cal-cell .day-num { font-weight: 700; margin-bottom: 4px; }
         .cal-cell .day-times { font-size: 0.75rem; color: #555; line-height: 1.4; }
         .attendance-summary { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e8eaed; }
-        .attendance-summary h3 { font-size: 1rem; color: #1e3c72; margin-bottom: 12px; }
+        .attendance-summary h3 { font-size: 1rem; color: #1e3c72; margin-bottom: 8px; }
+        .attendance-summary-scroll {
+            max-height: min(60vh, 560px);
+            overflow-y: auto;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 4px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+        }
         .attendance-summary table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         .attendance-summary th, .attendance-summary td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e8eaed; }
-        .attendance-summary th { font-weight: 700; color: #444; }
+        .attendance-summary th {
+            font-weight: 700; color: #444;
+            position: sticky; top: 0; z-index: 2;
+            background: #f1f5f9;
+            box-shadow: 0 1px 0 #e2e8f0;
+        }
         .attendance-summary .thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; vertical-align: middle; }
+        .attendance-summary-hint { font-size: 0.82rem; color: #64748b; margin: 0 0 6px; }
         .dailylogs-wrap { display: grid; grid-template-columns: minmax(260px, 360px) 1fr; gap: 16px; align-items: start; }
         .dailylogs-form-card, .dailylogs-list-card { background: #f8fafc; border: 1px solid #e8eaed; border-radius: 12px; padding: 14px; }
         .dailylogs-form-card h3, .dailylogs-list-card h3 { margin: 0 0 10px; color: #1e3c72; font-size: 1rem; }
@@ -636,11 +652,14 @@
                     <div id="calGrid" class="cal-grid"></div>
                 </div>
                 <div class="attendance-summary">
-                    <h3>Recent attendance</h3>
-                    <table>
-                        <thead><tr><th>Date</th><th>AM In</th><th>AM Out</th><th>PM In</th><th>PM Out</th><th>O.T. In</th><th>O.T. Out</th><th>Photo</th></tr></thead>
-                        <tbody id="attendanceTableBody"></tbody>
-                    </table>
+                    <h3>Attendance history</h3>
+                    <p class="attendance-summary-hint">Scroll inside the table below to see all days. <span lang="tl">(I-scroll pababa.)</span></p>
+                    <div class="attendance-summary-scroll">
+                        <table>
+                            <thead><tr><th>Date</th><th>AM In</th><th>AM Out</th><th>PM In</th><th>PM Out</th><th>O.T. In</th><th>O.T. Out</th><th>Photo</th></tr></thead>
+                            <tbody id="attendanceTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1681,7 +1700,7 @@
                 if (!tbody) return;
                 var records = getRecords().slice().filter(function(r) { return hasAny(r); });
                 records.sort(function(a, b) { return b.date.localeCompare(a.date); });
-                var rows = records.slice(0, 15);
+                var rows = records;
                 tbody.innerHTML = '';
                 rows.forEach(function(r) {
                     r = normalizeRec(r);
