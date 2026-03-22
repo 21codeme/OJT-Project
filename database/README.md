@@ -110,3 +110,10 @@ This folder contains all database-related files for the Lab Inventory Management
   - `sheet_id` (BIGINT, FK to class_schedule_sheets, ON DELETE CASCADE)
   - `day`, `time_slot`, `type`, `instructor`, `course`, `code`
   - `created_at`, `updated_at`
+
+## Free tier: Supabase auto-pause
+
+Free projects can **auto-pause** after about a week without **project** activity. That is controlled by Supabase, not by this app’s code.
+
+- **Paid plan:** projects stay active without pings.
+- **Stay on free:** add GitHub repository secrets `SUPABASE_URL` and `SUPABASE_ANON_KEY`, then rely on the scheduled workflow [`.github/workflows/keep-alive.yml`](../.github/workflows/keep-alive.yml) (or run it manually under **Actions**). It hits the REST API for `ojt_trainees` so Supabase sees activity. Opening the site alone may not be enough if no API calls reach Supabase.

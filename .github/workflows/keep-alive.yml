@@ -1,29 +1,48 @@
-# Ping Supabase API directly every 5 days so the project doesn't pause (free tier).
-# Pinging only the Vercel site does NOT count as Supabase activity (curl doesn't run JS, so no API calls).
+# Free-tier Supabase projects auto-pause after ~7 days without project activity.
+# You cannot turn this off in app code — only Supabase (upgrade to paid) or periodic API use.
+#
+# This workflow calls PostgREST on your project so it counts as activity.
+#
+# GitHub: Settings → Secrets and variables → Actions → New repository secret
+#   SUPABASE_URL       https://xxxx.supabase.co  (no trailing slash)
+#   SUPABASE_ANON_KEY  same anon key as config.js (public client key is fine here)
+#
+# Manual run: Actions → "Supabase Keep-Alive" → Run workflow
 name: Supabase Keep-Alive
 on:
   schedule:
-    - cron: '0 8 */5 * *'  # Every 5 days at 8:00 UTC (before typical 7-day inactivity)
-  workflow_dispatch:        # Run manually from Actions tab
+    # Every 3 days 08:00 UTC — margin before typical 7-day pause window
+    - cron: '0 8 */3 * *'
+  workflow_dispatch:
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase API (counts as project activity)
+      - name: Ping Supabase REST (ojt_trainees)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY in GitHub Secrets. Add them in repo Settings > Secrets and variables > Actions."
+            echo "::error::Add repository secrets SUPABASE_URL and SUPABASE_ANON_KEY (repo Settings → Secrets → Actions)."
             exit 1
           fi
-          # One lightweight REST request so Supabase sees activity (e.g. list sheets, limit 1)
-          curl -sSf -o /dev/null --max-time 30 \
+          base="${SUPABASE_URL%/}"
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 45 \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             -H "Accept: application/json" \
-            "$SUPABASE_URL/rest/v1/sheets?select=id&limit=1" || true
-      - name: Ping Vercel site (optional, keeps frontend warm)
+            "$base/rest/v1/ojt_trainees?select=id&limit=1")
+          echo "HTTP $code"
+          case "$code" in
+            200|206) echo "Supabase ping OK." ;;
+            *)
+              echo "::error::Expected 200/206 from ojt_trainees. If this table does not exist, run database/ojt-tables.sql."
+              exit 1
+              ;;
+          esac
+
+      - name: Optional — ping deployed site (does not replace Supabase ping)
         run: |
-          curl -sSf -o /dev/null --max-time 30 "https://ojt-project-laboratory.vercel.app" || true
+          curl -sS -o /dev/null --max-time 30 "https://ojt-project-laboratory.vercel.app/" || echo "Site ping skipped or failed (optional)."
