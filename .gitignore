@@ -25,3 +25,7 @@ node_modules/
 # Environment files
 .env
 .env.local
+
+# Local cheat sheets na maaaring maglaman ng tunay na keys (hindi i-commit)
+GITHUB_SECRETS.local.md
+secrets.local.md
