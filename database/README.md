@@ -47,6 +47,9 @@ This folder contains all database-related files for the Lab Inventory Management
    - **Manual (if you skip the one-shot):** Storage → New bucket `ojt-daily-logs` (Public ON) → run **`ojt-daily-logs-storage.sql`** → ensure `ojt_daily_logs` exists from **`ojt-tables.sql`**
    - Photo path: `{trainee_id}/{log_date}/{timestamp}.{ext}`
 
+7b. **OT time-in approval (Attendance)**  
+   - Run **`database/add-ot-in-approved.sql`** once in the SQL Editor (adds `ojt_attendance.ot_in_approved`). Existing OT In rows are marked approved so totals stay the same; new OT Ins stay pending until the admin clicks **Approve OT** on **Admin → Attendance**.
+
 8. **Trainee forgot password (Attendance login)**
    - Run **`database/ojt-trainee-password-reset.sql`** in the SQL Editor (`ojt_trainees` must exist).
    - On the login page: **Forgot password?** → email → 6-digit code → new password.

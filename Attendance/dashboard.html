@@ -188,6 +188,10 @@
         .today-status { font-size: 0.95rem; font-weight: 600; }
         .today-status .in { color: #86efac; }
         .today-status .out { color: #fca5a5; }
+        .today-status .ot-in-pending { color: #fecaca; font-weight: 800; }
+        .today-status .ot-in-approved { color: #bbf7d0; font-weight: 800; }
+        .attendance-summary .ot-in-pending { color: #dc2626; font-weight: 800; }
+        .attendance-summary .ot-in-approved { color: #16a34a; font-weight: 800; }
         .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
         .cal-title { font-size: 1.2rem; font-weight: 800; color: #1e3c72; }
         .cal-nav { display: flex; gap: 8px; }
@@ -1428,7 +1432,8 @@
                         ot_in_time: otInTime(r) || null,
                         ot_in_photo: (r.otIn && typeof r.otIn === 'object') ? (r.otIn.photo || null) : null,
                         ot_out_time: r.otOut || null,
-                        ot_closed: !!(r.otClosed)
+                        ot_closed: !!(r.otClosed),
+                        ot_in_approved: isOtInApprovedForTrainee(r)
                     };
                 });
                 return supabase.from('ojt_attendance').upsert(rows, { onConflict: 'trainee_id,date' });
@@ -1450,6 +1455,7 @@
                                     otOut: row.ot_out_time || ''
                                 };
                                 if (row.ot_closed) rec.otClosed = true;
+                                rec.otInApproved = !!row.ot_in_approved;
                                 return rec;
                             });
                             localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(recordsCache));
@@ -1462,6 +1468,10 @@
                     recordsCache = raw ? JSON.parse(raw) : [];
                 } catch (e) { recordsCache = []; }
                 if (!Array.isArray(recordsCache)) recordsCache = [];
+                recordsCache.forEach(function(rec) {
+                    rec = normalizeRec(rec);
+                    if (otInTime(rec) && rec.otInApproved === undefined) rec.otInApproved = true;
+                });
             }
             function loadReopenedDates() {
                 return new Promise(function(resolve) {
@@ -1503,6 +1513,13 @@
             function amInTime(rec) { rec = normalizeRec(rec); return rec && rec.amIn && typeof rec.amIn === 'object' ? rec.amIn.time : (rec && rec.amIn) || ''; }
             function pmInTime(rec) { rec = normalizeRec(rec); return rec && rec.pmIn && typeof rec.pmIn === 'object' ? rec.pmIn.time : (rec && rec.pmIn) || ''; }
             function otInTime(rec) { rec = normalizeRec(rec); return rec && rec.otIn && typeof rec.otIn === 'object' ? rec.otIn.time : (rec && rec.otIn) || ''; }
+            /** OT hours count / green UI only when explicitly approved, or legacy cache (undefined) treated approved until server sync. */
+            function isOtInApprovedForTrainee(rec) {
+                if (!otInTime(rec)) return false;
+                if (rec.otInApproved === true) return true;
+                if (rec.otInApproved === false) return false;
+                return true;
+            }
 
             function updateLiveClock() {
                 var now = new Date();
@@ -1597,7 +1614,10 @@
                     if (rec.amOut) parts.push('<span class="out">AM Out ' + rec.amOut + '</span>');
                     if (pmInTime(rec)) parts.push('<span class="in">PM In ' + pmInTime(rec) + '</span>');
                     if (rec.pmOut) parts.push('<span class="out">PM Out ' + rec.pmOut + '</span>');
-                    if (otInTime(rec)) parts.push('<span class="in">O.T. In ' + otInTime(rec) + '</span>');
+                    if (otInTime(rec)) {
+                        var otOk = isOtInApprovedForTrainee(rec);
+                        parts.push('<span class="' + (otOk ? 'ot-in-approved' : 'ot-in-pending') + '">O.T. In ' + otInTime(rec) + (otOk ? '' : ' (pending admin)') + '</span>');
+                    }
                     if (rec.otOut) parts.push('<span class="out">O.T. Out ' + rec.otOut + '</span>');
                     statusEl.innerHTML = parts.join(' &nbsp; ');
                 }
@@ -1653,6 +1673,8 @@
                     var amIn = amInTime(r);
                     var pmIn = pmInTime(r);
                     var otIn = otInTime(r);
+                    var otInCls = otIn ? (isOtInApprovedForTrainee(r) ? 'ot-in-approved' : 'ot-in-pending') : '';
+                    var otInHtml = otIn ? '<span class="' + otInCls + '">' + otIn + '</span>' : '—';
                     var amInPhoto = r.amIn && typeof r.amIn === 'object' && r.amIn.photo;
                     var pmInPhoto = r.pmIn && typeof r.pmIn === 'object' && r.pmIn.photo;
                     var otInPhoto = r.otIn && typeof r.otIn === 'object' && r.otIn.photo;
@@ -1661,7 +1683,7 @@
                     if (pmInPhoto) photoCell += ' <img class="thumb" src="' + pmInPhoto + '" alt="PM" title="PM">';
                     if (otInPhoto) photoCell += ' <img class="thumb" src="' + otInPhoto + '" alt="O.T." title="O.T.">';
                     if (!photoCell) photoCell = '—';
-                    tr.innerHTML = '<td>' + r.date + '</td><td>' + (amIn || '—') + '</td><td>' + (r.amOut || '—') + '</td><td>' + (pmIn || '—') + '</td><td>' + (r.pmOut || '—') + '</td><td>' + (otIn || '—') + '</td><td>' + (r.otOut || '—') + '</td><td>' + photoCell + '</td>';
+                    tr.innerHTML = '<td>' + r.date + '</td><td>' + (amIn || '—') + '</td><td>' + (r.amOut || '—') + '</td><td>' + (pmIn || '—') + '</td><td>' + (r.pmOut || '—') + '</td><td>' + otInHtml + '</td><td>' + (r.otOut || '—') + '</td><td>' + photoCell + '</td>';
                     tbody.appendChild(tr);
                 });
             }
@@ -1687,7 +1709,7 @@
                     if (pmIn && pmOut) totalMins += Math.max(0, timeToMinutes(pmOut) - timeToMinutes(pmIn));
                     var otIn = otInTime(r);
                     var otOut = r.otOut;
-                    if (otIn && otOut && !r.otClosed) totalMins += Math.max(0, timeToMinutes(otOut) - timeToMinutes(otIn));
+                    if (otIn && otOut && !r.otClosed && isOtInApprovedForTrainee(r)) totalMins += Math.max(0, timeToMinutes(otOut) - timeToMinutes(otIn));
                 });
                 return Math.round(totalMins / 60 * 10) / 10;
             }
@@ -1836,7 +1858,10 @@
                 function saveWithPhoto(photo) {
                     if (timeInModalSession === 'AM') rec.amIn = { time: t, photo: photo || '' };
                     else if (timeInModalSession === 'PM') rec.pmIn = { time: t, photo: photo || '' };
-                    else if (timeInModalSession === 'OT') rec.otIn = { time: t, photo: photo || '' };
+                    else if (timeInModalSession === 'OT') {
+                        rec.otIn = { time: t, photo: photo || '' };
+                        rec.otInApproved = false;
+                    }
                     saveRecords(records).then(function() {
                         closeTimeInModal();
                         refreshAttendanceUI(false);
