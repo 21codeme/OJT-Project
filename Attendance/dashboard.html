@@ -1756,6 +1756,43 @@
                 });
                 return Math.round(totalMins / 60 * 10) / 10;
             }
+            /** Minutes credited for one day (same rules as computeCompletedHours). */
+            function dayCompletedMinutes(r) {
+                r = normalizeRec(r);
+                var m = 0;
+                var amIn = amInTime(r);
+                var amOut = r.amOut;
+                if (amIn && amOut) m += Math.max(0, timeToMinutes(amOut) - timeToMinutes(amIn));
+                var pmIn = pmInTime(r);
+                var pmOut = r.pmOut;
+                if (pmIn && pmOut) m += Math.max(0, timeToMinutes(pmOut) - timeToMinutes(pmIn));
+                var otIn = otInTime(r);
+                var otOut = r.otOut;
+                if (otIn && otOut && !r.otClosed && isOtInApprovedForTrainee(r)) m += Math.max(0, timeToMinutes(otOut) - timeToMinutes(otIn));
+                return m;
+            }
+            /** First date (YYYY-MM-DD) when cumulative attendance hours reach requiredHrs; null if never. */
+            function findCompletionDateFromAttendance(requiredHrs) {
+                if (requiredHrs == null || requiredHrs <= 0) return null;
+                var requiredMins = requiredHrs * 60;
+                var list = getRecords().slice().filter(function(r) { return hasAny(r); });
+                list.sort(function(a, b) { return a.date.localeCompare(b.date); });
+                var cum = 0;
+                for (var i = 0; i < list.length; i++) {
+                    cum += dayCompletedMinutes(list[i]);
+                    if (cum + 1e-6 >= requiredMins) return list[i].date || null;
+                }
+                return null;
+            }
+            /** Start date for PDF: profile start date, else earliest attendance day. */
+            function getAttendancePdfStartDate(profile) {
+                var fromProf = profile && profile.startDate != null ? String(profile.startDate).trim() : '';
+                if (fromProf && fromProf !== '—' && fromProf.length) return fromProf;
+                var list = getRecords().slice().filter(function(r) { return hasAny(r); });
+                if (!list.length) return '';
+                list.sort(function(a, b) { return a.date.localeCompare(b.date); });
+                return list[0].date || '';
+            }
             function getTrainingHoursSummaryValues() {
                 var required = 0;
                 try {
@@ -2144,6 +2181,23 @@
                             doc.text(sumLine, 14, y);
                             y += 5;
                             doc.setFont('helvetica', 'normal');
+                            doc.setFontSize(9);
+                            doc.setTextColor(45);
+                            var startDatePdf = getAttendancePdfStartDate(profile);
+                            doc.text('Training start date: ' + (startDatePdf || '—'), 14, y);
+                            y += 4.5;
+                            var completionDisplay = '';
+                            if (sum.required > 0) {
+                                if (sum.remaining > 0.001) {
+                                    completionDisplay = '';
+                                } else {
+                                    completionDisplay = findCompletionDateFromAttendance(sum.required) || '—';
+                                }
+                            } else {
+                                completionDisplay = '—';
+                            }
+                            doc.text('Required hours completed on: ' + completionDisplay, 14, y);
+                            y += 4.5;
                             doc.setFontSize(8);
                             doc.setTextColor(90);
                             doc.text('Generated: ' + new Date().toLocaleString(), 14, y);
