@@ -786,6 +786,19 @@
         .admin-ot-in-pending { color: #dc2626; font-weight: 800; }
         .admin-ot-in-approved { color: #16a34a; font-weight: 800; }
 
+        #editAttendanceModal .edit-att-field { display: flex; flex-direction: column; gap: 4px; }
+        #editAttendanceModal .edit-att-label-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            font-size: 0.82rem; font-weight: 700; color: #444;
+        }
+        #editAttendanceModal .edit-att-label-row label { margin: 0; font-weight: 700; }
+        #editAttendanceModal .edit-att-clear {
+            border: none; background: transparent; color: #b45309; cursor: pointer;
+            font-size: 0.78rem; font-weight: 800; text-decoration: underline; padding: 0;
+        }
+        #editAttendanceModal .edit-att-clear:hover { color: #92400e; }
+        #editAttendanceModal .edit-att-hint { font-size: 0.8rem; color: #666; margin: 0 0 10px; line-height: 1.35; }
+
         @media (max-width: 980px) {
             .admin-layout { grid-template-columns: 1fr; min-height: auto; }
             .trainee-list { max-height: 320px; }
@@ -1073,14 +1086,33 @@
                 <h3 style="margin:0; color:#1e3c72; font-size:1.05rem;">Edit attendance time</h3>
                 <button type="button" id="editAttClose" style="border:none; border-radius:50%; width:32px; height:32px; background:#1e3c72; color:#fff; cursor:pointer;">&times;</button>
             </div>
-            <p id="editAttDateLabel" style="margin:0 0 10px; font-weight:700; color:#444;"></p>
+            <p id="editAttDateLabel" style="margin:0 0 6px; font-weight:700; color:#444;"></p>
+            <p class="edit-att-hint">To remove a time, click <strong>Clear</strong> beside the field (or erase the value), then <strong>Save</strong>.<br><span style="opacity:0.9">(Alisin ang oras: <strong>Clear</strong>, o burahin ang field, tapos <strong>Save</strong>.)</span></p>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                <div><label>AM In</label><input type="time" id="editAmIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
-                <div><label>AM Out</label><input type="time" id="editAmOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
-                <div><label>PM In</label><input type="time" id="editPmIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
-                <div><label>PM Out</label><input type="time" id="editPmOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
-                <div><label>O.T. In</label><input type="time" id="editOtIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
-                <div><label>O.T. Out</label><input type="time" id="editOtOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;"></div>
+                <div class="edit-att-field">
+                    <div class="edit-att-label-row"><label for="editAmIn">AM In</label><button type="button" class="edit-att-clear" data-clear-for="editAmIn" title="Remove this time">Clear</button></div>
+                    <input type="time" id="editAmIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;">
+                </div>
+                <div class="edit-att-field">
+                    <div class="edit-att-label-row"><label for="editAmOut">AM Out</label><button type="button" class="edit-att-clear" data-clear-for="editAmOut" title="Remove this time">Clear</button></div>
+                    <input type="time" id="editAmOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;">
+                </div>
+                <div class="edit-att-field">
+                    <div class="edit-att-label-row"><label for="editPmIn">PM In</label><button type="button" class="edit-att-clear" data-clear-for="editPmIn" title="Remove this time">Clear</button></div>
+                    <input type="time" id="editPmIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;">
+                </div>
+                <div class="edit-att-field">
+                    <div class="edit-att-label-row"><label for="editPmOut">PM Out</label><button type="button" class="edit-att-clear" data-clear-for="editPmOut" title="Remove this time">Clear</button></div>
+                    <input type="time" id="editPmOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;">
+                </div>
+                <div class="edit-att-field">
+                    <div class="edit-att-label-row"><label for="editOtIn">O.T. In</label><button type="button" class="edit-att-clear" data-clear-for="editOtIn" title="Remove this time">Clear</button></div>
+                    <input type="time" id="editOtIn" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;">
+                </div>
+                <div class="edit-att-field">
+                    <div class="edit-att-label-row"><label for="editOtOut">O.T. Out</label><button type="button" class="edit-att-clear" data-clear-for="editOtOut" title="Remove this time">Clear</button></div>
+                    <input type="time" id="editOtOut" style="width:100%; padding:6px 8px; border-radius:8px; border:1px solid #d7dbe0;">
+                </div>
             </div>
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
                 <button type="button" id="editAttCancel" class="btn btn-secondary">Cancel</button>
@@ -2197,20 +2229,54 @@
                     var editAttClose = document.getElementById('editAttClose');
                     var currentEditDate = null;
                     var editAttendanceRowSnapshot = null;
+                    function parseStoredTimeToInput(str) {
+                        if (!str || typeof str !== 'string') return '';
+                        var s = str.trim();
+                        if (!s) return '';
+                        var m24 = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+                        if (m24) {
+                            var h = parseInt(m24[1], 10);
+                            var mi = parseInt(m24[2], 10);
+                            if (h >= 0 && h <= 23 && mi >= 0 && mi <= 59) {
+                                return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+                            }
+                        }
+                        var m12 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])$/);
+                        if (m12) {
+                            var h12 = parseInt(m12[1], 10);
+                            var mi12 = parseInt(m12[2], 10);
+                            var ap = String(m12[3]).toUpperCase();
+                            if (ap === 'PM' && h12 !== 12) h12 += 12;
+                            if (ap === 'AM' && h12 === 12) h12 = 0;
+                            if (h12 >= 0 && h12 <= 23 && mi12 >= 0 && mi12 <= 59) {
+                                return String(h12).padStart(2, '0') + ':' + String(mi12).padStart(2, '0');
+                            }
+                        }
+                        return '';
+                    }
+                    function hadStoredTime(val) {
+                        return !!(val && String(val).trim());
+                    }
                     function openEditModal(row) {
                         if (!editModal) return;
                         currentEditDate = row.date;
                         editAttendanceRowSnapshot = {
+                            am_in_time: row.am_in_time || null,
+                            am_out_time: row.am_out_time || null,
+                            pm_in_time: row.pm_in_time || null,
+                            pm_out_time: row.pm_out_time || null,
                             ot_in_time: row.ot_in_time || null,
-                            ot_in_approved: !!row.ot_in_approved
+                            ot_out_time: row.ot_out_time || null,
+                            ot_in_approved: !!row.ot_in_approved,
+                            ot_closed: !!row.ot_closed
                         };
                         if (editDateLabel) editDateLabel.textContent = 'Date: ' + (row.date || '—');
-                        if (editAmIn) editAmIn.value = row.am_in_time || '';
-                        if (editAmOut) editAmOut.value = row.am_out_time || '';
-                        if (editPmIn) editPmIn.value = row.pm_in_time || '';
-                        if (editPmOut) editPmOut.value = row.pm_out_time || '';
-                        if (editOtIn) editOtIn.value = row.ot_in_time || '';
-                        if (editOtOut) editOtOut.value = row.ot_out_time || '';
+                        if (editAmIn) editAmIn.value = parseStoredTimeToInput(row.am_in_time);
+                        if (editAmOut) editAmOut.value = parseStoredTimeToInput(row.am_out_time);
+                        if (editPmIn) editPmIn.value = parseStoredTimeToInput(row.pm_in_time);
+                        if (editPmOut) editPmOut.value = parseStoredTimeToInput(row.pm_out_time);
+                        if (editOtIn) editOtIn.value = parseStoredTimeToInput(row.ot_in_time);
+                        if (editOtOut) editOtOut.value = parseStoredTimeToInput(row.ot_out_time);
                         editModal.style.display = 'flex';
                     }
                     function closeEditModal() {
@@ -2222,24 +2288,44 @@
                     if (editAttClose) editAttClose.addEventListener('click', closeEditModal);
                     if (editModal) {
                         editModal.addEventListener('click', function(e) {
+                            var clearBtn = e.target && e.target.closest ? e.target.closest('.edit-att-clear') : null;
+                            if (clearBtn) {
+                                var fid = clearBtn.getAttribute('data-clear-for');
+                                var inp = fid ? document.getElementById(fid) : null;
+                                if (inp) inp.value = '';
+                                return;
+                            }
                             if (e.target === editModal) closeEditModal();
                         });
                     }
                     if (editAttSave) {
                         editAttSave.addEventListener('click', async function() {
                             if (!currentEditDate) { closeEditModal(); return; }
+                            var snap = editAttendanceRowSnapshot;
+                            var amInNew = (editAmIn && editAmIn.value) ? editAmIn.value.trim() : '';
+                            var amOutNew = (editAmOut && editAmOut.value) ? editAmOut.value.trim() : '';
+                            var pmInNew = (editPmIn && editPmIn.value) ? editPmIn.value.trim() : '';
+                            var pmOutNew = (editPmOut && editPmOut.value) ? editPmOut.value.trim() : '';
                             var otInNew = (editOtIn && editOtIn.value) ? editOtIn.value.trim() : '';
-                            var otInOld = (editAttendanceRowSnapshot && editAttendanceRowSnapshot.ot_in_time) ? String(editAttendanceRowSnapshot.ot_in_time).trim() : '';
+                            var otOutNew = (editOtOut && editOtOut.value) ? editOtOut.value.trim() : '';
+                            var otInOld = (snap && snap.ot_in_time) ? String(snap.ot_in_time).trim() : '';
                             var otInChanged = otInNew !== otInOld;
                             var payload = {
-                                am_in_time: editAmIn && editAmIn.value ? editAmIn.value : null,
-                                am_out_time: editAmOut && editAmOut.value ? editAmOut.value : null,
-                                pm_in_time: editPmIn && editPmIn.value ? editPmIn.value : null,
-                                pm_out_time: editPmOut && editPmOut.value ? editPmOut.value : null,
+                                am_in_time: amInNew || null,
+                                am_out_time: amOutNew || null,
+                                pm_in_time: pmInNew || null,
+                                pm_out_time: pmOutNew || null,
                                 ot_in_time: otInNew || null,
-                                ot_out_time: editOtOut && editOtOut.value ? editOtOut.value : null,
-                                ot_in_approved: otInNew ? (otInChanged ? false : !!(editAttendanceRowSnapshot && editAttendanceRowSnapshot.ot_in_approved)) : false
+                                ot_out_time: otOutNew || null,
+                                ot_in_approved: otInNew ? (otInChanged ? false : !!(snap && snap.ot_in_approved)) : false
                             };
+                            if (!amInNew && snap && hadStoredTime(snap.am_in_time)) payload.am_in_photo = null;
+                            if (!pmInNew && snap && hadStoredTime(snap.pm_in_time)) payload.pm_in_photo = null;
+                            if (!otInNew && snap && hadStoredTime(snap.ot_in_time)) payload.ot_in_photo = null;
+                            if (!otInNew && !otOutNew) {
+                                payload.ot_closed = false;
+                                payload.ot_in_approved = false;
+                            }
                             try {
                                 var upRes = await supabase.from('ojt_attendance')
                                     .update(payload)
