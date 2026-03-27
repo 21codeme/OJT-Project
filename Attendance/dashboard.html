@@ -2267,9 +2267,12 @@
                                 doc.setPage(lastPage);
                                 var pageW = doc.internal.pageSize.getWidth();
                                 var pageH = doc.internal.pageSize.getHeight();
-                                var blockYLine = pageH - 19;
-                                var blockYName = pageH - 13;
-                                var blockYPos = pageH - 8;
+                                var lastTableY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 0;
+                                var preferredLineY = lastTableY ? (lastTableY + 14) : (pageH - 19);
+                                var maxLineY = pageH - 19;
+                                var blockYLine = Math.min(preferredLineY, maxLineY);
+                                var blockYName = blockYLine + 6;
+                                var blockYPos = blockYName + 5;
                                 var sidePad = 16;
                                 var centerGap = 20;
                                 var blockWidth = (pageW - (sidePad * 2) - centerGap) / 2;
