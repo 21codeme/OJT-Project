@@ -2259,6 +2259,45 @@
                                 margin: { left: 14, right: 14 },
                                 tableWidth: 'auto'
                             });
+                            var traineeSignName = (profile && profile.fullName) ? String(profile.fullName).trim() : '';
+                            var supSignName = (profile && profile.supervisor) ? String(profile.supervisor).trim() : '';
+                            var supSignPos = (profile && profile.positionRole) ? String(profile.positionRole).trim() : '';
+                            if (traineeSignName || supSignName) {
+                                var lastPage = doc.getNumberOfPages();
+                                doc.setPage(lastPage);
+                                var pageW = doc.internal.pageSize.getWidth();
+                                var pageH = doc.internal.pageSize.getHeight();
+                                var blockYLine = pageH - 19;
+                                var blockYName = pageH - 13;
+                                var blockYPos = pageH - 8;
+                                var sidePad = 16;
+                                var centerGap = 20;
+                                var blockWidth = (pageW - (sidePad * 2) - centerGap) / 2;
+                                doc.setFont('helvetica', 'normal');
+                                doc.setFontSize(10);
+                                if (traineeSignName) {
+                                    var leftX = sidePad;
+                                    var leftTextW = doc.getTextWidth(traineeSignName);
+                                    var leftLineW = Math.max(42, Math.min(blockWidth - 2, leftTextW + 10));
+                                    var leftLineX = leftX + (blockWidth - leftLineW) / 2;
+                                    doc.line(leftLineX, blockYLine, leftLineX + leftLineW, blockYLine);
+                                    doc.text(traineeSignName, leftLineX + (leftLineW - leftTextW) / 2, blockYName);
+                                }
+                                if (supSignName) {
+                                    var rightX = sidePad + blockWidth + centerGap;
+                                    var rightTextW = doc.getTextWidth(supSignName);
+                                    var rightLineW = Math.max(42, Math.min(blockWidth - 2, rightTextW + 10));
+                                    var rightLineX = rightX + (blockWidth - rightLineW) / 2;
+                                    doc.line(rightLineX, blockYLine, rightLineX + rightLineW, blockYLine);
+                                    doc.text(supSignName, rightLineX + (rightLineW - rightTextW) / 2, blockYName);
+                                    if (supSignPos) {
+                                        doc.setFontSize(8.8);
+                                        var posW = doc.getTextWidth(supSignPos);
+                                        doc.text(supSignPos, rightLineX + (rightLineW - posW) / 2, blockYPos);
+                                        doc.setFontSize(10);
+                                    }
+                                }
+                            }
                             var base = 'OJT-Attendance';
                             try {
                                 if (profile && (profile.studentId || profile.fullName)) {
