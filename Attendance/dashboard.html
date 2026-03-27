@@ -1996,19 +1996,30 @@
                 if (photoLabel) photoLabel.textContent = isReopened ? 'Photo (optional — upload only for this day)' : 'Photo (required)';
                 modal.classList.add('show');
             }
+            function runAfterReopenRefresh(fn) {
+                Promise.resolve(loadReopenedDates()).then(function() {
+                    if (typeof fn === 'function') fn();
+                }).catch(function() {
+                    if (typeof fn === 'function') fn();
+                });
+            }
             document.getElementById('btnTimeInAM').addEventListener('click', function() {
-                var selKey = getSelectedDateKey();
-                var records = getRecords();
-                var rec = normalizeRec(findRecord(records, selKey));
-                if (rec && amInTime(rec)) return;
-                openTimeInModal('AM', 'Time In AM — Upload photo (required)');
+                runAfterReopenRefresh(function() {
+                    var selKey = getSelectedDateKey();
+                    var records = getRecords();
+                    var rec = normalizeRec(findRecord(records, selKey));
+                    if (rec && amInTime(rec)) return;
+                    openTimeInModal('AM', 'Time In AM — Upload photo (required)');
+                });
             });
             document.getElementById('btnTimeInPM').addEventListener('click', function() {
-                var selKey = getSelectedDateKey();
-                var records = getRecords();
-                var rec = normalizeRec(findRecord(records, selKey));
-                if (rec && pmInTime(rec)) return;
-                openTimeInModal('PM', 'Time In PM — Upload photo (required)');
+                runAfterReopenRefresh(function() {
+                    var selKey = getSelectedDateKey();
+                    var records = getRecords();
+                    var rec = normalizeRec(findRecord(records, selKey));
+                    if (rec && pmInTime(rec)) return;
+                    openTimeInModal('PM', 'Time In PM — Upload photo (required)');
+                });
             });
             var timeOutModal = document.getElementById('timeOutModal');
             var timeOutTimeInput = document.getElementById('timeOutTimeInput');
@@ -2061,35 +2072,43 @@
             });
 
             document.getElementById('btnTimeOutAM').addEventListener('click', function() {
-                var selKey = getSelectedDateKey();
-                var records = getRecords();
-                var rec = findRecord(records, selKey);
-                rec = normalizeRec(rec);
-                if (!rec || !amInTime(rec) || rec.amOut) return;
-                doTimeOut('AM', function() { return rec; }, function(r, t) { r.amOut = t; });
+                runAfterReopenRefresh(function() {
+                    var selKey = getSelectedDateKey();
+                    var records = getRecords();
+                    var rec = findRecord(records, selKey);
+                    rec = normalizeRec(rec);
+                    if (!rec || !amInTime(rec) || rec.amOut) return;
+                    doTimeOut('AM', function() { return rec; }, function(r, t) { r.amOut = t; });
+                });
             });
             document.getElementById('btnTimeOutPM').addEventListener('click', function() {
-                var selKey = getSelectedDateKey();
-                var records = getRecords();
-                var rec = findRecord(records, selKey);
-                rec = normalizeRec(rec);
-                if (!rec || !pmInTime(rec) || rec.pmOut) return;
-                doTimeOut('PM', function() { return rec; }, function(r, t) { r.pmOut = t; });
+                runAfterReopenRefresh(function() {
+                    var selKey = getSelectedDateKey();
+                    var records = getRecords();
+                    var rec = findRecord(records, selKey);
+                    rec = normalizeRec(rec);
+                    if (!rec || !pmInTime(rec) || rec.pmOut) return;
+                    doTimeOut('PM', function() { return rec; }, function(r, t) { r.pmOut = t; });
+                });
             });
             document.getElementById('btnTimeInOT').addEventListener('click', function() {
-                var selKey = getSelectedDateKey();
-                var records = getRecords();
-                var rec = normalizeRec(findRecord(records, selKey));
-                if (rec && otInTime(rec)) return;
-                openTimeInModal('OT', 'Time In O.T. — Upload photo (required)');
+                runAfterReopenRefresh(function() {
+                    var selKey = getSelectedDateKey();
+                    var records = getRecords();
+                    var rec = normalizeRec(findRecord(records, selKey));
+                    if (rec && otInTime(rec)) return;
+                    openTimeInModal('OT', 'Time In O.T. — Upload photo (required)');
+                });
             });
             document.getElementById('btnTimeOutOT').addEventListener('click', function() {
-                var selKey = getSelectedDateKey();
-                var records = getRecords();
-                var rec = findRecord(records, selKey);
-                rec = normalizeRec(rec);
-                if (!rec || !otInTime(rec) || rec.otOut) return;
-                doTimeOut('OT', function() { return rec; }, function(r, t) { r.otOut = t; });
+                runAfterReopenRefresh(function() {
+                    var selKey = getSelectedDateKey();
+                    var records = getRecords();
+                    var rec = findRecord(records, selKey);
+                    rec = normalizeRec(rec);
+                    if (!rec || !otInTime(rec) || rec.otOut) return;
+                    doTimeOut('OT', function() { return rec; }, function(r, t) { r.otOut = t; });
+                });
             });
             document.getElementById('btnCloseOT').addEventListener('click', function() {
                 var selKey = getSelectedDateKey();
@@ -2268,9 +2287,18 @@
                                 var pageW = doc.internal.pageSize.getWidth();
                                 var pageH = doc.internal.pageSize.getHeight();
                                 var lastTableY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 0;
-                                var preferredLineY = lastTableY ? (lastTableY + 14) : (pageH - 19);
-                                var maxLineY = pageH - 19;
-                                var blockYLine = Math.min(preferredLineY, maxLineY);
+                                var topGap = 12;
+                                var neededBlockHeight = 13; // line + name + role
+                                var bottomSafe = 8;
+                                var preferredLineY = lastTableY ? (lastTableY + topGap) : (pageH - 30);
+                                var maxLineY = pageH - (neededBlockHeight + bottomSafe);
+                                var blockYLine = preferredLineY;
+                                if (blockYLine > maxLineY) {
+                                    doc.addPage();
+                                    pageW = doc.internal.pageSize.getWidth();
+                                    pageH = doc.internal.pageSize.getHeight();
+                                    blockYLine = 24; // fresh page signature area with clear space
+                                }
                                 var blockYName = blockYLine + 6;
                                 var blockYPos = blockYName + 5;
                                 var sidePad = 16;
