@@ -664,7 +664,7 @@
                     <p class="attendance-summary-hint">Scroll inside the table below to see all days. <span lang="tl">(I-scroll pababa.)</span></p>
                     <div class="attendance-summary-scroll">
                         <table>
-                            <thead><tr><th>Date</th><th>AM In</th><th>AM Out</th><th>PM In</th><th>PM Out</th><th>O.T. In</th><th>O.T. Out</th><th>Photo</th></tr></thead>
+                            <thead><tr><th>Date</th><th>AM In</th><th>AM Out</th><th>PM In</th><th>PM Out</th><th>O.T. In</th><th>O.T. Out</th><th>Total Hours</th><th>Photo</th></tr></thead>
                             <tbody id="attendanceTableBody"></tbody>
                         </table>
                     </div>
@@ -1734,7 +1734,8 @@
                     if (pmInPhoto) photoCell += ' <img class="thumb" src="' + pmInPhoto + '" alt="PM" title="PM">';
                     if (otInPhoto) photoCell += ' <img class="thumb" src="' + otInPhoto + '" alt="O.T." title="O.T.">';
                     if (!photoCell) photoCell = '—';
-                    tr.innerHTML = '<td>' + r.date + '</td><td>' + (amIn || '—') + '</td><td>' + (r.amOut || '—') + '</td><td>' + (pmIn || '—') + '</td><td>' + (r.pmOut || '—') + '</td><td>' + otInHtml + '</td><td>' + (r.otOut || '—') + '</td><td>' + photoCell + '</td>';
+                    var totalHours = formatDayHoursFromMinutes(dayCompletedMinutes(r));
+                    tr.innerHTML = '<td>' + r.date + '</td><td>' + (amIn || '—') + '</td><td>' + (r.amOut || '—') + '</td><td>' + (pmIn || '—') + '</td><td>' + (r.pmOut || '—') + '</td><td>' + otInHtml + '</td><td>' + (r.otOut || '—') + '</td><td>' + totalHours + '</td><td>' + photoCell + '</td>';
                     tbody.appendChild(tr);
                 });
             }
@@ -1778,6 +1779,10 @@
                 var otOut = r.otOut;
                 if (otIn && otOut && !r.otClosed && isOtInApprovedForTrainee(r)) m += Math.max(0, timeToMinutes(otOut) - timeToMinutes(otIn));
                 return m;
+            }
+            function formatDayHoursFromMinutes(m) {
+                var hours = Math.round((m / 60) * 10) / 10;
+                return (hours === 0 ? '0' : String(hours)) + ' hrs';
             }
             /** First date (YYYY-MM-DD) when cumulative attendance hours reach requiredHrs; null if never. */
             function findCompletionDateFromAttendance(requiredHrs) {
@@ -2229,6 +2234,7 @@
                                 if (pmInPhoto) photoBits.push('PM');
                                 if (otInPhoto) photoBits.push('OT');
                                 var photoCol = photoBits.length ? photoBits.join(', ') : '—';
+                                var totalHours = formatDayHoursFromMinutes(dayCompletedMinutes(r));
                                 return [
                                     r.date,
                                     amIn || '—',
@@ -2237,15 +2243,16 @@
                                     r.pmOut || '—',
                                     otInCell,
                                     r.otOut || '—',
+                                    totalHours,
                                     photoCol
                                 ];
                             });
                             if (body.length === 0) {
-                                body = [['(no recorded days yet)', '—', '—', '—', '—', '—', '—', '—']];
+                                body = [['(no recorded days yet)', '—', '—', '—', '—', '—', '—', '—', '—']];
                             }
                             doc.autoTable({
                                 startY: y,
-                                head: [['Date', 'AM In', 'AM Out', 'PM In', 'PM Out', 'O.T. In', 'O.T. Out', 'Photo (time-in)']],
+                                head: [['Date', 'AM In', 'AM Out', 'PM In', 'PM Out', 'O.T. In', 'O.T. Out', 'Total Hours', 'Photo (time-in)']],
                                 body: body,
                                 styles: { fontSize: 8, cellPadding: 1.8, overflow: 'linebreak' },
                                 headStyles: { fillColor: [30, 60, 114], textColor: 255, fontStyle: 'bold' },

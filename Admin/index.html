@@ -71,6 +71,106 @@
             background: #fff;
         }
         .sidebar h3 { color: #1e3c72; margin-bottom: 10px; }
+        .trainee-select-tools {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 0.82rem;
+            color: #475569;
+            font-weight: 700;
+        }
+        .trainee-select-tools label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+        .btn-select-mode {
+            border: 1px solid #1e3c72;
+            border-radius: 9px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            cursor: pointer;
+            background: #fff;
+            color: #1e3c72;
+            margin-bottom: 10px;
+        }
+        .btn-select-mode:hover { background: #eff6ff; }
+        .trainee-bulk-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .hidden { display: none !important; }
+        .btn-archive-selected, .btn-delete-selected, .btn-restore-archived {
+            border: none;
+            border-radius: 9px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .btn-archive-selected { background: #1e3c72; color: #fff; }
+        .btn-archive-selected:hover { opacity: 0.95; }
+        .btn-delete-selected { background: #b91c1c; color: #fff; }
+        .btn-delete-selected:hover { opacity: 0.95; }
+        .btn-restore-archived {
+            background: #fff;
+            border: 1px solid #1e3c72;
+            color: #1e3c72;
+        }
+        .btn-restore-archived:hover { background: #eff6ff; }
+        .btn-archived-toggle {
+            margin-top: 12px;
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 9px;
+            padding: 8px 10px;
+            background: #fff;
+            color: #334155;
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-align: left;
+            cursor: pointer;
+        }
+        .btn-archived-toggle:hover { background: #f8fafc; border-color: #94a3b8; }
+        .archived-list {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .archived-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            border: 1px solid #e8eaed;
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: #f8fafc;
+        }
+        .archived-item .meta { min-width: 0; }
+        .archived-item .name {
+            font-weight: 800;
+            color: #1e3c72;
+            font-size: 0.86rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .archived-item .sub {
+            color: #64748b;
+            font-size: 0.76rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .search { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7dbe0; }
         .search:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18); }
 
@@ -86,6 +186,12 @@
         .trainee-item .meta { min-width: 0; }
         .trainee-item .name { font-weight: 900; color: #1e3c72; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .trainee-item .sub { color: #777; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .trainee-item-check {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            accent-color: #1e3c72;
+        }
 
         .details {
             border: 1px solid #e8eaed;
@@ -886,8 +992,19 @@
             <div class="admin-layout">
                 <aside class="sidebar">
                     <h3>OJT Trainees</h3>
+                    <button type="button" id="btnToggleSelectMode" class="btn-select-mode">Select</button>
+                    <div id="traineeSelectTools" class="trainee-select-tools hidden">
+                        <label><input type="checkbox" id="traineeSelectAll"> Select all</label>
+                        <span id="traineeSelectedCount">0 selected</span>
+                    </div>
+                    <div id="traineeBulkActions" class="trainee-bulk-actions hidden">
+                        <button type="button" id="btnArchiveSelected" class="btn-archive-selected">Archive selected</button>
+                        <button type="button" id="btnDeleteSelected" class="btn-delete-selected">Delete selected</button>
+                    </div>
                     <input id="traineeSearch" class="search" type="text" placeholder="Search by name or student ID">
                     <div id="traineeList" class="trainee-list"></div>
+                    <button type="button" id="btnArchivedToggle" class="btn-archived-toggle">Archived trainees (0) ▸</button>
+                    <div id="archivedTraineeList" class="archived-list hidden"></div>
                 </aside>
 
                 <section class="details">
@@ -1291,9 +1408,23 @@
 
             var traineeSearch = document.getElementById('traineeSearch');
             var traineeListEl = document.getElementById('traineeList');
+            var btnToggleSelectMode = document.getElementById('btnToggleSelectMode');
+            var traineeSelectTools = document.getElementById('traineeSelectTools');
+            var traineeBulkActions = document.getElementById('traineeBulkActions');
+            var traineeSelectAll = document.getElementById('traineeSelectAll');
+            var traineeSelectedCount = document.getElementById('traineeSelectedCount');
+            var btnArchiveSelected = document.getElementById('btnArchiveSelected');
+            var btnDeleteSelected = document.getElementById('btnDeleteSelected');
+            var btnArchivedToggle = document.getElementById('btnArchivedToggle');
+            var archivedTraineeListEl = document.getElementById('archivedTraineeList');
 
             var selectedKey = null;
             var selectedTrainee = null;
+            var selectedTraineeKeys = {};
+            var isSelectionMode = false;
+            var isArchivedOpen = false;
+            var ARCHIVED_KEY = 'ojt_admin_archived_trainees';
+            var archivedTraineeKeys = {};
             var traineesCache = [];
             var docsMapCache = {};
             var dailyLogsCache = {};
@@ -1304,6 +1435,7 @@
             var docModalClose = document.getElementById('docModalClose');
             var photoPreviewModal = document.getElementById('photoPreviewModal');
             var editAttendanceModalEl = document.getElementById('editAttendanceModal');
+            loadArchivedMap();
             function goToAttendanceLogin() {
                 window.location.replace('../Attendance/index.html');
             }
@@ -1360,6 +1492,258 @@
                     return an.localeCompare(bn);
                 });
                 return arr;
+            }
+            function loadArchivedMap() {
+                try {
+                    var raw = localStorage.getItem(ARCHIVED_KEY);
+                    var parsed = raw ? JSON.parse(raw) : {};
+                    archivedTraineeKeys = (parsed && typeof parsed === 'object') ? parsed : {};
+                } catch (e) {
+                    archivedTraineeKeys = {};
+                }
+            }
+            function saveArchivedMap() {
+                try { localStorage.setItem(ARCHIVED_KEY, JSON.stringify(archivedTraineeKeys || {})); } catch (e) {}
+            }
+            function isTraineeArchived(key) {
+                return !!archivedTraineeKeys[String(key)];
+            }
+            function setTraineeArchived(key, archived) {
+                key = String(key);
+                if (archived) archivedTraineeKeys[key] = true;
+                else delete archivedTraineeKeys[key];
+                saveArchivedMap();
+            }
+            function getSelectedActiveTrainees() {
+                var out = [];
+                loadTrainees().forEach(function(t) {
+                    var key = getTraineeKey(t);
+                    if (!key || isTraineeArchived(key)) return;
+                    if (isTraineeSelected(key)) out.push({ key: String(key), trainee: t });
+                });
+                return out;
+            }
+            function syncSelectionWithVisibleTrainees() {
+                var exists = {};
+                loadTrainees().forEach(function(t) {
+                    var key = getTraineeKey(t);
+                    if (!key || isTraineeArchived(key)) return;
+                    exists[String(key)] = true;
+                });
+                for (var k in selectedTraineeKeys) {
+                    if (!Object.prototype.hasOwnProperty.call(selectedTraineeKeys, k)) continue;
+                    if (!exists[k]) delete selectedTraineeKeys[k];
+                }
+            }
+            function deleteTraineeFromLocalCaches(traineeId, key) {
+                traineesCache = (traineesCache || []).filter(function(t) { return String(getTraineeKey(t)) !== String(key); });
+                delete docsMapCache[String(traineeId)];
+                delete docsMapCache[String(key)];
+                delete dailyLogsCache[String(traineeId)];
+                delete dailyLogsCache[String(key)];
+                try {
+                    localStorage.removeItem('ojt_trainee_attendance_' + String(traineeId));
+                    localStorage.removeItem('ojt_daily_logs_' + String(traineeId));
+                } catch (e) {}
+            }
+            function resetSelectionIfNeeded() {
+                var active = loadTrainees().filter(function(t) {
+                    var key = getTraineeKey(t);
+                    return key && !isTraineeArchived(key);
+                });
+                if (selectedKey && !isTraineeArchived(selectedKey)) {
+                    var stillThere = active.some(function(t) { return String(getTraineeKey(t)) === String(selectedKey); });
+                    if (stillThere) return;
+                }
+                if (active.length > 0) {
+                    selectedKey = getTraineeKey(active[0]);
+                    selectedTrainee = active[0];
+                    renderDetails(active[0], selectedKey);
+                    return;
+                }
+                selectedKey = null;
+                selectedTrainee = null;
+                var n = document.getElementById('detailName');
+                var s = document.getElementById('detailSub');
+                var p = document.getElementById('detailPicture');
+                if (n) n.textContent = 'Select a trainee';
+                if (s) s.textContent = '—';
+                if (p) p.src = '../images/omsc.png';
+                updateCertificatePanel();
+            }
+            function getFilteredTrainees() {
+                var trainees = loadTrainees();
+                var q = (traineeSearch && traineeSearch.value ? traineeSearch.value : '').toLowerCase().trim();
+                trainees = trainees.filter(function(t) {
+                    var key = getTraineeKey(t);
+                    return key && !isTraineeArchived(key);
+                });
+                if (!q) return trainees;
+                return trainees.filter(function(t) {
+                    var name = (t.fullName || '').toString().toLowerCase();
+                    var sid = (t.studentId || '').toString().toLowerCase();
+                    return name.includes(q) || sid.includes(q);
+                });
+            }
+            function isTraineeSelected(key) {
+                return !!selectedTraineeKeys[String(key)];
+            }
+            function setTraineeSelected(key, checked) {
+                key = String(key);
+                if (checked) selectedTraineeKeys[key] = true;
+                else delete selectedTraineeKeys[key];
+            }
+            function countSelectedTrainees() {
+                var c = 0;
+                for (var k in selectedTraineeKeys) {
+                    if (Object.prototype.hasOwnProperty.call(selectedTraineeKeys, k)) c++;
+                }
+                return c;
+            }
+            function pruneSelectedTrainees() {
+                syncSelectionWithVisibleTrainees();
+            }
+            function syncTraineeSelectUi(filteredTrainees) {
+                var list = Array.isArray(filteredTrainees) ? filteredTrainees : getFilteredTrainees();
+                var selectedInView = 0;
+                list.forEach(function(t) {
+                    if (isTraineeSelected(getTraineeKey(t))) selectedInView++;
+                });
+                if (traineeSelectTools) traineeSelectTools.classList.toggle('hidden', !isSelectionMode);
+                if (traineeBulkActions) traineeBulkActions.classList.toggle('hidden', !isSelectionMode);
+                if (btnToggleSelectMode) btnToggleSelectMode.textContent = isSelectionMode ? 'Cancel' : 'Select';
+                if (traineeSelectAll) {
+                    traineeSelectAll.disabled = list.length === 0;
+                    traineeSelectAll.checked = list.length > 0 && selectedInView === list.length;
+                    traineeSelectAll.indeterminate = selectedInView > 0 && selectedInView < list.length;
+                }
+                if (traineeSelectedCount) traineeSelectedCount.textContent = countSelectedTrainees() + ' selected';
+            }
+            function setSelectionMode(enabled) {
+                isSelectionMode = !!enabled;
+                if (!isSelectionMode) {
+                    selectedTraineeKeys = {};
+                    if (traineeSelectAll) {
+                        traineeSelectAll.checked = false;
+                        traineeSelectAll.indeterminate = false;
+                    }
+                }
+                renderTraineeList();
+            }
+            function renderArchivedTraineeList() {
+                if (!archivedTraineeListEl) return;
+                archivedTraineeListEl.innerHTML = '';
+                var q = (traineeSearch && traineeSearch.value ? traineeSearch.value : '').toLowerCase().trim();
+                var archived = loadTrainees().filter(function(t) {
+                    var key = getTraineeKey(t);
+                    if (!key || !isTraineeArchived(key)) return false;
+                    if (!q) return true;
+                    var name = (t.fullName || '').toString().toLowerCase();
+                    var sid = (t.studentId || '').toString().toLowerCase();
+                    return name.includes(q) || sid.includes(q);
+                });
+                if (btnArchivedToggle) {
+                    btnArchivedToggle.textContent = 'Archived trainees (' + archived.length + ') ' + (isArchivedOpen ? '▾' : '▸');
+                }
+                archivedTraineeListEl.classList.toggle('hidden', !isArchivedOpen);
+                if (!archived.length) {
+                    var empty = document.createElement('div');
+                    empty.className = 'muted';
+                    empty.style.padding = '8px 2px';
+                    empty.textContent = 'No archived trainees.';
+                    archivedTraineeListEl.appendChild(empty);
+                    return;
+                }
+                archived.forEach(function(t) {
+                    var key = getTraineeKey(t);
+                    var traineeId = t.id || key;
+                    var row = document.createElement('div');
+                    row.className = 'archived-item';
+
+                    var meta = document.createElement('div');
+                    meta.className = 'meta';
+                    var nameEl = document.createElement('div');
+                    nameEl.className = 'name';
+                    nameEl.textContent = t.fullName || '—';
+                    var subEl = document.createElement('div');
+                    subEl.className = 'sub';
+                    subEl.textContent = 'ID: ' + (t.studentId || '—');
+                    meta.appendChild(nameEl);
+                    meta.appendChild(subEl);
+
+                    var actions = document.createElement('div');
+                    actions.style.display = 'flex';
+                    actions.style.gap = '6px';
+                    var btnRestore = document.createElement('button');
+                    btnRestore.type = 'button';
+                    btnRestore.className = 'btn-restore-archived';
+                    btnRestore.textContent = 'Restore';
+                    btnRestore.addEventListener('click', function() {
+                        setTraineeArchived(key, false);
+                        renderTraineeList();
+                        renderArchivedTraineeList();
+                    });
+                    var btnDelete = document.createElement('button');
+                    btnDelete.type = 'button';
+                    btnDelete.className = 'btn-delete-selected';
+                    btnDelete.textContent = 'Delete';
+                    btnDelete.addEventListener('click', async function() {
+                        if (!confirm('Delete this archived trainee and all related data permanently?')) return;
+                        await deleteTraineesFully([{ key: String(key), trainee: t, traineeId: traineeId }]);
+                    });
+                    actions.appendChild(btnRestore);
+                    actions.appendChild(btnDelete);
+
+                    row.appendChild(meta);
+                    row.appendChild(actions);
+                    archivedTraineeListEl.appendChild(row);
+                });
+            }
+            async function deleteTraineesFully(targets) {
+                if (!Array.isArray(targets) || targets.length === 0) return;
+                var supabase = window.supabaseClient || await waitForSupabaseReady();
+                if (!supabase) {
+                    alert('Could not connect. Try again.');
+                    return;
+                }
+                var failed = [];
+                for (var i = 0; i < targets.length; i++) {
+                    var target = targets[i];
+                    var t = target.trainee || {};
+                    var key = String(target.key || getTraineeKey(t) || '');
+                    var traineeId = target.traineeId || t.id || key;
+                    try {
+                        var q1 = await supabase.from('ojt_attendance_reopen').delete().eq('trainee_id', traineeId);
+                        if (q1.error) throw q1.error;
+                        var q2 = await supabase.from('ojt_attendance').delete().eq('trainee_id', traineeId);
+                        if (q2.error) throw q2.error;
+                        var q3 = await supabase.from('ojt_daily_logs').delete().eq('trainee_id', traineeId);
+                        if (q3.error) throw q3.error;
+                        var q4 = await supabase.from('ojt_trainee_documents').delete().eq('trainee_id', traineeId);
+                        if (q4.error) throw q4.error;
+                        var q5 = await supabase.from('ojt_trainee_certificate_sheets').delete().eq('trainee_id', traineeId);
+                        if (q5 && q5.error && !/relation .* does not exist/i.test(String(q5.error.message || ''))) throw q5.error;
+                        var q6 = await supabase.from('ojt_trainees').delete().eq('id', traineeId);
+                        if (q6.error) throw q6.error;
+                        setTraineeArchived(key, false);
+                        setTraineeSelected(key, false);
+                        deleteTraineeFromLocalCaches(traineeId, key);
+                    } catch (e) {
+                        failed.push(t.fullName || t.email || ('ID ' + traineeId));
+                    }
+                }
+                try {
+                    localStorage.setItem(DB_KEY, JSON.stringify(traineesCache || []));
+                    localStorage.setItem(DOCS_DB_KEY, JSON.stringify(docsMapCache || {}));
+                } catch (e) {}
+                resetSelectionIfNeeded();
+                renderTraineeList();
+                renderArchivedTraineeList();
+                if (failed.length) {
+                    alert('Some trainees could not be deleted:\n- ' + failed.join('\n- '));
+                } else {
+                    alert('Selected trainees were deleted, including related Supabase data.');
+                }
             }
 
             function waitForSupabaseReady(timeoutMs) {
@@ -1885,15 +2269,8 @@
 
             function renderTraineeList() {
                 traineeListEl.innerHTML = '';
-                var trainees = loadTrainees();
-                var q = (traineeSearch.value || '').toLowerCase().trim();
-                if (q) {
-                    trainees = trainees.filter(function(t) {
-                        var name = (t.fullName || '').toString().toLowerCase();
-                        var sid = (t.studentId || '').toString().toLowerCase();
-                        return name.includes(q) || sid.includes(q);
-                    });
-                }
+                pruneSelectedTrainees();
+                var trainees = getFilteredTrainees();
 
                 if (trainees.length === 0) {
                     var empty = document.createElement('div');
@@ -1901,6 +2278,8 @@
                     empty.style.padding = '12px';
                     empty.textContent = 'No trainees found. Create an account on the Attendance page first.';
                     traineeListEl.appendChild(empty);
+                    syncTraineeSelectUi(trainees);
+                    renderArchivedTraineeList();
                     return;
                 }
 
@@ -1921,6 +2300,18 @@
                     img.src = t.pictureUrl || '../images/omsc.png';
                     img.alt = 'pic';
                     img.onerror = function() { this.src = '../images/omsc.png'; };
+                    var chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.className = 'trainee-item-check';
+                    chk.checked = isTraineeSelected(key);
+                    chk.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                    chk.addEventListener('change', function(e) {
+                        e.stopPropagation();
+                        setTraineeSelected(key, chk.checked);
+                        syncTraineeSelectUi(trainees);
+                    });
 
                     var meta = document.createElement('div');
                     meta.className = 'meta';
@@ -1937,10 +2328,13 @@
                     meta.appendChild(subEl);
 
                     item.innerHTML = '';
+                    if (isSelectionMode) item.appendChild(chk);
                     item.appendChild(img);
                     item.appendChild(meta);
                     traineeListEl.appendChild(item);
                 });
+                syncTraineeSelectUi(trainees);
+                renderArchivedTraineeList();
             }
 
             function renderDetails(t, key) {
@@ -2463,6 +2857,60 @@
             }
 
             // Events
+            if (btnToggleSelectMode) {
+                btnToggleSelectMode.addEventListener('click', function() {
+                    setSelectionMode(!isSelectionMode);
+                });
+            }
+            if (btnArchivedToggle) {
+                btnArchivedToggle.addEventListener('click', function() {
+                    isArchivedOpen = !isArchivedOpen;
+                    renderArchivedTraineeList();
+                });
+            }
+            if (traineeSelectAll) {
+                traineeSelectAll.addEventListener('change', function() {
+                    if (!isSelectionMode) return;
+                    var filtered = getFilteredTrainees();
+                    filtered.forEach(function(t) {
+                        setTraineeSelected(getTraineeKey(t), traineeSelectAll.checked);
+                    });
+                    renderTraineeList();
+                });
+            }
+            if (btnArchiveSelected) {
+                btnArchiveSelected.addEventListener('click', function() {
+                    if (!isSelectionMode) return;
+                    var picked = getSelectedActiveTrainees();
+                    if (!picked.length) {
+                        alert('Select at least one trainee to archive.');
+                        return;
+                    }
+                    picked.forEach(function(x) {
+                        setTraineeArchived(x.key, true);
+                        setTraineeSelected(x.key, false);
+                    });
+                    resetSelectionIfNeeded();
+                    setSelectionMode(false);
+                    alert(picked.length + ' trainee(s) archived.');
+                });
+            }
+            if (btnDeleteSelected) {
+                btnDeleteSelected.addEventListener('click', async function() {
+                    if (!isSelectionMode) return;
+                    var picked = getSelectedActiveTrainees();
+                    if (!picked.length) {
+                        alert('Select at least one trainee to delete.');
+                        return;
+                    }
+                    if (!confirm('Delete selected trainees permanently?\nThis will also remove their attendance, documents, daily logs, and related records in Supabase.')) return;
+                    var targets = picked.map(function(x) {
+                        var t = x.trainee || {};
+                        return { key: x.key, trainee: t, traineeId: t.id || x.key };
+                    });
+                    await deleteTraineesFully(targets);
+                });
+            }
             if (traineeSearch) {
                 traineeSearch.addEventListener('input', function() {
                     renderTraineeList();
@@ -3090,11 +3538,16 @@
                 if (btnCloseReopenAll) btnCloseReopenAll.style.display = 'inline-block';
                 loadAllFromSupabase().then(function() {
                     renderTraineeList();
-                    var trainees = loadTrainees();
+                    var trainees = loadTrainees().filter(function(t) {
+                        var key = getTraineeKey(t);
+                        return key && !isTraineeArchived(key);
+                    });
                     if (trainees.length > 0) {
                         var first = trainees[0];
                         selectedKey = getTraineeKey(first);
                         renderDetails(first, selectedKey);
+                    } else {
+                        resetSelectionIfNeeded();
                     }
                 });
             } else {
