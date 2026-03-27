@@ -1436,9 +1436,16 @@
         })();
 
         (function() {
-            var ATTENDANCE_KEY = 'ojt_trainee_attendance';
+            var ATTENDANCE_KEY_BASE = 'ojt_trainee_attendance';
+            var LEGACY_ATTENDANCE_KEY = 'ojt_trainee_attendance';
             var traineeId = null;
             try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
+            // Scope cache per trainee to prevent cross-account attendance bleed.
+            var ATTENDANCE_KEY = ATTENDANCE_KEY_BASE + (traineeId ? ('_' + traineeId) : '');
+            function cleanupLegacyAttendanceCache() {
+                // Remove old shared key so stale data can never leak to another trainee.
+                try { localStorage.removeItem(LEGACY_ATTENDANCE_KEY); } catch (e) {}
+            }
             var weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
             var calYear, calMonth;
@@ -1482,6 +1489,7 @@
                 return supabase.from('ojt_attendance').upsert(rows, { onConflict: 'trainee_id,date' });
             }
             async function loadRecordsFromSupabase() {
+                cleanupLegacyAttendanceCache();
                 var supabase = window.supabaseClient;
                 if (supabase && traineeId) {
                     try {
