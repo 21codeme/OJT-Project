@@ -63,12 +63,17 @@
         .error { color: #c00; margin-top: 10px; display: none; font-weight: 700; }
         .error.show { display: block; }
 
-        .admin-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; min-height: calc(100vh - 160px); align-items: stretch; }
+        .admin-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; min-height: calc(100vh - 160px); height: calc(100vh - 160px); align-items: stretch; }
         .sidebar {
             border: 1px solid #e8eaed;
             border-radius: 14px;
             padding: 14px;
             background: #fff;
+            position: sticky;
+            top: 86px;
+            align-self: start;
+            max-height: calc(100vh - 106px);
+            overflow-y: auto;
         }
         .sidebar h3 { color: #1e3c72; margin-bottom: 10px; }
         .trainee-select-tools {
@@ -199,6 +204,7 @@
             padding: 16px;
             background: #fff;
             min-height: 0;
+            max-height: calc(100vh - 160px);
             overflow: auto;
         }
         .details-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -906,7 +912,14 @@
         #editAttendanceModal .edit-att-hint { font-size: 0.8rem; color: #666; margin: 0 0 10px; line-height: 1.35; }
 
         @media (max-width: 980px) {
-            .admin-layout { grid-template-columns: 1fr; min-height: auto; }
+            .admin-layout { grid-template-columns: 1fr; min-height: auto; height: auto; }
+            .sidebar {
+                position: static;
+                top: auto;
+                max-height: none;
+                overflow-y: visible;
+            }
+            .details { max-height: none; }
             .trainee-list { max-height: 320px; }
             #reopenActions {
                 width: 360px;
