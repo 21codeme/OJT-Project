@@ -150,3 +150,55 @@ body {
     margin: 0 8px;
     color: #999;
 }
+
+@media (max-width: 560px) {
+    body {
+        padding: 12px;
+    }
+
+    .picture-section {
+        padding: 16px;
+    }
+
+    .details-section {
+        padding: 16px;
+    }
+
+    .details-section h2 {
+        font-size: 1.1rem;
+    }
+
+    .details-table th,
+    .details-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .details-table th {
+        padding-bottom: 4px;
+        border-bottom: none;
+        width: 100%;
+    }
+
+    .details-table td {
+        padding-top: 0;
+        padding-bottom: 14px;
+        word-break: break-word;
+    }
+
+    .page-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .page-footer .sep {
+        display: none;
+    }
+
+    .pc-section-badge {
+        padding: 12px 14px;
+    }
+}

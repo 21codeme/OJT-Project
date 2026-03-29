@@ -827,40 +827,124 @@ tr.row-selected .row-add-btn {
 
 /* Responsive design */
 @media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        max-height: calc(100vh - 20px);
+        border-radius: 8px;
+    }
+
+    .toggle-header-btn {
+        top: 6px;
+        right: 6px;
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
     .header-content {
         flex-direction: column;
         gap: 15px;
     }
-    
+
+    .header-text {
+        min-width: 0;
+        max-width: 100%;
+    }
+
     .header-logo {
         height: 120px;
         width: 120px;
     }
-    
+
+    header {
+        padding: 18px 16px;
+    }
+
     header h1 {
         font-size: 22px;
     }
-    
+
     header h2 {
         font-size: 18px;
     }
-    
+
+    .controls {
+        padding: 14px 14px;
+    }
+
     .file-upload-section {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
         align-items: stretch;
     }
-    
-    .upload-btn, .export-btn, .clear-btn, .add-btn, .add-pc-btn, .new-sheet-btn, .import-excel-btn {
-        width: 100%;
-        justify-content: center;
+
+    .file-upload-section .save-status {
+        grid-column: 1 / -1;
+        margin-left: 0;
+        text-align: center;
     }
-    
+
+    .upload-btn, .export-btn, .clear-btn, .add-btn, .add-pc-btn, .new-sheet-btn, .import-excel-btn, .restore-backup-btn {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+        font-size: 14px;
+        padding: 10px 12px;
+        white-space: normal;
+        line-height: 1.25;
+        text-align: center;
+    }
+
+    .sync-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .sync-hint .refresh-server-btn {
+        margin-left: 0;
+        width: 100%;
+        padding: 8px 10px;
+    }
+
     table {
         font-size: 11px;
     }
-    
+
     thead th, tbody td {
         padding: 8px 4px;
+    }
+
+    .sheet-tabs-container {
+        padding: 0 10px;
+    }
+
+    .signatures-inventory {
+        flex-direction: column;
+        margin: 0 12px 12px;
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .sig-row-inv {
+        max-width: none;
+    }
+
+    .inventory-summary-section {
+        margin: 0 12px 12px;
+        padding: 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 480px) {
+    .file-upload-section {
+        grid-template-columns: 1fr;
     }
 }
 

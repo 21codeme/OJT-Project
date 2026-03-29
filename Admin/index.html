@@ -20,6 +20,7 @@
             display: flex; align-items: center; justify-content: space-between;
             flex-wrap: wrap; gap: 12px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            min-width: 0;
         }
         .brand { display: flex; align-items: center; gap: 12px; }
         .brand img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
@@ -204,6 +205,7 @@
             padding: 16px;
             background: #fff;
             min-height: 0;
+            min-width: 0;
             max-height: calc(100vh - 160px);
             overflow: auto;
         }
@@ -293,20 +295,27 @@
 
         /* OJT certificate: transparent text on graphics-only PNG (layout/fonts aligned to OJT CERTIFICATE 342 style) */
         .ojt-cert-toolbar {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 10px;
+            justify-content: flex-start;
+            gap: 8px;
         }
         .btn-cert-toolbar {
-            padding: 0.55rem 1.15rem;
-            font-size: 0.875rem;
-            font-weight: 800;
-            border-radius: 10px;
+            padding: 0.38rem 0.75rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border-radius: 8px;
             cursor: pointer;
             font-family: inherit;
             border: none;
+            flex: 0 0 auto;
+            width: auto;
+            max-width: 100%;
+            text-align: center;
+            line-height: 1.3;
+            white-space: nowrap;
         }
         .btn-cert-toolbar-dl {
             background: linear-gradient(180deg, #1e3c72 0%, #163059 100%);
@@ -418,7 +427,33 @@
             border-color: #94a3b8;
             color: #1e293b;
         }
-        .ojt-cert-print-root { max-width: 1000px; margin: 0 auto; }
+        /*
+         * Certificate preview: fixed 1000px-wide design scaled down to fit (transform).
+         * Text/background stay aligned like print — only zoom changes on small screens.
+         */
+        .ojt-cert-print-root {
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .ojt-cert-viewport {
+            width: 100%;
+            min-width: 0;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .ojt-cert-scale-stage {
+            width: 1000px;
+            flex-shrink: 0;
+            transform: scale(var(--ojt-cert-scale, 1));
+            transform-origin: top center;
+        }
+        .ojt-cert-scale-stage .ojt-cert-sheet {
+            width: 1000px;
+            max-width: 1000px;
+        }
         .ojt-cert-sheet {
             position: relative;
             width: 100%;
@@ -443,7 +478,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding: clamp(26%, 28vw, 30%) 9% 7.5% 9%;
+            padding: 28% 9% 7.5% 9%;
             box-sizing: border-box;
             pointer-events: none;
             background: transparent;
@@ -456,14 +491,13 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
-            gap: clamp(12px, 2.2vw, 20px);
+            gap: 18px;
             background: transparent;
             border: none;
             box-shadow: none;
             margin: 0;
             padding: 0;
         }
-        /* Underline matches name width (short/long text) */
         .ojt-cert-name-wrap {
             display: inline-block;
             width: max-content;
@@ -472,7 +506,7 @@
         }
         .ojt-cert-name {
             font-family: 'Great Vibes', cursive;
-            font-size: clamp(2rem, 5.2vw, 2.85rem);
+            font-size: 2.65rem;
             color: #002d62;
             font-weight: 400;
             line-height: 1.15;
@@ -485,7 +519,6 @@
             overflow-wrap: break-word;
             max-width: min(100%, 28em);
         }
-        /* One visual block: body + date (tight internal gap; not spaced like separate stack items) */
         .ojt-cert-prose {
             width: 100%;
             max-width: 40em;
@@ -502,7 +535,7 @@
         }
         .ojt-cert-body {
             font-family: 'Roboto Condensed', 'Segoe UI', sans-serif;
-            font-size: clamp(0.8rem, 1.65vw, 0.98rem);
+            font-size: 0.97rem;
             font-weight: 400;
             line-height: 1.5;
             color: #002d62;
@@ -512,7 +545,7 @@
         .ojt-cert-body strong { font-weight: 700; color: #001f44; }
         .ojt-cert-date-line {
             font-family: 'Roboto Condensed', 'Segoe UI', sans-serif;
-            font-size: clamp(0.8rem, 1.65vw, 0.98rem);
+            font-size: 0.97rem;
             font-weight: 400;
             line-height: 1.45;
             color: #002d62;
@@ -524,8 +557,9 @@
             width: 100%;
             justify-content: space-between;
             align-items: flex-end;
-            gap: clamp(14px, 4vw, 36px);
-            margin-top: clamp(8px, 1.5vw, 16px);
+            flex-wrap: nowrap;
+            gap: 28px;
+            margin-top: 12px;
             padding-top: 0;
         }
         .ojt-cert-sig-col {
@@ -537,7 +571,6 @@
             align-items: center;
             text-align: center;
         }
-        /* Signature line width = name width (inline-block shrinks to name) */
         .ojt-cert-sig-head {
             display: inline-block;
             max-width: 100%;
@@ -554,7 +587,7 @@
         .ojt-cert-sig-name {
             font-family: 'Roboto Condensed', 'Segoe UI', sans-serif;
             font-weight: 700;
-            font-size: clamp(0.95rem, 2.35vw, 1.22rem);
+            font-size: 1.12rem;
             letter-spacing: 0.08em;
             color: #002d62;
             text-transform: uppercase;
@@ -567,7 +600,7 @@
         }
         .ojt-cert-sig-pos {
             font-family: 'Roboto Condensed', 'Segoe UI', sans-serif;
-            font-size: clamp(0.58rem, 1.15vw, 0.72rem);
+            font-size: 0.72rem;
             font-weight: 400;
             color: #002d62;
             margin: 6px 0 0;
@@ -610,6 +643,20 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
+            }
+            #certificatePrintArea .ojt-cert-viewport {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+            #certificatePrintArea .ojt-cert-scale-stage {
+                transform: none !important;
+                width: auto !important;
+                max-width: 100% !important;
+            }
+            #certificatePrintArea .ojt-cert-scale-stage .ojt-cert-sheet {
+                width: auto !important;
+                max-width: 100% !important;
             }
             /* Shrink-wrap image so overlay % still matches; cap to one sheet (Letter / Legal / A4 landscape) */
             .ojt-cert-sheet {
@@ -768,7 +815,16 @@
         #photoPreviewModal .modal-inner .modal-close { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #1e3c72; color: #fff; font-size: 1.2rem; cursor: pointer; line-height: 1; }
         #photoPreviewModal .modal-inner .modal-close:hover { background: #2a5298; }
         #photoPreviewModal .modal-caption { margin-top: 8px; font-weight: 700; color: #333; font-size: 0.9rem; }
-        .top-header-actions { position: relative; align-items: center; }
+        .top-header-actions {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-width: 0;
+            flex: 1 1 auto;
+            justify-content: flex-end;
+        }
         .settings-wrap { position: relative; }
         .btn-icon {
             width: 44px; height: 44px; padding: 0;
@@ -827,8 +883,9 @@
             border-radius: 14px;
             box-shadow: 0 12px 34px rgba(15, 23, 42, 0.2);
             padding: 16px;
-            width: 640px;
-            max-width: calc(100vw - 24px);
+            width: min(640px, calc(100vw - 20px));
+            max-width: calc(100vw - 16px);
+            box-sizing: border-box;
             border: 1px solid #e5e7eb;
             display: none;
             z-index: 1000;
@@ -921,11 +978,73 @@
             }
             .details { max-height: none; }
             .trainee-list { max-height: 320px; }
-            #reopenActions {
-                width: 360px;
-            }
             #reopenActions .reopen-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .kv { grid-template-columns: 1fr; }
+            .tabs { width: 100%; gap: 6px; }
+            .tab-btn {
+                flex: 1 1 calc(50% - 4px);
+                min-width: calc(50% - 4px);
+                padding: 9px 10px;
+                font-size: 0.82rem;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .container { padding: 14px 12px 48px; }
+            .panel { padding: 14px; }
+            .top-header { padding: 12px 14px; }
+            .brand { min-width: 0; flex: 1 1 auto; }
+            .brand span { font-size: 0.95rem; }
+            .top-header-actions {
+                justify-content: flex-start;
+                width: 100%;
+            }
+            #reopenActions {
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: none;
+            }
+            .settings-dropdown {
+                right: 0;
+                left: auto;
+                max-width: calc(100vw - 24px);
+            }
+            .details { padding: 12px; }
+            .details-header { flex-direction: column; align-items: stretch; }
+            .details-title { min-width: 0; }
+            .details-title h2 { font-size: 1.08rem; word-break: break-word; }
+            .trainee-bulk-actions {
+                flex-direction: column;
+            }
+            .trainee-bulk-actions .btn-archive-selected,
+            .trainee-bulk-actions .btn-delete-selected {
+                width: 100%;
+            }
+            .ojt-cert-toolbar {
+                gap: 6px;
+            }
+            .btn-cert-toolbar {
+                padding: 0.35rem 0.55rem;
+                font-size: 0.72rem;
+                white-space: normal;
+            }
+            .ojt-cert-date-panel-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .ojt-cert-date-input {
+                width: 100%;
+                min-width: 0;
+            }
+            .btn-cert-apply,
+            .btn-cert-reset {
+                width: 100%;
             }
         }
     </style>
@@ -936,7 +1055,7 @@
             <img src="../images/omsc.png" alt="OMSC" onerror="this.style.display='none'">
             <span>OJT Admin</span>
         </div>
-        <div class="top-header-actions" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div class="top-header-actions">
             <button class="btn btn-primary" type="button" id="btnReopenMenu" style="display:none;" title="Show re-open options">Re-open</button>
             <div id="reopenActions">
                 <div class="reopen-grid">
@@ -1143,29 +1262,33 @@
                                     <input type="file" id="certUploadInput" accept="image/*,application/pdf" style="display:none" aria-hidden="true">
                                 </div>
                                 <div id="certificatePrintArea" class="ojt-cert-print-root">
-                                    <div class="ojt-cert-sheet">
-                                        <img class="ojt-cert-bg" src="../OJT%20CERTIFICATE%20(1).png" alt="">
-                                        <div class="ojt-cert-layer">
-                                            <div class="ojt-cert-stack">
-                                                <span class="ojt-cert-name-wrap"><span id="certTraineeName" class="ojt-cert-name"></span></span>
-                                                <div class="ojt-cert-prose">
-                                                    <p id="certBodyText" class="ojt-cert-body"></p>
-                                                    <p id="certDateLine" class="ojt-cert-date-line"></p>
-                                                </div>
-                                                <div class="ojt-cert-sig-row">
-                                                    <div class="ojt-cert-sig-col">
-                                                        <div class="ojt-cert-sig-head">
-                                                            <div class="ojt-cert-sig-line" aria-hidden="true"></div>
-                                                            <p class="ojt-cert-sig-name" id="certCoordName"></p>
+                                    <div class="ojt-cert-viewport" data-ojt-cert-viewport>
+                                        <div class="ojt-cert-scale-stage">
+                                            <div class="ojt-cert-sheet">
+                                                <img class="ojt-cert-bg" src="../OJT%20CERTIFICATE%20(1).png" alt="">
+                                                <div class="ojt-cert-layer">
+                                                    <div class="ojt-cert-stack">
+                                                        <span class="ojt-cert-name-wrap"><span id="certTraineeName" class="ojt-cert-name"></span></span>
+                                                        <div class="ojt-cert-prose">
+                                                            <p id="certBodyText" class="ojt-cert-body"></p>
+                                                            <p id="certDateLine" class="ojt-cert-date-line"></p>
                                                         </div>
-                                                        <p class="ojt-cert-sig-pos" id="certCoordPos"></p>
-                                                    </div>
-                                                    <div class="ojt-cert-sig-col">
-                                                        <div class="ojt-cert-sig-head">
-                                                            <div class="ojt-cert-sig-line" aria-hidden="true"></div>
-                                                            <p class="ojt-cert-sig-name" id="certSupName"></p>
+                                                        <div class="ojt-cert-sig-row">
+                                                            <div class="ojt-cert-sig-col">
+                                                                <div class="ojt-cert-sig-head">
+                                                                    <div class="ojt-cert-sig-line" aria-hidden="true"></div>
+                                                                    <p class="ojt-cert-sig-name" id="certCoordName"></p>
+                                                                </div>
+                                                                <p class="ojt-cert-sig-pos" id="certCoordPos"></p>
+                                                            </div>
+                                                            <div class="ojt-cert-sig-col">
+                                                                <div class="ojt-cert-sig-head">
+                                                                    <div class="ojt-cert-sig-line" aria-hidden="true"></div>
+                                                                    <p class="ojt-cert-sig-name" id="certSupName"></p>
+                                                                </div>
+                                                                <p class="ojt-cert-sig-pos" id="certSupPos"></p>
+                                                            </div>
                                                         </div>
-                                                        <p class="ojt-cert-sig-pos" id="certSupPos"></p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1488,6 +1611,50 @@
                 if (btnCloseReopenRange) btnCloseReopenRange.style.display = 'none';
                 if (btnCloseReopenAll) btnCloseReopenAll.style.display = 'none';
                 if (reopenActions) reopenActions.style.display = 'none';
+            }
+
+            var OJT_CERT_DESIGN_WIDTH = 1000;
+            function updateOjtCertScaleForRoot(printRoot) {
+                if (!printRoot) return;
+                var vp = printRoot.querySelector('[data-ojt-cert-viewport]');
+                var stage = printRoot.querySelector('.ojt-cert-scale-stage');
+                var sheet = printRoot.querySelector('.ojt-cert-sheet');
+                if (!vp || !stage || !sheet) return;
+                var cw = vp.clientWidth;
+                if (cw < 48) return;
+                var scale = Math.min(1, cw / OJT_CERT_DESIGN_WIDTH);
+                stage.style.setProperty('--ojt-cert-scale', String(scale));
+                var h = sheet.offsetHeight;
+                vp.style.height = h > 0 ? (Math.ceil(h * scale) + 'px') : '';
+            }
+            function scheduleOjtCertScale(printRoot) {
+                if (!printRoot) return;
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        updateOjtCertScaleForRoot(printRoot);
+                    });
+                });
+            }
+            function initOjtCertScaleForRoot(printRoot) {
+                if (!printRoot || printRoot.__ojtCertScaleInit) return;
+                printRoot.__ojtCertScaleInit = true;
+                var vp = printRoot.querySelector('[data-ojt-cert-viewport]');
+                if (vp && typeof ResizeObserver !== 'undefined') {
+                    var ro = new ResizeObserver(function() {
+                        updateOjtCertScaleForRoot(printRoot);
+                    });
+                    ro.observe(vp);
+                }
+                var img = printRoot.querySelector('.ojt-cert-bg');
+                if (img) {
+                    img.addEventListener('load', function() {
+                        scheduleOjtCertScale(printRoot);
+                    });
+                }
+                window.addEventListener('resize', function() {
+                    scheduleOjtCertScale(printRoot);
+                });
+                scheduleOjtCertScale(printRoot);
             }
 
             function loadTrainees() {
@@ -2194,15 +2361,24 @@
                 supN.textContent = (t.supervisor && String(t.supervisor).trim() && t.supervisor !== '—') ? String(t.supervisor).trim().toUpperCase() : '—';
                 var posRole = (t.positionRole && String(t.positionRole).trim() && t.positionRole !== '—') ? String(t.positionRole).trim() : '';
                 supP.textContent = posRole || 'Supervisor / Mentor';
+                scheduleOjtCertScale(document.getElementById('certificatePrintArea'));
             }
 
             var DEFAULT_CERT_BG_SRC = '../OJT%20CERTIFICATE%20(1).png';
+
+            function scheduleOjtCertScaleAfterBgLoad(bg) {
+                var root = document.getElementById('certificatePrintArea');
+                if (!bg || !root) return;
+                if (bg.complete) scheduleOjtCertScale(root);
+                else bg.addEventListener('load', function() { scheduleOjtCertScale(root); }, { once: true });
+            }
 
             function resetCertificateFrameToDefault() {
                 var bg = document.querySelector('#certificatePrintArea .ojt-cert-bg');
                 if (bg) {
                     bg.src = DEFAULT_CERT_BG_SRC;
                     bg.removeAttribute('crossorigin');
+                    scheduleOjtCertScaleAfterBgLoad(bg);
                 }
             }
 
@@ -2221,6 +2397,7 @@
                 }
                 bg.src = u;
                 bg.removeAttribute('crossorigin');
+                scheduleOjtCertScaleAfterBgLoad(bg);
             }
 
             function updateCertificatePanel() {
@@ -2238,6 +2415,8 @@
                 fillCertificateFromTrainee(selectedTrainee);
                 syncCertificateIssueDateInput();
                 syncCertSubmitButtonUI();
+                initOjtCertScaleForRoot(document.getElementById('certificatePrintArea'));
+                scheduleOjtCertScale(document.getElementById('certificatePrintArea'));
             }
 
             function refreshTraineesAndCertificatePanel() {
@@ -3033,9 +3212,10 @@
                     }
                     var el = document.getElementById('certificatePrintArea');
                     if (!el) return;
+                    var cap = el.querySelector('.ojt-cert-sheet') || el;
                     loadHtml2CanvasScript(function() {
                         if (typeof html2canvas === 'undefined') return;
-                        html2canvas(el, {
+                        html2canvas(cap, {
                             scale: 2,
                             useCORS: true,
                             logging: false,

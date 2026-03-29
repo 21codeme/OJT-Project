@@ -15,6 +15,7 @@
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
             flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            min-width: 0;
         }
         .top-header .brand { display: flex; align-items: center; gap: 12px; }
         .top-header .brand img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
@@ -119,6 +120,52 @@
             font-weight: 900;
         }
         .btn-delete-doc:hover { background: #fef2f2; }
+
+        .edit-name-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 980px) {
+            .main-wrap { padding: 18px 16px 48px; }
+            .card { padding: 20px 16px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .edit-name-row { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 560px) {
+            .top-header {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 12px 14px;
+            }
+            .top-header .brand { min-width: 0; }
+            .top-header .brand span { font-size: 0.92rem; }
+            .nav-tabs {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                width: 100%;
+                gap: 6px;
+            }
+            .nav-tabs button {
+                width: 100%;
+                min-width: 0;
+                padding: 8px 10px;
+                font-size: 0.8rem;
+                text-align: center;
+            }
+            .nav-tabs .btn-logout { margin-left: 0; }
+            .btn-back { margin-left: 14px; margin-right: 14px; }
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .actions .btn-primary,
+            .actions .btn-secondary {
+                width: 100%;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -159,7 +206,7 @@
 
                     <div class="field full">
                         <label>Full Name (First, Middle, Last)</label>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                        <div class="edit-name-row">
                             <input type="text" id="editFirstName" placeholder="First Name" style="padding:12px 12px;">
                             <input type="text" id="editMiddleName" placeholder="Middle Name" style="padding:12px 12px;">
                             <input type="text" id="editLastName" placeholder="Last Name" style="padding:12px 12px;">

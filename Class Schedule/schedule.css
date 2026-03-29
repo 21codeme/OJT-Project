@@ -833,3 +833,106 @@ body {
     .bottom-tables { grid-template-columns: 1fr; }
     .header-fields .two-cols { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 640px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        max-height: calc(100vh - 20px);
+        border-radius: 10px;
+    }
+    .page-header {
+        padding: 16px 14px;
+    }
+    .header-content {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .logo-wrapper {
+        width: 88px;
+        height: 88px;
+    }
+    .header-text {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .page-header h1 { font-size: 1.05rem; }
+    .page-header h2 { font-size: 0.95rem; }
+    .page-header h3 { font-size: 0.88rem; }
+    .schedule-section {
+        padding: 14px 12px 0;
+    }
+    .schedule-toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        align-items: stretch;
+    }
+    .schedule-toolbar .add-schedule-dropdown,
+    .schedule-toolbar .add-sheet-dropdown {
+        width: 100%;
+        min-width: 0;
+    }
+    .btn-add-schedule,
+    .btn-add-sheet,
+    .btn-import,
+    .btn-export,
+    .btn-add-row,
+    .btn-restore {
+        width: 100%;
+        box-sizing: border-box;
+        justify-content: center;
+        font-size: 0.78rem;
+        padding: 10px 8px;
+        white-space: normal;
+        line-height: 1.25;
+        text-align: center;
+    }
+    .sync-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        line-height: 1.4;
+    }
+    .sync-hint .refresh-server-btn {
+        margin-left: 0;
+        width: 100%;
+        padding: 8px 10px;
+    }
+    .add-sheet-menu {
+        min-width: 0;
+        width: max(100%, min(280px, calc(100vw - 32px)));
+        max-width: calc(100vw - 24px);
+        box-sizing: border-box;
+    }
+    .add-form-panel {
+        padding: 14px;
+    }
+    .form-row input,
+    .form-row select {
+        max-width: 100%;
+    }
+    .time-slot-wrap {
+        max-width: 100%;
+    }
+    .form-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .form-actions .btn-save,
+    .form-actions .btn-cancel {
+        width: 100%;
+    }
+    .schedule-grid-wrapper {
+        margin-left: -12px;
+        margin-right: -12px;
+        padding: 0 12px;
+    }
+
+    .bottom-tables .table-block {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
