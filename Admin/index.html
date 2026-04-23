@@ -180,7 +180,82 @@
         .search { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7dbe0; }
         .search:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 2px rgba(30,60,114,0.18); }
 
-        .trainee-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 220px); overflow-y: auto; }
+        .trainee-company-filters {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+        .trainee-company-filters-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin: 0;
+            flex-shrink: 0;
+        }
+        .trainee-company-filters-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            gap: 8px;
+            align-items: stretch;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 2px 8px;
+            margin: 0 -2px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        .trainee-company-filters-row::-webkit-scrollbar {
+            height: 8px;
+        }
+        .trainee-company-filters-row::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .trainee-company-filters-row::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .trainee-company-chip {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 2px;
+            flex: 0 0 auto;
+            min-width: 0;
+            max-width: 200px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #1e293b;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 7px 11px;
+            border-radius: 10px;
+            cursor: pointer;
+            line-height: 1.25;
+            text-align: left;
+            font-family: inherit;
+        }
+        .trainee-company-chip:hover { border-color: #1e3c72; background: #f8fafc; }
+        .trainee-company-chip.active {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            border-color: #1e3c72;
+        }
+        .trainee-company-chip .chip-name {
+            font-weight: 800;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .trainee-company-chip .chip-count { font-size: 0.68rem; font-weight: 800; opacity: 0.88; white-space: nowrap; }
+
+        .trainee-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 280px); overflow-y: auto; }
         .trainee-item {
             display: flex; align-items: center; gap: 10px;
             border: 1px solid #e8eaed; border-radius: 12px; padding: 10px;
@@ -1027,7 +1102,7 @@
                 overflow-y: visible;
             }
             .details { max-height: none; }
-            .trainee-list { max-height: 320px; }
+            .trainee-list { max-height: 280px; }
             #reopenActions .reopen-grid {
                 grid-template-columns: 1fr;
             }
@@ -1184,6 +1259,7 @@
                         <button type="button" id="btnDeleteSelected" class="btn-delete-selected">Delete selected</button>
                     </div>
                     <input id="traineeSearch" class="search" type="text" placeholder="Search by name or student ID">
+                    <div id="traineeCompanyFilters" class="trainee-company-filters" aria-label="Filter by company"></div>
                     <div id="traineeList" class="trainee-list"></div>
                     <button type="button" id="btnArchivedToggle" class="btn-archived-toggle">Archived trainees (0) ▸</button>
                     <div id="archivedTraineeList" class="archived-list hidden"></div>
@@ -1655,6 +1731,8 @@
 
             var selectedKey = null;
             var selectedTrainee = null;
+            /** null = show all companies; otherwise match key from companyNameKey() */
+            var adminCompanyFilter = null;
             var selectedTraineeKeys = {};
             var isSelectionMode = false;
             var isArchivedOpen = false;
@@ -1850,6 +1928,104 @@
                 if (p) p.src = '../images/omsc.png';
                 updateCertificatePanel();
             }
+            function companyNameKey(t) {
+                var c = (t && t.companyName != null) ? String(t.companyName).trim() : '';
+                if (!c || c === '—') return '__none__';
+                return c.toLowerCase();
+            }
+            function companyNameDisplay(t) {
+                var c = (t && t.companyName != null) ? String(t.companyName).trim() : '';
+                if (!c || c === '—') return 'No company listed';
+                return c;
+            }
+            function getDistinctCompaniesWithCounts() {
+                var trainees = loadTrainees().filter(function(t) {
+                    var key = getTraineeKey(t);
+                    return key && !isTraineeArchived(key);
+                });
+                var map = {};
+                trainees.forEach(function(t) {
+                    var k = companyNameKey(t);
+                    if (!map[k]) {
+                        map[k] = { key: k, display: companyNameDisplay(t), count: 0 };
+                    }
+                    map[k].count++;
+                });
+                return Object.keys(map).map(function(k) { return map[k]; }).sort(function(a, b) {
+                    if (a.key === '__none__') return 1;
+                    if (b.key === '__none__') return -1;
+                    return a.display.localeCompare(b.display, undefined, { sensitivity: 'base' });
+                });
+            }
+            function renderCompanyFilters() {
+                var wrap = document.getElementById('traineeCompanyFilters');
+                if (!wrap) return;
+                var companies = getDistinctCompaniesWithCounts();
+                if (adminCompanyFilter != null) {
+                    var still = companies.some(function(c) { return c.key === adminCompanyFilter; });
+                    if (!still) adminCompanyFilter = null;
+                }
+                wrap.innerHTML = '';
+                var lab = document.createElement('div');
+                lab.className = 'trainee-company-filters-label';
+                lab.textContent = 'Company';
+                wrap.appendChild(lab);
+                var row = document.createElement('div');
+                row.className = 'trainee-company-filters-row';
+                row.setAttribute('role', 'toolbar');
+                row.setAttribute('aria-label', 'Filter trainees by company');
+                var allBtn = document.createElement('button');
+                allBtn.type = 'button';
+                allBtn.className = 'trainee-company-chip' + (adminCompanyFilter === null ? ' active' : '');
+                allBtn.innerHTML = '<span class="chip-name">All companies</span><span class="chip-count">' + companies.reduce(function(s, c) { return s + c.count; }, 0) + ' trainee(s)</span>';
+                allBtn.addEventListener('click', function() {
+                    adminCompanyFilter = null;
+                    renderTraineeList();
+                });
+                row.appendChild(allBtn);
+                companies.forEach(function(entry) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'trainee-company-chip' + (adminCompanyFilter === entry.key ? ' active' : '');
+                    b.setAttribute('data-company-key', entry.key);
+                    var nameSpan = document.createElement('span');
+                    nameSpan.className = 'chip-name';
+                    nameSpan.textContent = entry.display;
+                    var cntSpan = document.createElement('span');
+                    cntSpan.className = 'chip-count';
+                    cntSpan.textContent = entry.count + ' trainee' + (entry.count === 1 ? '' : 's');
+                    b.appendChild(nameSpan);
+                    b.appendChild(cntSpan);
+                    b.addEventListener('click', function() {
+                        adminCompanyFilter = entry.key;
+                        renderTraineeList();
+                    });
+                    row.appendChild(b);
+                });
+                wrap.appendChild(row);
+            }
+            function pickSelectionForFilteredTrainees(trainees) {
+                if (!trainees || !trainees.length) {
+                    if (selectedKey) {
+                        selectedKey = null;
+                        selectedTrainee = null;
+                        var n = document.getElementById('detailName');
+                        var s = document.getElementById('detailSub');
+                        var p = document.getElementById('detailPicture');
+                        if (n) n.textContent = 'Select a trainee';
+                        if (s) s.textContent = '—';
+                        if (p) p.src = '../images/omsc.png';
+                        try { updateCertificatePanel(); } catch (e1) {}
+                    }
+                    return;
+                }
+                var ok = selectedKey && trainees.some(function(t) { return getTraineeKey(t) === selectedKey; });
+                if (!ok) {
+                    selectedTrainee = trainees[0];
+                    selectedKey = getTraineeKey(trainees[0]);
+                    renderDetails(trainees[0], selectedKey);
+                }
+            }
             function getFilteredTrainees() {
                 var trainees = loadTrainees();
                 var q = (traineeSearch && traineeSearch.value ? traineeSearch.value : '').toLowerCase().trim();
@@ -1857,6 +2033,11 @@
                     var key = getTraineeKey(t);
                     return key && !isTraineeArchived(key);
                 });
+                if (adminCompanyFilter != null) {
+                    trainees = trainees.filter(function(t) {
+                        return companyNameKey(t) === adminCompanyFilter;
+                    });
+                }
                 if (!q) return trainees;
                 return trainees.filter(function(t) {
                     var name = (t.fullName || '').toString().toLowerCase();
@@ -2561,7 +2742,10 @@
             function renderTraineeList() {
                 traineeListEl.innerHTML = '';
                 pruneSelectedTrainees();
+                renderCompanyFilters();
                 var trainees = getFilteredTrainees();
+                pickSelectionForFilteredTrainees(trainees);
+                trainees = getFilteredTrainees();
 
                 if (trainees.length === 0) {
                     var empty = document.createElement('div');
