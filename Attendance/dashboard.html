@@ -217,7 +217,16 @@
         .cal-cell.other-month { color: #aaa; cursor: default; }
         .cal-cell.today { background: rgba(30,60,114,0.12); border: 2px solid #1e3c72; font-weight: 800; color: #1e3c72; }
         .cal-cell.has-record { background: #ecfdf5; }
+        .cal-cell.cal-cell--holiday { background: #fef3c7; }
+        .cal-cell.cal-cell--weekend { background: #e2e8f0; }
+        .cal-cell.cal-cell--opened { box-shadow: inset 0 0 0 2px #16a34a; }
         .cal-cell.selected { outline: 2px solid #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.25); }
+        .cal-legend-hint { font-size: 0.78rem; color: #64748b; margin: 8px 0 0; line-height: 1.35; }
+        .attendance-cal-block-msg {
+            display: none; width: 100%; margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+            background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; font-size: 0.86rem; font-weight: 700;
+        }
+        .attendance-cal-block-msg.show { display: block; }
         .cal-cell .day-num { font-weight: 700; margin-bottom: 4px; }
         .cal-cell .day-times { font-size: 0.75rem; color: #555; line-height: 1.4; }
         .attendance-summary { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e8eaed; }
@@ -663,6 +672,7 @@
                         <div id="liveClock" class="live-clock">--:--:--</div>
                         <div id="liveDate" class="live-date">Loading...</div>
                     </div>
+                    <p id="attendanceCalendarBlockMsg" class="attendance-cal-block-msg" role="status"></p>
                     <div class="time-actions">
                         <button type="button" class="btn-time btn-time-in" id="btnTimeInAM">Time In AM</button>
                         <button type="button" class="btn-time btn-time-out" id="btnTimeOutAM">Time Out AM</button>
@@ -715,6 +725,7 @@
                         </div>
                     </div>
                     <div id="calGrid" class="cal-grid"></div>
+                    <p class="cal-legend-hint">Amber = company holiday (no work). Gray = weekend — blocked unless your coordinator opened that day for you. Green outline = opened for you.</p>
                 </div>
                 <div class="attendance-summary">
                     <h3>Attendance history</h3>
@@ -1563,9 +1574,51 @@
             var timeInTimeInput = document.getElementById('timeInTimeInput');
             var recordsCache = [];
             var reopenedDates = {};
+            var holidayDates = {};
+            var dayAllowMap = {};
             var selectedDateKey = null;
             function getSelectedDateKey() {
                 return selectedDateKey || dateKey(new Date());
+            }
+            function isWeekendDateKey(key) {
+                var p = key.split('-');
+                if (p.length !== 3) return false;
+                var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+                var w = dt.getDay();
+                return w === 0 || w === 6;
+            }
+            function isAttendanceCalendarBlocked(key) {
+                if (!key) return false;
+                if (dayAllowMap[key]) return false;
+                if (holidayDates[key]) return true;
+                if (isWeekendDateKey(key)) return true;
+                return false;
+            }
+            function loadCalendarRules() {
+                return new Promise(function(resolve) {
+                    holidayDates = {};
+                    dayAllowMap = {};
+                    var supabase = window.supabaseClient;
+                    if (!supabase || !traineeId) { resolve(); return; }
+                    Promise.all([
+                        supabase.from('ojt_holidays').select('date,label'),
+                        supabase.from('ojt_attendance_day_allow').select('date').eq('trainee_id', traineeId)
+                    ]).then(function(results) {
+                        var hRes = results[0];
+                        var aRes = results[1];
+                        if (hRes && hRes.data && !hRes.error) {
+                            hRes.data.forEach(function(r) {
+                                if (r && r.date) holidayDates[r.date] = (r.label && String(r.label).trim()) ? String(r.label).trim() : 'Holiday';
+                            });
+                        }
+                        if (aRes && aRes.data && !aRes.error) {
+                            aRes.data.forEach(function(r) {
+                                if (r && r.date) dayAllowMap[r.date] = true;
+                            });
+                        }
+                        resolve();
+                    }).catch(function() { resolve(); });
+                });
             }
 
             function getRecords() {
@@ -1725,6 +1778,9 @@
                     if (key === todayKey) cell.classList.add('today');
                     if (key === selectedDateKey) cell.classList.add('selected');
                     if (hasAny(rec)) cell.classList.add('has-record');
+                    if (holidayDates[key]) cell.classList.add('cal-cell--holiday');
+                    if (isWeekendDateKey(key)) cell.classList.add('cal-cell--weekend');
+                    if (dayAllowMap[key] && (holidayDates[key] || isWeekendDateKey(key))) cell.classList.add('cal-cell--opened');
                     var dayNum = document.createElement('div');
                     dayNum.className = 'day-num';
                     dayNum.textContent = d;
@@ -1796,6 +1852,7 @@
                 var isToday = selectedKey === dateKey(new Date());
                 var reopenedToday = !!reopenedDates[selectedKey];
                 var canEdit = isToday || reopenedToday;
+                var calBlocked = isAttendanceCalendarBlocked(selectedKey);
                 var records = getRecords();
                 var rec = normalizeRec(findRecord(records, selectedKey));
                 var btnInAM = document.getElementById('btnTimeInAM');
@@ -1804,19 +1861,19 @@
                 var btnOutPM = document.getElementById('btnTimeOutPM');
                 var btnInOT = document.getElementById('btnTimeInOT');
                 var btnOutOT = document.getElementById('btnTimeOutOT');
-                var canInAM = canEdit && (isTimeInAMWindow() || reopenedToday) && !(rec && amInTime(rec));
-                var canOutAM = canEdit && (isTimeOutAMWindow() || reopenedToday) && rec && amInTime(rec) && !rec.amOut;
-                var canInPM = canEdit && (isTimeInPMWindow() || reopenedToday) && !(rec && pmInTime(rec));
-                var canOutPM = canEdit && (isTimeOutPMWindow() || reopenedToday) && rec && pmInTime(rec) && !rec.pmOut;
+                var canInAM = canEdit && !calBlocked && (isTimeInAMWindow() || reopenedToday) && !(rec && amInTime(rec));
+                var canOutAM = canEdit && !calBlocked && (isTimeOutAMWindow() || reopenedToday) && rec && amInTime(rec) && !rec.amOut;
+                var canInPM = canEdit && !calBlocked && (isTimeInPMWindow() || reopenedToday) && !(rec && pmInTime(rec));
+                var canOutPM = canEdit && !calBlocked && (isTimeOutPMWindow() || reopenedToday) && rec && pmInTime(rec) && !rec.pmOut;
                 var otClosedToday = !!(rec && rec.otClosed);
                 if (btnInAM) btnInAM.disabled = !canInAM;
                 if (btnOutAM) btnOutAM.disabled = !canOutAM;
                 if (btnInPM) btnInPM.disabled = !canInPM;
                 if (btnOutPM) btnOutPM.disabled = !canOutPM;
-                if (btnInOT) btnInOT.disabled = !canEdit || otClosedToday || !!(rec && otInTime(rec));
-                if (btnOutOT) btnOutOT.disabled = !canEdit || otClosedToday || !(rec && otInTime(rec) && !rec.otOut);
+                if (btnInOT) btnInOT.disabled = !canEdit || calBlocked || otClosedToday || !!(rec && otInTime(rec));
+                if (btnOutOT) btnOutOT.disabled = !canEdit || calBlocked || otClosedToday || !(rec && otInTime(rec) && !rec.otOut);
                 var btnCloseOT = document.getElementById('btnCloseOT');
-                if (btnCloseOT) btnCloseOT.style.display = (canEdit && !otClosedToday) ? 'inline-block' : 'none';
+                if (btnCloseOT) btnCloseOT.style.display = (canEdit && !calBlocked && !otClosedToday) ? 'inline-block' : 'none';
             }
 
             function renderTable() {
@@ -1943,11 +2000,27 @@
                 renderCalendar();
                 renderTable();
                 updateTrainingHoursSummary();
+                var blkEl = document.getElementById('attendanceCalendarBlockMsg');
+                if (blkEl) {
+                    var sk = getSelectedDateKey();
+                    if (isAttendanceCalendarBlocked(sk)) {
+                        blkEl.classList.add('show');
+                        var bits = [];
+                        if (holidayDates[sk]) bits.push('company holiday' + (holidayDates[sk] ? ' (' + holidayDates[sk] + ')' : ''));
+                        if (isWeekendDateKey(sk)) bits.push('weekend');
+                        blkEl.textContent = 'This date is blocked for attendance (' + bits.join(' + ') + '). Your coordinator can open this day for you in Admin if you are required to work.';
+                    } else {
+                        blkEl.classList.remove('show');
+                        blkEl.textContent = '';
+                    }
+                }
             }
             function refreshAttendanceUI(fromServer) {
                 if (fromServer) {
                     loadRecordsFromSupabase().then(function() {
                         return loadReopenedDates();
+                    }).then(function() {
+                        return loadCalendarRules();
                     }).then(refreshAttendanceUIFromLocal);
                 } else {
                     refreshAttendanceUIFromLocal();
@@ -2473,6 +2546,8 @@
             }
             loadRecordsFromSupabase().then(function() {
                 return loadReopenedDates();
+            }).then(function() {
+                return loadCalendarRules();
             }).then(refreshAttendanceUIFromLocal);
             setInterval(function() {
                 if (sectionAttendance && sectionAttendance.classList.contains('active')) setButtonsState();

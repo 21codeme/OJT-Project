@@ -106,6 +106,27 @@ ALTER TABLE ojt_attendance_reopen ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on ojt_attendance_reopen" ON ojt_attendance_reopen;
 CREATE POLICY "Allow all on ojt_attendance_reopen" ON ojt_attendance_reopen FOR ALL USING (true) WITH CHECK (true);
 
+-- 3b2) Company holidays (no work). Trainees cannot clock in unless allowed per trainee (ojt_attendance_day_allow).
+CREATE TABLE IF NOT EXISTS ojt_holidays (
+    date TEXT PRIMARY KEY,
+    label TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE ojt_holidays ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_holidays" ON ojt_holidays;
+CREATE POLICY "Allow all on ojt_holidays" ON ojt_holidays FOR ALL USING (true) WITH CHECK (true);
+
+-- 3b3) Allow a trainee to clock in on a blocked day (Saturday, Sunday, or a holiday).
+CREATE TABLE IF NOT EXISTS ojt_attendance_day_allow (
+    trainee_id UUID NOT NULL REFERENCES ojt_trainees(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (trainee_id, date)
+);
+ALTER TABLE ojt_attendance_day_allow ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on ojt_attendance_day_allow" ON ojt_attendance_day_allow;
+CREATE POLICY "Allow all on ojt_attendance_day_allow" ON ojt_attendance_day_allow FOR ALL USING (true) WITH CHECK (true);
+
 -- 3c) OJT Daily Logs (trainee logs with optional photo)
 CREATE TABLE IF NOT EXISTS ojt_daily_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

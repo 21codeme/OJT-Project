@@ -955,6 +955,56 @@
         .admin-ot-in-pending { color: #dc2626; font-weight: 800; }
         .admin-ot-in-approved { color: #16a34a; font-weight: 800; }
 
+        .admin-att-cal-block {
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+        .admin-att-cal-block h3 { margin: 0 0 6px; font-size: 1rem; color: #1e3c72; }
+        .admin-att-cal-desc { font-size: 0.82rem; margin: 0 0 10px; line-height: 1.4; }
+        .admin-cal-legend {
+            display: flex; flex-wrap: wrap; gap: 10px 14px;
+            font-size: 0.78rem; font-weight: 700; color: #475569; margin-bottom: 10px;
+        }
+        .admin-cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .admin-cal-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+        .admin-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+        .admin-cal-title { font-size: 1.05rem; font-weight: 800; color: #1e3c72; }
+        .admin-cal-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+        .admin-cal-nav button {
+            padding: 7px 12px; border: 1px solid #d7dbe0; border-radius: 8px; background: #fff;
+            font-weight: 700; font-size: 0.82rem; color: #334155; cursor: pointer;
+        }
+        .admin-cal-nav button:hover { background: #f1f5f9; border-color: #1e3c72; color: #1e3c72; }
+        .admin-cal-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+            background: #e8eaed; border: 1px solid #e8eaed; border-radius: 10px; overflow: hidden;
+        }
+        .admin-cal-cell {
+            background: #fff; padding: 8px 6px; min-height: 58px; font-size: 0.78rem;
+            cursor: pointer; text-align: left; border: none; width: 100%; font-family: inherit;
+            box-sizing: border-box; display: block;
+        }
+        .admin-cal-cell:focus-visible { outline: 2px solid #1e3c72; outline-offset: -2px; z-index: 1; position: relative; }
+        .admin-cal-cell.weekday { background: #f1f5f9; font-weight: 800; color: #1e3c72; text-align: center; padding: 7px; cursor: default; }
+        .admin-cal-cell.other-month { color: #cbd5e1; cursor: default; background: #fafafa; }
+        .admin-cal-cell.today { box-shadow: inset 0 0 0 2px #1e3c72; }
+        .admin-cal-cell.has-att { background: #ecfdf5; }
+        .admin-cal-cell.is-holiday { background: #fef3c7; }
+        .admin-cal-cell.is-weekend { background: #e2e8f0; }
+        .admin-cal-cell.is-opened { box-shadow: inset 0 0 0 2px #16a34a; }
+        .admin-cal-cell .admin-cal-day { font-weight: 800; margin-bottom: 2px; color: #0f172a; }
+        .admin-cal-cell .admin-cal-tag { font-size: 0.65rem; font-weight: 800; color: #64748b; line-height: 1.25; }
+        .admin-cal-sql-hint { display: none; font-size: 0.78rem; color: #b45309; margin-top: 8px; font-weight: 700; }
+        .admin-cal-sql-hint.show { display: block; }
+        #adminCalendarDayModal .admin-cal-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+        #adminCalendarDayModal .btn-cal-modal { padding: 8px 12px; border-radius: 8px; font-weight: 800; font-size: 0.85rem; cursor: pointer; border: none; }
+        #adminCalendarDayModal .btn-cal-modal-secondary { background: #fff; border: 1px solid #d7dbe0; color: #334155; }
+        #adminCalendarDayModal .btn-cal-modal-danger { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+        #adminCalendarDayModal .btn-cal-modal-primary { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; }
+
         #editAttendanceModal .edit-att-field { display: flex; flex-direction: column; gap: 4px; }
         #editAttendanceModal .edit-att-label-row {
             display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -1222,7 +1272,27 @@
                                     <span class="sep">|</span>
                                     <span class="label">Remaining:</span> <span id="thAdminRemaining" class="val">—</span>
                                 </div>
-                                <p class="muted" id="attendanceEmpty" style="margin-bottom:10px;">No attendance records yet.</p>
+                                <div id="adminAttendanceCalendarBlock" class="admin-att-cal-block" style="display:none;">
+                                    <h3>Attendance calendar</h3>
+                                    <p class="muted admin-att-cal-desc">Holidays and “no work” days apply to all trainees. Saturday and Sunday are blocked unless you allow this trainee for that date. Click a day to add/remove a holiday or open the day for the selected trainee.</p>
+                                    <div class="admin-cal-legend">
+                                        <span><i class="admin-cal-leg-dot" style="background:#fef3c7;"></i> Holiday / no work</span>
+                                        <span><i class="admin-cal-leg-dot" style="background:#e2e8f0;"></i> Weekend (blocked)</span>
+                                        <span><i class="admin-cal-leg-dot" style="background:#ecfdf5;"></i> Has attendance</span>
+                                        <span><i class="admin-cal-leg-dot" style="box-shadow:inset 0 0 0 2px #16a34a;background:#fff;"></i> Open for this trainee</span>
+                                    </div>
+                                    <div class="admin-cal-header">
+                                        <span id="adminCalTitle" class="admin-cal-title">—</span>
+                                        <div class="admin-cal-nav">
+                                            <button type="button" id="adminCalPrev">← Prev</button>
+                                            <button type="button" id="adminCalToday">Today</button>
+                                            <button type="button" id="adminCalNext">Next →</button>
+                                        </div>
+                                    </div>
+                                    <div id="adminCalGrid" class="admin-cal-grid" role="grid" aria-label="Attendance calendar"></div>
+                                    <p id="adminCalSqlHint" class="admin-cal-sql-hint">Calendar tables missing: run <code>database/add-ojt-calendar-holidays.sql</code> in Supabase SQL, then refresh.</p>
+                                </div>
+                                <p class="muted" id="attendanceEmpty" style="margin-bottom:10px; display:none;">—</p>
                                 <div id="attendanceTableWrap" style="display:none; overflow-x:auto;">
                                     <table class="att-table" style="width:100%; border-collapse:collapse;">
                                         <thead>
@@ -1370,6 +1440,35 @@
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
                 <button type="button" id="editAttCancel" class="btn btn-secondary">Cancel</button>
                 <button type="button" id="editAttSave" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminCalendarDayModal" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10000; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+        <div style="background:#fff; border-radius:14px; padding:18px; max-width:420px; width:100%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px;">
+                <h3 id="adminCalModalTitle" style="margin:0; color:#1e3c72; font-size:1.05rem;">Day</h3>
+                <button type="button" id="adminCalModalClose" style="border:none; border-radius:50%; width:32px; height:32px; background:#1e3c72; color:#fff; cursor:pointer; flex-shrink:0;">&times;</button>
+            </div>
+            <p id="adminCalModalStatus" class="muted" style="font-size:0.86rem; margin:0 0 12px; line-height:1.45;"></p>
+            <div id="adminCalModalHolidayRow" style="margin-bottom:12px;">
+                <label for="adminCalHolidayLabel" style="display:block; font-weight:800; font-size:0.85rem; color:#334155; margin-bottom:6px;">Holiday label (optional)</label>
+                <input type="text" id="adminCalHolidayLabel" placeholder="e.g. National Holiday" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #d7dbe0; font-size:0.92rem; box-sizing:border-box;">
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <button type="button" class="btn-cal-modal btn-cal-modal-primary" id="adminCalBtnAddHoliday">Mark company holiday</button>
+                <button type="button" class="btn-cal-modal btn-cal-modal-danger" id="adminCalBtnRemoveHoliday">Remove holiday</button>
+            </div>
+            <div id="adminCalModalAllowWrap" style="display:none; padding-top:10px; border-top:1px solid #e8eaed;">
+                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.88rem; font-weight:700; color:#1e3c72;">
+                    <input type="checkbox" id="adminCalAllowChk" style="margin-top:3px;">
+                    <span>Allow this trainee to clock in on this day (opens weekend or holiday for them only).</span>
+                </label>
+                <p class="muted" style="font-size:0.78rem; margin:8px 0 0;">Uncheck and press Save to remove that permission.</p>
+            </div>
+            <div class="admin-cal-modal-actions">
+                <button type="button" class="btn-cal-modal btn-cal-modal-secondary" id="adminCalModalCancel">Close</button>
+                <button type="button" class="btn-cal-modal btn-cal-modal-primary" id="adminCalModalSaveAllow">Save trainee access</button>
             </div>
         </div>
     </div>
@@ -2708,24 +2807,291 @@
                 }
             }
 
+            var adminCalYear = (new Date()).getFullYear();
+            var adminCalMonth = (new Date()).getMonth();
+            var adminCalMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            var adminCalWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            window._ojtAdminCalCtx = { traineeId: null, supabase: null, maps: { holidays: {}, labels: {}, allows: {} }, traineeName: '', _lastAttDates: {}, _lastMaps: { holidays: {}, labels: {}, allows: {} } };
+
+            function adminCalDateKey(d) {
+                var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+                return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+            }
+            function adminCalIsWeekendKey(key) {
+                var p = key.split('-');
+                if (p.length !== 3) return false;
+                var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+                var w = dt.getDay();
+                return w === 0 || w === 6;
+            }
+            function paintAdminAttendanceCalendar(attendanceDateSet, maps) {
+                var grid = document.getElementById('adminCalGrid');
+                var titleEl = document.getElementById('adminCalTitle');
+                if (!grid) return;
+                attendanceDateSet = attendanceDateSet || {};
+                maps = maps || { holidays: {}, labels: {}, allows: {} };
+                if (titleEl) titleEl.textContent = adminCalMonthNames[adminCalMonth] + ' ' + adminCalYear;
+                var first = new Date(adminCalYear, adminCalMonth, 1);
+                var last = new Date(adminCalYear, adminCalMonth + 1, 0);
+                var startDay = first.getDay();
+                var daysInMonth = last.getDate();
+                var todayKey = adminCalDateKey(new Date());
+                grid.innerHTML = '';
+                for (var i = 0; i < 7; i++) {
+                    var h = document.createElement('div');
+                    h.className = 'admin-cal-cell weekday';
+                    h.textContent = adminCalWeekdays[i];
+                    grid.appendChild(h);
+                }
+                for (var p = 0; p < startDay; p++) {
+                    var empty = document.createElement('div');
+                    empty.className = 'admin-cal-cell other-month';
+                    empty.setAttribute('aria-hidden', 'true');
+                    grid.appendChild(empty);
+                }
+                for (var d = 1; d <= daysInMonth; d++) {
+                    var dt = new Date(adminCalYear, adminCalMonth, d);
+                    var key = adminCalDateKey(dt);
+                    var isHol = !!maps.holidays[key];
+                    var wknd = adminCalIsWeekendKey(key);
+                    var allowed = !!maps.allows[key];
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'admin-cal-cell';
+                    btn.setAttribute('data-admin-cal-date', key);
+                    if (key === todayKey) btn.classList.add('today');
+                    if (isHol) btn.classList.add('is-holiday');
+                    else if (wknd) btn.classList.add('is-weekend');
+                    if (attendanceDateSet[key]) btn.classList.add('has-att');
+                    if (allowed && (isHol || wknd)) btn.classList.add('is-opened');
+                    var dayNum = document.createElement('div');
+                    dayNum.className = 'admin-cal-day';
+                    dayNum.textContent = String(d);
+                    btn.appendChild(dayNum);
+                    var tag = document.createElement('div');
+                    tag.className = 'admin-cal-tag';
+                    var parts = [];
+                    if (isHol) parts.push('Holiday');
+                    else if (wknd) parts.push('Weekend');
+                    if (allowed && (isHol || wknd)) parts.push('Open');
+                    tag.textContent = parts.join(' · ');
+                    btn.appendChild(tag);
+                    grid.appendChild(btn);
+                }
+                var totalCells = 7 + startDay + daysInMonth;
+                var remainder = totalCells % 7;
+                if (remainder !== 0) {
+                    for (var t = 0; t < (7 - remainder); t++) {
+                        var trail = document.createElement('div');
+                        trail.className = 'admin-cal-cell other-month';
+                        trail.setAttribute('aria-hidden', 'true');
+                        grid.appendChild(trail);
+                    }
+                }
+            }
+            function openAdminCalendarDayModal(dateKey) {
+                var modal = document.getElementById('adminCalendarDayModal');
+                var ctx = window._ojtAdminCalCtx || {};
+                var maps = ctx.maps || { holidays: {}, labels: {}, allows: {} };
+                if (!modal || !dateKey) return;
+                modal.setAttribute('data-date', dateKey);
+                var title = document.getElementById('adminCalModalTitle');
+                var status = document.getElementById('adminCalModalStatus');
+                var isHol = !!maps.holidays[dateKey];
+                var wknd = adminCalIsWeekendKey(dateKey);
+                var allowed = !!maps.allows[dateKey];
+                if (title) title.textContent = dateKey;
+                var lines = [];
+                if (isHol) lines.push('Company holiday: ' + (maps.labels[dateKey] || 'Holiday') + '.');
+                if (wknd) lines.push('Weekend — trainees cannot clock in unless you allow this trainee for this date.');
+                if (!isHol && !wknd) lines.push('Regular weekday (not marked as company holiday).');
+                if (allowed && (isHol || wknd)) lines.push('This trainee is allowed to use attendance on this date.');
+                if (status) status.innerHTML = lines.join('<br>');
+                var btnAdd = document.getElementById('adminCalBtnAddHoliday');
+                var btnRem = document.getElementById('adminCalBtnRemoveHoliday');
+                if (btnAdd) btnAdd.style.display = isHol ? 'none' : 'inline-block';
+                if (btnRem) btnRem.style.display = isHol ? 'inline-block' : 'none';
+                var allowWrap = document.getElementById('adminCalModalAllowWrap');
+                if (allowWrap) allowWrap.style.display = (wknd || isHol) ? 'block' : 'none';
+                var chk = document.getElementById('adminCalAllowChk');
+                if (chk) chk.checked = allowed;
+                var hinp = document.getElementById('adminCalHolidayLabel');
+                if (hinp) hinp.value = isHol && maps.labels[dateKey] && maps.labels[dateKey] !== 'Holiday' ? (maps.labels[dateKey] || '') : '';
+                modal.style.display = 'flex';
+                modal.setAttribute('aria-hidden', 'false');
+            }
+            function closeAdminCalendarDayModal() {
+                var modal = document.getElementById('adminCalendarDayModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+            }
+            function initAdminAttendanceCalendarOnce() {
+                if (window._ojtAdminCalNavBound) return;
+                window._ojtAdminCalNavBound = true;
+                var prev = document.getElementById('adminCalPrev');
+                var next = document.getElementById('adminCalNext');
+                var today = document.getElementById('adminCalToday');
+                var grid = document.getElementById('adminCalGrid');
+                function repaintNav() {
+                    var ctx = window._ojtAdminCalCtx || {};
+                    if (ctx._lastAttDates && ctx._lastMaps) paintAdminAttendanceCalendar(ctx._lastAttDates, ctx._lastMaps);
+                }
+                if (prev) prev.addEventListener('click', function() {
+                    adminCalMonth--;
+                    if (adminCalMonth < 0) { adminCalMonth = 11; adminCalYear--; }
+                    repaintNav();
+                });
+                if (next) next.addEventListener('click', function() {
+                    adminCalMonth++;
+                    if (adminCalMonth > 11) { adminCalMonth = 0; adminCalYear++; }
+                    repaintNav();
+                });
+                if (today) today.addEventListener('click', function() {
+                    var n = new Date();
+                    adminCalYear = n.getFullYear();
+                    adminCalMonth = n.getMonth();
+                    repaintNav();
+                });
+                if (grid) grid.addEventListener('click', function(ev) {
+                    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-admin-cal-date]') : null;
+                    if (!btn || btn.classList.contains('weekday')) return;
+                    var dk = btn.getAttribute('data-admin-cal-date');
+                    if (dk) openAdminCalendarDayModal(dk);
+                });
+                var modal = document.getElementById('adminCalendarDayModal');
+                var mClose = document.getElementById('adminCalModalClose');
+                var mCancel = document.getElementById('adminCalModalCancel');
+                if (mClose) mClose.addEventListener('click', closeAdminCalendarDayModal);
+                if (mCancel) mCancel.addEventListener('click', closeAdminCalendarDayModal);
+                if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeAdminCalendarDayModal(); });
+                var btnAddH = document.getElementById('adminCalBtnAddHoliday');
+                var btnRemH = document.getElementById('adminCalBtnRemoveHoliday');
+                var btnSaveAllow = document.getElementById('adminCalModalSaveAllow');
+                if (btnAddH) btnAddH.addEventListener('click', async function() {
+                    var modalEl = document.getElementById('adminCalendarDayModal');
+                    var ctx = window._ojtAdminCalCtx || {};
+                    var dk = modalEl ? modalEl.getAttribute('data-date') : '';
+                    var supabase = ctx.supabase;
+                    if (!supabase || !dk) return;
+                    var lblEl = document.getElementById('adminCalHolidayLabel');
+                    var lbl = lblEl ? lblEl.value.trim() : '';
+                    try {
+                        var ins = await supabase.from('ojt_holidays').upsert({ date: dk, label: lbl || null }, { onConflict: 'date' });
+                        if (ins.error) throw ins.error;
+                        closeAdminCalendarDayModal();
+                        await renderAttendanceIfNeeded();
+                    } catch (e) {
+                        alert('Could not save holiday. Run database/add-ojt-calendar-holidays.sql in Supabase if tables are missing.');
+                    }
+                });
+                if (btnRemH) btnRemH.addEventListener('click', async function() {
+                    var modalEl = document.getElementById('adminCalendarDayModal');
+                    var ctx = window._ojtAdminCalCtx || {};
+                    var dk = modalEl ? modalEl.getAttribute('data-date') : '';
+                    var supabase = ctx.supabase;
+                    if (!supabase || !dk) return;
+                    try {
+                        var del = await supabase.from('ojt_holidays').delete().eq('date', dk);
+                        if (del.error) throw del.error;
+                        closeAdminCalendarDayModal();
+                        await renderAttendanceIfNeeded();
+                    } catch (e) {
+                        alert('Could not remove holiday.');
+                    }
+                });
+                if (btnSaveAllow) btnSaveAllow.addEventListener('click', async function() {
+                    var modalEl = document.getElementById('adminCalendarDayModal');
+                    var ctx = window._ojtAdminCalCtx || {};
+                    var dk = modalEl ? modalEl.getAttribute('data-date') : '';
+                    var supabase = ctx.supabase;
+                    var tid = ctx.traineeId;
+                    var chkEl = document.getElementById('adminCalAllowChk');
+                    if (!supabase || !dk || !tid) return;
+                    var want = chkEl && chkEl.checked;
+                    try {
+                        if (want) {
+                            var up = await supabase.from('ojt_attendance_day_allow').upsert(
+                                { trainee_id: tid, date: dk },
+                                { onConflict: 'trainee_id,date' }
+                            );
+                            if (up.error) throw up.error;
+                        } else {
+                            var del2 = await supabase.from('ojt_attendance_day_allow').delete().eq('trainee_id', tid).eq('date', dk);
+                            if (del2.error) throw del2.error;
+                        }
+                        closeAdminCalendarDayModal();
+                        await renderAttendanceIfNeeded();
+                    } catch (e) {
+                        alert('Could not update trainee access. Run database/add-ojt-calendar-holidays.sql in Supabase if tables are missing.');
+                    }
+                });
+            }
+            initAdminAttendanceCalendarOnce();
+
             async function renderAttendanceIfNeeded() {
                 var emptyEl = document.getElementById('attendanceEmpty');
                 var wrapEl = document.getElementById('attendanceTableWrap');
                 var tbody = document.getElementById('attendanceTableBody');
+                var calBlock = document.getElementById('adminAttendanceCalendarBlock');
+                var sqlHint = document.getElementById('adminCalSqlHint');
                 if (!emptyEl || !wrapEl || !tbody) return;
                 tbody.innerHTML = '';
-                emptyEl.style.display = 'block';
+                emptyEl.style.display = 'none';
                 wrapEl.style.display = 'none';
-                if (!selectedTrainee || !selectedKey) return;
+                if (sqlHint) sqlHint.classList.remove('show');
+                if (calBlock) calBlock.style.display = 'none';
+                if (!selectedTrainee || !selectedKey) {
+                    emptyEl.style.display = 'block';
+                    emptyEl.textContent = 'Select a trainee to view attendance and calendar.';
+                    return;
+                }
                 var traineeId = selectedTrainee.id || selectedKey;
                 var supabase = window.supabaseClient || await waitForSupabaseReady();
                 if (!supabase) {
+                    emptyEl.style.display = 'block';
                     emptyEl.textContent = 'Could not load attendance. Check connection.';
                     return;
                 }
                 try {
                     var res = await supabase.from('ojt_attendance').select('*').eq('trainee_id', traineeId).order('date', { ascending: false });
                     var rows = Array.isArray(res.data) ? res.data : [];
+
+                    var maps = { holidays: {}, labels: {}, allows: {} };
+                    var calFetchErr = false;
+                    var hr = await supabase.from('ojt_holidays').select('date,label');
+                    if (hr.error) calFetchErr = true;
+                    else if (hr.data) {
+                        hr.data.forEach(function(r) {
+                            if (r && r.date) {
+                                maps.holidays[r.date] = true;
+                                maps.labels[r.date] = (r.label && String(r.label).trim()) ? String(r.label).trim() : 'Holiday';
+                            }
+                        });
+                    }
+                    var ar = await supabase.from('ojt_attendance_day_allow').select('date').eq('trainee_id', traineeId);
+                    if (ar.error) calFetchErr = true;
+                    else if (ar.data) {
+                        ar.data.forEach(function(r) {
+                            if (r && r.date) maps.allows[r.date] = true;
+                        });
+                    }
+
+                    var attDates = {};
+                    rows.forEach(function(r) { if (r.date) attDates[r.date] = true; });
+                    window._ojtAdminCalCtx.traineeId = traineeId;
+                    window._ojtAdminCalCtx.supabase = supabase;
+                    window._ojtAdminCalCtx.maps = maps;
+                    window._ojtAdminCalCtx.traineeName = (selectedTrainee.fullName || selectedTrainee.name || selectedTrainee.studentName || selectedTrainee.studentId || 'Trainee');
+                    window._ojtAdminCalCtx._lastAttDates = attDates;
+                    window._ojtAdminCalCtx._lastMaps = maps;
+                    if (calBlock) calBlock.style.display = 'block';
+                    if (sqlHint) {
+                        if (calFetchErr) sqlHint.classList.add('show');
+                        else sqlHint.classList.remove('show');
+                    }
+                    paintAdminAttendanceCalendar(attDates, maps);
 
                     var summaryEl = document.getElementById('trainingHoursAdminSummary');
                     var elReq = document.getElementById('thAdminRequired');
@@ -2739,17 +3105,6 @@
                     } catch (e) {}
                     if (summaryEl) summaryEl.style.display = 'block';
 
-                    if (rows.length === 0) {
-                        var completed = 0;
-                        var remaining = Math.max(0, required - completed);
-                        if (elReq) elReq.textContent = required ? (required + ' hrs') : '—';
-                        if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
-                        if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
-                        emptyEl.textContent = 'No attendance records yet.';
-                        return;
-                    }
-                    emptyEl.style.display = 'none';
-                    wrapEl.style.display = 'block';
                     function timeToMinutes(t) {
                         if (!t || typeof t !== 'string') return 0;
                         var parts = t.trim().split(':');
@@ -2792,6 +3147,14 @@
                     if (elReq) elReq.textContent = required ? (required + ' hrs') : '—';
                     if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
                     if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
+
+                    if (rows.length === 0) {
+                        emptyEl.style.display = 'block';
+                        emptyEl.textContent = 'No attendance rows yet for this trainee. Use the calendar above for holidays / weekend access.';
+                        return;
+                    }
+                    emptyEl.style.display = 'none';
+                    wrapEl.style.display = 'block';
 
                     var photoModal = document.getElementById('photoPreviewModal');
                     var photoModalImg = document.getElementById('photoPreviewImg');
@@ -3044,6 +3407,7 @@
                         tbody.appendChild(tr);
                     });
                 } catch (e) {
+                    emptyEl.style.display = 'block';
                     emptyEl.textContent = 'Could not load attendance. Try again.';
                 }
             }
