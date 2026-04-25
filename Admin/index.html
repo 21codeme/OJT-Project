@@ -1347,6 +1347,7 @@
                                     <span class="label">Completed:</span> <span id="thAdminCompleted" class="val">—</span>
                                     <span class="sep">|</span>
                                     <span class="label">Remaining:</span> <span id="thAdminRemaining" class="val">—</span>
+                                    <button class="btn btn-secondary" type="button" id="btnAdminWeeklyHours" style="margin-left:10px;">Weekly Hours</button>
                                 </div>
                                 <div id="adminAttendanceCalendarBlock" class="admin-att-cal-block" style="display:none;">
                                     <h3>Attendance calendar</h3>
@@ -3294,6 +3295,7 @@
                     var elReq = document.getElementById('thAdminRequired');
                     var elComp = document.getElementById('thAdminCompleted');
                     var elRem = document.getElementById('thAdminRemaining');
+                    var btnWeeklyHours = document.getElementById('btnAdminWeeklyHours');
 
                     var required = 0;
                     try {
@@ -3344,6 +3346,68 @@
                     if (elReq) elReq.textContent = required ? (required + ' hrs') : '—';
                     if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
                     if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
+
+                    function parseYmdToDate(ymd) {
+                        if (!ymd || typeof ymd !== 'string') return null;
+                        var m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                        if (!m) return null;
+                        var yy = parseInt(m[1], 10);
+                        var mm = parseInt(m[2], 10) - 1;
+                        var dd = parseInt(m[3], 10);
+                        var dt = new Date(yy, mm, dd);
+                        if (isNaN(dt.getTime())) return null;
+                        return dt;
+                    }
+                    function formatDateYmd(dt) {
+                        if (!dt || isNaN(dt.getTime())) return '';
+                        var yy = dt.getFullYear();
+                        var mm = String(dt.getMonth() + 1).padStart(2, '0');
+                        var dd = String(dt.getDate()).padStart(2, '0');
+                        return yy + '-' + mm + '-' + dd;
+                    }
+                    function weekRangeFromDate(dt) {
+                        var anchor = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+                        var day = anchor.getDay();
+                        var diff = day === 0 ? -6 : (1 - day); // Monday start
+                        var start = new Date(anchor);
+                        start.setDate(anchor.getDate() + diff);
+                        var end = new Date(start);
+                        end.setDate(start.getDate() + 6);
+                        return { start: start, end: end };
+                    }
+                    if (btnWeeklyHours) {
+                        btnWeeklyHours.onclick = function() {
+                            var today = new Date();
+                            var defaultDate = formatDateYmd(today);
+                            var picked = window.prompt('Enter any date in the week (YYYY-MM-DD):', defaultDate);
+                            if (!picked) return;
+                            var pickedDate = parseYmdToDate(String(picked).trim());
+                            if (!pickedDate) {
+                                alert('Invalid date format. Use YYYY-MM-DD.');
+                                return;
+                            }
+                            var wr = weekRangeFromDate(pickedDate);
+                            var startKey = formatDateYmd(wr.start);
+                            var endKey = formatDateYmd(wr.end);
+                            var weekMins = 0;
+                            rows.forEach(function(r) {
+                                if (!r || !r.date) return;
+                                if (r.date < startKey || r.date > endKey) return;
+                                var amIn = timeToMinutes(r.am_in_time);
+                                var amOut = timeToMinutes(r.am_out_time);
+                                if (amIn && amOut) weekMins += Math.max(0, amOut - amIn);
+                                var pmIn = timeToMinutes(r.pm_in_time);
+                                var pmOut = timeToMinutes(r.pm_out_time);
+                                if (pmIn && pmOut) weekMins += Math.max(0, pmOut - pmIn);
+                                var otIn = timeToMinutes(r.ot_in_time);
+                                var otOut = timeToMinutes(r.ot_out_time);
+                                if (otIn && otOut && !r.ot_closed && !!r.ot_in_approved) weekMins += Math.max(0, otOut - otIn);
+                            });
+                            var weeklyHours = Math.round((weekMins / 60) * 10) / 10;
+                            var who = (selectedTrainee && (selectedTrainee.fullName || selectedTrainee.name || selectedTrainee.studentName)) || 'Trainee';
+                            alert(who + '\nWeek: ' + startKey + ' to ' + endKey + '\nTotal: ' + weeklyHours + ' hrs');
+                        };
+                    }
 
                     if (rowsWithPunch.length === 0) {
                         emptyEl.style.display = 'block';
