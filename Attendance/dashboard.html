@@ -670,6 +670,7 @@
                         <span class="th-label">Completed:</span> <span id="thCompleted">—</span>
                         <span class="th-sep">|</span>
                         <span class="th-label">Remaining:</span> <span id="thRemaining">—</span>
+                        <button type="button" id="btnTraineeWeeklyHours" class="btn-secondary" style="margin-left:10px; padding:8px 12px; font-weight:700;">Weekly Hours</button>
                     </div>
                     <button type="button" id="btnDownloadAttendancePdf" class="btn-download-attendance-pdf" title="Save attendance summary and log as PDF">Download PDF</button>
                 </div>
@@ -1983,6 +1984,56 @@
                 var hours = Math.round((m / 60) * 10) / 10;
                 return (hours === 0 ? '0' : String(hours)) + ' hrs';
             }
+            function parseYmdToDate(ymd) {
+                if (!ymd || typeof ymd !== 'string') return null;
+                var m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (!m) return null;
+                var yy = parseInt(m[1], 10);
+                var mm = parseInt(m[2], 10) - 1;
+                var dd = parseInt(m[3], 10);
+                var dt = new Date(yy, mm, dd);
+                if (isNaN(dt.getTime())) return null;
+                return dt;
+            }
+            function formatDateYmd(dt) {
+                if (!dt || isNaN(dt.getTime())) return '';
+                var yy = dt.getFullYear();
+                var mm = String(dt.getMonth() + 1).padStart(2, '0');
+                var dd = String(dt.getDate()).padStart(2, '0');
+                return yy + '-' + mm + '-' + dd;
+            }
+            function weekRangeFromDate(dt) {
+                var anchor = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+                var day = anchor.getDay();
+                var diff = day === 0 ? -6 : (1 - day); // Monday start
+                var start = new Date(anchor);
+                start.setDate(anchor.getDate() + diff);
+                var end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                return { start: start, end: end };
+            }
+            function showWeeklyHoursSummary() {
+                var defaultDate = formatDateYmd(new Date());
+                var picked = window.prompt('Enter any date in the week (YYYY-MM-DD):', defaultDate);
+                if (!picked) return;
+                var pickedDate = parseYmdToDate(String(picked).trim());
+                if (!pickedDate) {
+                    alert('Invalid date format. Use YYYY-MM-DD.');
+                    return;
+                }
+                var wr = weekRangeFromDate(pickedDate);
+                var startKey = formatDateYmd(wr.start);
+                var endKey = formatDateYmd(wr.end);
+                var weekMins = 0;
+                getRecords().forEach(function(r) {
+                    r = normalizeRec(r);
+                    if (!r || !r.date) return;
+                    if (r.date < startKey || r.date > endKey) return;
+                    weekMins += dayCompletedMinutes(r);
+                });
+                var weeklyHours = Math.round((weekMins / 60) * 10) / 10;
+                alert('Week: ' + startKey + ' to ' + endKey + '\nTotal: ' + weeklyHours + ' hrs');
+            }
             /** First date (YYYY-MM-DD) when cumulative attendance hours reach requiredHrs; null if never. */
             function findCompletionDateFromAttendance(requiredHrs) {
                 if (requiredHrs == null || requiredHrs <= 0) return null;
@@ -2593,6 +2644,12 @@
             if (btnDownloadAttendancePdf) {
                 btnDownloadAttendancePdf.addEventListener('click', function() {
                     runAttendancePdfExport();
+                });
+            }
+            var btnTraineeWeeklyHours = document.getElementById('btnTraineeWeeklyHours');
+            if (btnTraineeWeeklyHours) {
+                btnTraineeWeeklyHours.addEventListener('click', function() {
+                    showWeeklyHoursSummary();
                 });
             }
 
