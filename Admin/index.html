@@ -1354,8 +1354,8 @@
                                     <div class="admin-cal-legend">
                                         <span><i class="admin-cal-leg-dot" style="background:#fef3c7;"></i> Holiday / no work</span>
                                         <span><i class="admin-cal-leg-dot" style="background:#e2e8f0;"></i> Weekend (blocked)</span>
-                                        <span><i class="admin-cal-leg-dot" style="background:#ecfdf5;"></i> Has attendance</span>
-                                        <span><i class="admin-cal-leg-dot" style="box-shadow:inset 0 0 0 2px #16a34a;background:#fff;"></i> Open for this trainee</span>
+                                        <span><i class="admin-cal-leg-dot" style="background:#ecfdf5;"></i> Has clock-in / times saved</span>
+                                        <span><i class="admin-cal-leg-dot" style="box-shadow:inset 0 0 0 2px #16a34a;background:#fff;"></i> Open for this trainee (holiday or weekend)</span>
                                     </div>
                                     <div class="admin-cal-header">
                                         <span id="adminCalTitle" class="admin-cal-title">—</span>
@@ -3008,6 +3008,16 @@
                 var w = dt.getDay();
                 return w === 0 || w === 6;
             }
+            /** True if this DB row has any saved time or photo — excludes empty placeholder rows that still have a date key. */
+            function adminAttendanceRowHasAnyPunch(r) {
+                if (!r || !r.date) return false;
+                function has(t) { return !!(t != null && String(t).trim()); }
+                if (has(r.am_in_time) || has(r.am_out_time)) return true;
+                if (has(r.pm_in_time) || has(r.pm_out_time)) return true;
+                if (has(r.ot_in_time) || has(r.ot_out_time)) return true;
+                if (has(r.am_in_photo) || has(r.pm_in_photo) || has(r.ot_in_photo)) return true;
+                return false;
+            }
             function paintAdminAttendanceCalendar(attendanceDateSet, maps) {
                 var grid = document.getElementById('adminCalGrid');
                 var titleEl = document.getElementById('adminCalTitle');
@@ -3264,8 +3274,9 @@
                         });
                     }
 
+                    var rowsWithPunch = rows.filter(adminAttendanceRowHasAnyPunch);
                     var attDates = {};
-                    rows.forEach(function(r) { if (r.date) attDates[r.date] = true; });
+                    rowsWithPunch.forEach(function(r) { if (r.date) attDates[r.date] = true; });
                     window._ojtAdminCalCtx.traineeId = traineeId;
                     window._ojtAdminCalCtx.supabase = supabase;
                     window._ojtAdminCalCtx.maps = maps;
@@ -3334,9 +3345,11 @@
                     if (elComp) elComp.textContent = completed ? (completed + ' hrs') : '0 hrs';
                     if (elRem) elRem.textContent = required ? (remaining + ' hrs') : '—';
 
-                    if (rows.length === 0) {
+                    if (rowsWithPunch.length === 0) {
                         emptyEl.style.display = 'block';
-                        emptyEl.textContent = 'No attendance rows yet for this trainee. Use the calendar above for holidays / weekend access.';
+                        emptyEl.textContent = rows.length > 0
+                            ? ('No saved clock times yet for this trainee. There ' + (rows.length === 1 ? 'is 1 date' : 'are ' + rows.length + ' dates') + ' in the database with no punches (empty placeholders); they are not shown as green days on the calendar. If this is wrong, clean duplicate rows in Supabase or ask the trainee to save again.')
+                            : 'No attendance rows yet for this trainee. Use the calendar above for holidays / weekend access.';
                         return;
                     }
                     emptyEl.style.display = 'none';
@@ -3474,7 +3487,7 @@
                             }
                         });
                     }
-                    rows.forEach(function(r) {
+                    rowsWithPunch.forEach(function(r) {
                         var tr = document.createElement('tr');
                         var amIn = r.am_in_time || '—';
                         var amOut = r.am_out_time || '—';
