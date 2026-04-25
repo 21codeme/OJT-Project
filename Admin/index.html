@@ -3375,37 +3375,93 @@
                         end.setDate(start.getDate() + 6);
                         return { start: start, end: end };
                     }
+                    function startOfWeekKeyFromDateKey(dateKey) {
+                        var dt = parseYmdToDate(dateKey);
+                        if (!dt) return '';
+                        return formatDateYmd(weekRangeFromDate(dt).start);
+                    }
+                    function buildWeeklySummariesFromRows(rowsList) {
+                        var weekly = {};
+                        (rowsList || []).forEach(function(r) {
+                            if (!r || !r.date) return;
+                            var wk = startOfWeekKeyFromDateKey(r.date);
+                            if (!wk) return;
+                            if (!weekly[wk]) weekly[wk] = { minutes: 0, dates: {} };
+                            weekly[wk].dates[r.date] = true;
+                            var amIn = timeToMinutes(r.am_in_time);
+                            var amOut = timeToMinutes(r.am_out_time);
+                            if (amIn && amOut) weekly[wk].minutes += Math.max(0, amOut - amIn);
+                            var pmIn = timeToMinutes(r.pm_in_time);
+                            var pmOut = timeToMinutes(r.pm_out_time);
+                            if (pmIn && pmOut) weekly[wk].minutes += Math.max(0, pmOut - pmIn);
+                            var otIn = timeToMinutes(r.ot_in_time);
+                            var otOut = timeToMinutes(r.ot_out_time);
+                            if (otIn && otOut && !r.ot_closed && !!r.ot_in_approved) weekly[wk].minutes += Math.max(0, otOut - otIn);
+                        });
+                        return Object.keys(weekly).sort().reverse().map(function(startKey) {
+                            var startDate = parseYmdToDate(startKey);
+                            var endDate = startDate ? (function() {
+                                var e = new Date(startDate);
+                                e.setDate(startDate.getDate() + 6);
+                                return e;
+                            })() : null;
+                            var workedDays = Object.keys(weekly[startKey].dates || {}).length;
+                            return {
+                                startKey: startKey,
+                                endKey: endDate ? formatDateYmd(endDate) : startKey,
+                                hours: Math.round((weekly[startKey].minutes / 60) * 10) / 10,
+                                workedDays: workedDays
+                            };
+                        });
+                    }
+                    function openWeeklyHoursListDialog(name, summaries) {
+                        var items = Array.isArray(summaries) ? summaries : [];
+                        if (!items.length) {
+                            alert('No attendance dates yet to compute weekly totals.');
+                            return;
+                        }
+                        var existing = document.getElementById('adminWeeklyHoursModal');
+                        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+                        var overlay = document.createElement('div');
+                        overlay.id = 'adminWeeklyHoursModal';
+                        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+                        var card = document.createElement('div');
+                        card.style.cssText = 'background:#fff;width:min(520px,95vw);max-height:min(78vh,680px);border-radius:12px;box-shadow:0 18px 45px rgba(0,0,0,0.28);display:flex;flex-direction:column;overflow:hidden;';
+                        var title = document.createElement('div');
+                        title.style.cssText = 'padding:12px 14px;border-bottom:1px solid #e2e8f0;font-weight:800;color:#1e3c72;';
+                        title.textContent = (name || 'Trainee') + ' - Weekly Hours';
+                        var list = document.createElement('div');
+                        list.style.cssText = 'padding:10px;overflow:auto;';
+                        items.forEach(function(w) {
+                            var btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.style.cssText = 'width:100%;text-align:left;margin:6px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#0f172a;cursor:pointer;font-weight:700;';
+                            btn.textContent = w.startKey + ' to ' + w.endKey + ' (' + w.workedDays + ' day' + (w.workedDays === 1 ? '' : 's') + ')';
+                            btn.addEventListener('click', function() {
+                                alert((name || 'Trainee') + '\nWeek: ' + w.startKey + ' to ' + w.endKey + '\nTotal: ' + w.hours + ' hrs');
+                            });
+                            list.appendChild(btn);
+                        });
+                        var foot = document.createElement('div');
+                        foot.style.cssText = 'padding:10px 12px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;';
+                        var closeBtn = document.createElement('button');
+                        closeBtn.type = 'button';
+                        closeBtn.className = 'btn btn-secondary';
+                        closeBtn.textContent = 'Close';
+                        closeBtn.addEventListener('click', function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); });
+                        foot.appendChild(closeBtn);
+                        card.appendChild(title);
+                        card.appendChild(list);
+                        card.appendChild(foot);
+                        overlay.appendChild(card);
+                        overlay.addEventListener('click', function(ev) { if (ev.target === overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); });
+                        document.body.appendChild(overlay);
+                    }
                     if (btnWeeklyHours) {
                         btnWeeklyHours.onclick = function() {
-                            var today = new Date();
-                            var defaultDate = formatDateYmd(today);
-                            var picked = window.prompt('Enter any date in the week (YYYY-MM-DD):', defaultDate);
-                            if (!picked) return;
-                            var pickedDate = parseYmdToDate(String(picked).trim());
-                            if (!pickedDate) {
-                                alert('Invalid date format. Use YYYY-MM-DD.');
-                                return;
-                            }
-                            var wr = weekRangeFromDate(pickedDate);
-                            var startKey = formatDateYmd(wr.start);
-                            var endKey = formatDateYmd(wr.end);
-                            var weekMins = 0;
-                            rows.forEach(function(r) {
-                                if (!r || !r.date) return;
-                                if (r.date < startKey || r.date > endKey) return;
-                                var amIn = timeToMinutes(r.am_in_time);
-                                var amOut = timeToMinutes(r.am_out_time);
-                                if (amIn && amOut) weekMins += Math.max(0, amOut - amIn);
-                                var pmIn = timeToMinutes(r.pm_in_time);
-                                var pmOut = timeToMinutes(r.pm_out_time);
-                                if (pmIn && pmOut) weekMins += Math.max(0, pmOut - pmIn);
-                                var otIn = timeToMinutes(r.ot_in_time);
-                                var otOut = timeToMinutes(r.ot_out_time);
-                                if (otIn && otOut && !r.ot_closed && !!r.ot_in_approved) weekMins += Math.max(0, otOut - otIn);
-                            });
-                            var weeklyHours = Math.round((weekMins / 60) * 10) / 10;
+                            var weekly = buildWeeklySummariesFromRows(rows);
                             var who = (selectedTrainee && (selectedTrainee.fullName || selectedTrainee.name || selectedTrainee.studentName)) || 'Trainee';
-                            alert(who + '\nWeek: ' + startKey + ' to ' + endKey + '\nTotal: ' + weeklyHours + ' hrs');
+                            openWeeklyHoursListDialog(who, weekly);
                         };
                     }
 
