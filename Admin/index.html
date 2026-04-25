@@ -1348,6 +1348,7 @@
                                     <span class="sep">|</span>
                                     <span class="label">Remaining:</span> <span id="thAdminRemaining" class="val">—</span>
                                     <button class="btn btn-secondary" type="button" id="btnAdminWeeklyHours" style="margin-left:10px;">Weekly Hours</button>
+                                    <button class="btn btn-secondary" type="button" id="btnAdminWeeklyByDate" style="margin-left:6px;">Weekly By Date</button>
                                 </div>
                                 <div id="adminAttendanceCalendarBlock" class="admin-att-cal-block" style="display:none;">
                                     <h3>Attendance calendar</h3>
@@ -3296,6 +3297,7 @@
                     var elComp = document.getElementById('thAdminCompleted');
                     var elRem = document.getElementById('thAdminRemaining');
                     var btnWeeklyHours = document.getElementById('btnAdminWeeklyHours');
+                    var btnWeeklyByDate = document.getElementById('btnAdminWeeklyByDate');
 
                     var required = 0;
                     try {
@@ -3380,39 +3382,88 @@
                         if (!dt) return '';
                         return formatDateYmd(weekRangeFromDate(dt).start);
                     }
+                    function isCountableWeeklyDayFromDateKey(dateKey) {
+                        var dt = parseYmdToDate(dateKey);
+                        if (!dt) return false;
+                        var dow = dt.getDay();
+                        return dow >= 1 && dow <= 6; // Monday-Saturday only
+                    }
+                    function buildWeekSummaryForStartKey(rowsList, weekStartKey) {
+                        var st = parseYmdToDate(weekStartKey);
+                        if (!st) return null;
+                        var fri = new Date(st);
+                        fri.setDate(st.getDate() + 4);
+                        var sat = new Date(st);
+                        sat.setDate(st.getDate() + 5);
+                        var monKey = formatDateYmd(st);
+                        var friKey = formatDateYmd(fri);
+                        var satKey = formatDateYmd(sat);
+                        var mins = 0;
+                        var dates = {};
+                        var hasSaturday = false;
+                        (rowsList || []).forEach(function(r) {
+                            if (!r || !r.date) return;
+                            if (!isCountableWeeklyDayFromDateKey(r.date)) return;
+                            if (r.date < monKey || r.date > satKey) return;
+                            var amIn = timeToMinutes(r.am_in_time);
+                            var amOut = timeToMinutes(r.am_out_time);
+                            if (amIn && amOut) mins += Math.max(0, amOut - amIn);
+                            var pmIn = timeToMinutes(r.pm_in_time);
+                            var pmOut = timeToMinutes(r.pm_out_time);
+                            if (pmIn && pmOut) mins += Math.max(0, pmOut - pmIn);
+                            var otIn = timeToMinutes(r.ot_in_time);
+                            var otOut = timeToMinutes(r.ot_out_time);
+                            if (otIn && otOut && !r.ot_closed && !!r.ot_in_approved) mins += Math.max(0, otOut - otIn);
+                            dates[r.date] = true;
+                            if (r.date === satKey) hasSaturday = true;
+                        });
+                        return {
+                            startKey: monKey,
+                            endKey: hasSaturday ? satKey : friKey,
+                            hours: Math.round((mins / 60) * 10) / 10,
+                            workedDays: Object.keys(dates).length,
+                            hasSaturday: hasSaturday
+                        };
+                    }
                     function buildWeeklySummariesFromRows(rowsList) {
                         var weekly = {};
                         (rowsList || []).forEach(function(r) {
                             if (!r || !r.date) return;
+                            if (!isCountableWeeklyDayFromDateKey(r.date)) return;
                             var wk = startOfWeekKeyFromDateKey(r.date);
                             if (!wk) return;
-                            if (!weekly[wk]) weekly[wk] = { minutes: 0, dates: {} };
-                            weekly[wk].dates[r.date] = true;
-                            var amIn = timeToMinutes(r.am_in_time);
-                            var amOut = timeToMinutes(r.am_out_time);
-                            if (amIn && amOut) weekly[wk].minutes += Math.max(0, amOut - amIn);
-                            var pmIn = timeToMinutes(r.pm_in_time);
-                            var pmOut = timeToMinutes(r.pm_out_time);
-                            if (pmIn && pmOut) weekly[wk].minutes += Math.max(0, pmOut - pmIn);
-                            var otIn = timeToMinutes(r.ot_in_time);
-                            var otOut = timeToMinutes(r.ot_out_time);
-                            if (otIn && otOut && !r.ot_closed && !!r.ot_in_approved) weekly[wk].minutes += Math.max(0, otOut - otIn);
+                            weekly[wk] = true;
                         });
                         return Object.keys(weekly).sort().reverse().map(function(startKey) {
-                            var startDate = parseYmdToDate(startKey);
-                            var endDate = startDate ? (function() {
-                                var e = new Date(startDate);
-                                e.setDate(startDate.getDate() + 6);
-                                return e;
-                            })() : null;
-                            var workedDays = Object.keys(weekly[startKey].dates || {}).length;
-                            return {
-                                startKey: startKey,
-                                endKey: endDate ? formatDateYmd(endDate) : startKey,
-                                hours: Math.round((weekly[startKey].minutes / 60) * 10) / 10,
-                                workedDays: workedDays
-                            };
-                        });
+                            return buildWeekSummaryForStartKey(rowsList, startKey);
+                        }).filter(function(x) { return !!x; });
+                    }
+                    function getWeekSummaryByDateKey(rowsList, dateKey) {
+                        var wk = startOfWeekKeyFromDateKey(dateKey);
+                        if (!wk) return null;
+                        return buildWeekSummaryForStartKey(rowsList, wk);
+                    }
+                    function weeklyRangeLabel(w) {
+                        if (!w) return '';
+                        var suffix = w.hasSaturday ? ' (Mon-Sat)' : ' (Mon-Fri)';
+                        return w.startKey + ' to ' + w.endKey + suffix;
+                    }
+                    function showWeekSummaryAlert(name, w) {
+                        if (!w) return;
+                        alert((name || 'Trainee') + '\nWeek: ' + w.startKey + ' to ' + w.endKey + '\nTotal: ' + w.hours + ' hrs');
+                    }
+                    function showWeeklyByDatePrompt(name, rowsList) {
+                        var defaultDate = formatDateYmd(new Date());
+                        var picked = window.prompt('Enter any date (YYYY-MM-DD):', defaultDate);
+                        if (!picked) return;
+                        var key = String(picked).trim();
+                        var dt = parseYmdToDate(key);
+                        if (!dt) {
+                            alert('Invalid date format. Use YYYY-MM-DD.');
+                            return;
+                        }
+                        var w = getWeekSummaryByDateKey(rowsList, key);
+                        showWeekSummaryAlert(name, w);
                     }
                     function openWeeklyHoursListDialog(name, summaries) {
                         var items = Array.isArray(summaries) ? summaries : [];
@@ -3436,9 +3487,9 @@
                             var btn = document.createElement('button');
                             btn.type = 'button';
                             btn.style.cssText = 'width:100%;text-align:left;margin:6px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#0f172a;cursor:pointer;font-weight:700;';
-                            btn.textContent = w.startKey + ' to ' + w.endKey + ' (' + w.workedDays + ' day' + (w.workedDays === 1 ? '' : 's') + ')';
+                            btn.textContent = weeklyRangeLabel(w) + ' (' + w.workedDays + ' day' + (w.workedDays === 1 ? '' : 's') + ')';
                             btn.addEventListener('click', function() {
-                                alert((name || 'Trainee') + '\nWeek: ' + w.startKey + ' to ' + w.endKey + '\nTotal: ' + w.hours + ' hrs');
+                                showWeekSummaryAlert(name, w);
                             });
                             list.appendChild(btn);
                         });
@@ -3462,6 +3513,12 @@
                             var weekly = buildWeeklySummariesFromRows(rows);
                             var who = (selectedTrainee && (selectedTrainee.fullName || selectedTrainee.name || selectedTrainee.studentName)) || 'Trainee';
                             openWeeklyHoursListDialog(who, weekly);
+                        };
+                    }
+                    if (btnWeeklyByDate) {
+                        btnWeeklyByDate.onclick = function() {
+                            var who = (selectedTrainee && (selectedTrainee.fullName || selectedTrainee.name || selectedTrainee.studentName)) || 'Trainee';
+                            showWeeklyByDatePrompt(who, rows);
                         };
                     }
 

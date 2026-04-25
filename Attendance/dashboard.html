@@ -671,6 +671,7 @@
                         <span class="th-sep">|</span>
                         <span class="th-label">Remaining:</span> <span id="thRemaining">—</span>
                         <button type="button" id="btnTraineeWeeklyHours" class="btn-secondary" style="margin-left:10px; padding:8px 12px; font-weight:700;">Weekly Hours</button>
+                        <button type="button" id="btnTraineeWeeklyByDate" class="btn-secondary" style="margin-left:6px; padding:8px 12px; font-weight:700;">Weekly By Date</button>
                     </div>
                     <button type="button" id="btnDownloadAttendancePdf" class="btn-download-attendance-pdf" title="Save attendance summary and log as PDF">Download PDF</button>
                 </div>
@@ -2017,31 +2018,84 @@
                 if (!dt) return '';
                 return formatDateYmd(weekRangeFromDate(dt).start);
             }
-            function getWeeklySummariesFromRecords() {
-                var weekly = {};
-                getRecords().forEach(function(r) {
+            function isCountableWeeklyDayFromDateKey(dateKey) {
+                var dt = parseYmdToDate(dateKey);
+                if (!dt) return false;
+                var dow = dt.getDay();
+                return dow >= 1 && dow <= 6; // Monday-Saturday only
+            }
+            function buildWeekSummaryForStartKey(records, weekStartKey) {
+                var st = parseYmdToDate(weekStartKey);
+                if (!st) return null;
+                var fri = new Date(st);
+                fri.setDate(st.getDate() + 4);
+                var sat = new Date(st);
+                sat.setDate(st.getDate() + 5);
+                var monKey = formatDateYmd(st);
+                var friKey = formatDateYmd(fri);
+                var satKey = formatDateYmd(sat);
+                var mins = 0;
+                var dates = {};
+                var hasSaturday = false;
+                (records || []).forEach(function(r) {
                     r = normalizeRec(r);
                     if (!r || !r.date) return;
+                    if (!isCountableWeeklyDayFromDateKey(r.date)) return;
+                    if (r.date < monKey || r.date > satKey) return;
+                    mins += dayCompletedMinutes(r);
+                    dates[r.date] = true;
+                    if (r.date === satKey) hasSaturday = true;
+                });
+                return {
+                    startKey: monKey,
+                    endKey: hasSaturday ? satKey : friKey,
+                    hours: Math.round((mins / 60) * 10) / 10,
+                    workedDays: Object.keys(dates).length,
+                    hasSaturday: hasSaturday
+                };
+            }
+            function getWeeklySummariesFromRecords() {
+                var weekly = {};
+                var records = getRecords();
+                records.forEach(function(r) {
+                    r = normalizeRec(r);
+                    if (!r || !r.date) return;
+                    if (!isCountableWeeklyDayFromDateKey(r.date)) return;
                     var wk = startOfWeekKeyFromDateKey(r.date);
                     if (!wk) return;
-                    if (!weekly[wk]) weekly[wk] = { minutes: 0, dates: {} };
-                    weekly[wk].dates[r.date] = true;
-                    weekly[wk].minutes += dayCompletedMinutes(r);
+                    weekly[wk] = true;
                 });
                 return Object.keys(weekly).sort().reverse().map(function(startKey) {
-                    var startDate = parseYmdToDate(startKey);
-                    var endDate = startDate ? (function() {
-                        var e = new Date(startDate);
-                        e.setDate(startDate.getDate() + 6);
-                        return e;
-                    })() : null;
-                    return {
-                        startKey: startKey,
-                        endKey: endDate ? formatDateYmd(endDate) : startKey,
-                        hours: Math.round((weekly[startKey].minutes / 60) * 10) / 10,
-                        workedDays: Object.keys(weekly[startKey].dates || {}).length
-                    };
-                });
+                    return buildWeekSummaryForStartKey(records, startKey);
+                }).filter(function(x) { return !!x; });
+            }
+            function getWeekSummaryByDateKey(dateKey) {
+                var wk = startOfWeekKeyFromDateKey(dateKey);
+                if (!wk) return null;
+                return buildWeekSummaryForStartKey(getRecords(), wk);
+            }
+            function showWeeklyByDatePrompt() {
+                var defaultDate = formatDateYmd(new Date());
+                var picked = window.prompt('Enter any date (YYYY-MM-DD):', defaultDate);
+                if (!picked) return;
+                var key = String(picked).trim();
+                var dt = parseYmdToDate(key);
+                if (!dt) {
+                    alert('Invalid date format. Use YYYY-MM-DD.');
+                    return;
+                }
+                var summary = getWeekSummaryByDateKey(key);
+                if (!summary) return;
+                alert('Week: ' + summary.startKey + ' to ' + summary.endKey + '\nTotal: ' + summary.hours + ' hrs');
+            }
+            function weeklyRangeLabel(w) {
+                if (!w) return '';
+                var suffix = w.hasSaturday ? ' (Mon-Sat)' : ' (Mon-Fri)';
+                return w.startKey + ' to ' + w.endKey + suffix;
+            }
+            function weeklyResultLabel(w) {
+                if (!w) return '';
+                return 'Week: ' + w.startKey + ' to ' + w.endKey + '\nTotal: ' + w.hours + ' hrs';
             }
             function openWeeklyHoursListDialog(items) {
                 var summaries = Array.isArray(items) ? items : [];
@@ -2065,9 +2119,9 @@
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.style.cssText = 'width:100%;text-align:left;margin:6px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#0f172a;cursor:pointer;font-weight:700;';
-                    btn.textContent = w.startKey + ' to ' + w.endKey + ' (' + w.workedDays + ' day' + (w.workedDays === 1 ? '' : 's') + ')';
+                    btn.textContent = weeklyRangeLabel(w) + ' (' + w.workedDays + ' day' + (w.workedDays === 1 ? '' : 's') + ')';
                     btn.addEventListener('click', function() {
-                        alert('Week: ' + w.startKey + ' to ' + w.endKey + '\nTotal: ' + w.hours + ' hrs');
+                        alert(weeklyResultLabel(w));
                     });
                     list.appendChild(btn);
                 });
@@ -2706,6 +2760,12 @@
             if (btnTraineeWeeklyHours) {
                 btnTraineeWeeklyHours.addEventListener('click', function() {
                     showWeeklyHoursSummary();
+                });
+            }
+            var btnTraineeWeeklyByDate = document.getElementById('btnTraineeWeeklyByDate');
+            if (btnTraineeWeeklyByDate) {
+                btnTraineeWeeklyByDate.addEventListener('click', function() {
+                    showWeeklyByDatePrompt();
                 });
             }
 
