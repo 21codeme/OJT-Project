@@ -1057,7 +1057,14 @@
                 if (stored.positionRole) document.getElementById('profilePositionRole').textContent = stored.positionRole;
                 if (stored.trainingHours) document.getElementById('profileTrainingHours').textContent = stored.trainingHours;
                 if (stored.startDate) document.getElementById('profileStartDate').textContent = stored.startDate;
-                if (stored.endDate) document.getElementById('profileEndDate').textContent = stored.endDate;
+                var endDateEl = document.getElementById('profileEndDate');
+                if (endDateEl) {
+                    if (typeof window.OJT_refreshProfileEndDate === 'function') {
+                        window.OJT_refreshProfileEndDate();
+                    } else {
+                        endDateEl.textContent = (stored.endDate && String(stored.endDate).trim() && stored.endDate !== '—') ? stored.endDate : '—';
+                    }
+                }
                 if (stored.contactNumber) document.getElementById('profileContactNumber').textContent = stored.contactNumber;
                 if (stored.emergencyContact) document.getElementById('profileEmergencyContact').textContent = stored.emergencyContact;
                 if (stored.pictureUrl) document.getElementById('profilePicture').src = stored.pictureUrl;
@@ -2012,6 +2019,30 @@
                 var remaining = Math.max(0, required - completed);
                 return { required: required, completed: completed, remaining: remaining };
             }
+            /** Profile End Date: when required hours are met, show first date cumulative hours reached requirement; else DB/manual end date. */
+            function refreshProfileEndDateInUI() {
+                var el = document.getElementById('profileEndDate');
+                if (!el) return;
+                var sum = getTrainingHoursSummaryValues();
+                var manualEnd = '';
+                try {
+                    var raw = localStorage.getItem('ojt_trainee_profile');
+                    if (raw) {
+                        var p = JSON.parse(raw);
+                        var ed = p && p.endDate != null ? String(p.endDate).trim() : '';
+                        if (ed && ed !== '—') manualEnd = ed;
+                    }
+                } catch (e) {}
+                if (sum.required > 0 && sum.remaining <= 0.001) {
+                    var compKey = findCompletionDateFromAttendance(sum.required);
+                    if (compKey) {
+                        el.textContent = compKey;
+                        return;
+                    }
+                }
+                el.textContent = manualEnd || '—';
+            }
+            window.OJT_refreshProfileEndDate = refreshProfileEndDateInUI;
             function updateTrainingHoursSummary() {
                 var v = getTrainingHoursSummaryValues();
                 var elReq = document.getElementById('thRequired');
@@ -2041,6 +2072,7 @@
                         blkEl.textContent = '';
                     }
                 }
+                refreshProfileEndDateInUI();
             }
             function refreshAttendanceUI(fromServer) {
                 if (fromServer) {
@@ -2570,6 +2602,13 @@
                     if (sectionAttendance.classList.contains('active')) refreshAttendanceUI(true);
                 });
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
+            }
+            var sectionProfile = document.getElementById('section-profile');
+            if (sectionProfile) {
+                var profileObs = new MutationObserver(function() {
+                    if (sectionProfile.classList.contains('active')) refreshProfileEndDateInUI();
+                });
+                profileObs.observe(sectionProfile, { attributes: true, attributeFilter: ['class'] });
             }
             waitForSupabaseAttendance(15000).then(function() {
                 return loadRecordsFromSupabase();
