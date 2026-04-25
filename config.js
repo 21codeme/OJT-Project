@@ -75,6 +75,7 @@ function initSupabase() {
         return false;
     }
 }
+window.initSupabase = initSupabase;
 
 // Function to check Supabase connection
 function checkSupabaseConnection() {

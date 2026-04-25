@@ -213,6 +213,7 @@
         .cal-nav button:hover { background: #f4f6f8; border-color: #1e3c72; color: #1e3c72; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #e8eaed; border: 1px solid #e8eaed; border-radius: 12px; overflow: hidden; }
         .cal-cell { background: #fff; padding: 10px 8px; min-height: 64px; font-size: 0.85rem; cursor: pointer; }
+        .cal-cell:has(.cal-holiday-reason) { min-height: 86px; }
         .cal-cell.weekday { background: #f4f6f8; font-weight: 800; color: #1e3c72; text-align: center; padding: 8px; cursor: default; }
         .cal-cell.other-month { color: #aaa; cursor: default; }
         .cal-cell.today { background: rgba(30,60,114,0.12); border: 2px solid #1e3c72; font-weight: 800; color: #1e3c72; }
@@ -228,6 +229,11 @@
         }
         .attendance-cal-block-msg.show { display: block; }
         .cal-cell .day-num { font-weight: 700; margin-bottom: 4px; }
+        .cal-cell .cal-holiday-reason {
+            font-size: 0.68rem; font-weight: 700; color: #92400e; line-height: 1.25;
+            margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; word-break: break-word;
+        }
         .cal-cell .day-times { font-size: 0.75rem; color: #555; line-height: 1.4; }
         .attendance-summary { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e8eaed; }
         .attendance-summary h3 { font-size: 1rem; color: #1e3c72; margin-bottom: 8px; }
@@ -1559,6 +1565,20 @@
             var LEGACY_ATTENDANCE_KEY = 'ojt_trainee_attendance';
             var traineeId = null;
             try { traineeId = localStorage.getItem('ojt_trainee_id'); } catch (e) {}
+            function waitForSupabaseAttendance(timeoutMs) {
+                timeoutMs = timeoutMs || 15000;
+                return new Promise(function(resolve) {
+                    var start = Date.now();
+                    (function check() {
+                        if (window.supabaseClient) return resolve(window.supabaseClient);
+                        if (typeof window.initSupabase === 'function') {
+                            try { window.initSupabase(); } catch (e) {}
+                        }
+                        if (Date.now() - start > timeoutMs) return resolve(null);
+                        setTimeout(check, 120);
+                    })();
+                });
+            }
             // Scope cache per trainee to prevent cross-account attendance bleed.
             var ATTENDANCE_KEY = ATTENDANCE_KEY_BASE + (traineeId ? ('_' + traineeId) : '');
             function cleanupLegacyAttendanceCache() {
@@ -1785,6 +1805,13 @@
                     dayNum.className = 'day-num';
                     dayNum.textContent = d;
                     cell.appendChild(dayNum);
+                    if (holidayDates[key]) {
+                        var holLbl = document.createElement('div');
+                        holLbl.className = 'cal-holiday-reason';
+                        holLbl.textContent = holidayDates[key];
+                        holLbl.title = holidayDates[key];
+                        cell.appendChild(holLbl);
+                    }
                     if (rec) {
                         var dayTimes = document.createElement('div');
                         dayTimes.className = 'day-times';
@@ -2544,7 +2571,9 @@
                 });
                 observer.observe(sectionAttendance, { attributes: true, attributeFilter: ['class'] });
             }
-            loadRecordsFromSupabase().then(function() {
+            waitForSupabaseAttendance(15000).then(function() {
+                return loadRecordsFromSupabase();
+            }).then(function() {
                 return loadReopenedDates();
             }).then(function() {
                 return loadCalendarRules();
@@ -2552,6 +2581,11 @@
             setInterval(function() {
                 if (sectionAttendance && sectionAttendance.classList.contains('active')) setButtonsState();
             }, 1000);
+            setInterval(function() {
+                if (!sectionAttendance || !sectionAttendance.classList.contains('active')) return;
+                if (!window.supabaseClient || !traineeId) return;
+                loadCalendarRules().then(refreshAttendanceUIFromLocal);
+            }, 90000);
         })();
 
         (function() {

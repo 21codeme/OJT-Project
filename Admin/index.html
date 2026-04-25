@@ -3167,7 +3167,9 @@
                         closeAdminCalendarDayModal();
                         await renderAttendanceIfNeeded();
                     } catch (e) {
-                        alert('Could not save holiday. Run database/add-ojt-calendar-holidays.sql in Supabase if tables are missing.');
+                        try { console.error('ojt_holidays upsert', e); } catch (e2) {}
+                        var detail = (e && (e.message || e.error_description || (e.error && e.error.message))) ? String(e.message || e.error_description || e.error.message) : '';
+                        alert('Could not save holiday.' + (detail ? (' ' + detail) : '') + ' Run database/add-ojt-calendar-holidays.sql in Supabase if the table is missing.');
                     }
                 });
                 if (btnRemH) btnRemH.addEventListener('click', async function() {
