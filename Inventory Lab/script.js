@@ -1955,6 +1955,10 @@ function switchToSheet(sheetId) {
     displayData(sheet.data);
     if (isBackupMode) makeTableReadOnly();
     
+    // Update header subtitle to match the current sheet name
+    const subtitle = document.getElementById('labSubtitle');
+    if (subtitle) subtitle.textContent = sheet.name || '';
+    
     // Update buttons
     document.getElementById('exportBtn').disabled = !hasAnyData();
     if (!isBackupMode) document.getElementById('clearBtn').disabled = !sheet.hasData;
@@ -2988,10 +2992,10 @@ document.getElementById('exportBtn').addEventListener('click', async function() 
             c1.font = { bold: true, size: 18 };
             c1.alignment = { horizontal: 'center', vertical: 'middle' };
             
-            const row2 = worksheet.addRow(['Multimedia and Speech Laboratory']);
+            const row2 = worksheet.addRow([sheet.name || '']);
             worksheet.mergeCells(2, titleStartCol, 2, titleEndCol);
             const c2 = worksheet.getRow(2).getCell(titleStartCol);
-            c2.value = 'Multimedia and Speech Laboratory';
+            c2.value = sheet.name || '';
             c2.font = { bold: true, size: 14 };
             c2.alignment = { horizontal: 'center', vertical: 'middle' };
             
