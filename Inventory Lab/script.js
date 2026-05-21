@@ -59,12 +59,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     await new Promise(function(r) { setTimeout(r, 500); });
                 }
             }
-            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
-                snapshot = loadBackupSnapshot();
-            }
-            if (!snapshot || !snapshot.sheets || Object.keys(snapshot.sheets).length === 0) {
-                snapshot = loadBackupFromLocalStorage();
-            }
         var totalRows = snapshot && snapshot.sheets ? Object.values(snapshot.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
         if (snapshot && snapshot.sheets && Object.keys(snapshot.sheets).length > 0 && totalRows > 0) {
             sheets = snapshot.sheets;
@@ -131,17 +125,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 } catch (e) { console.warn('Delete backup sheet from Supabase failed:', e); }
             }
 
-            // Remove from localStorage backup
-            try {
-                var lsRaw = localStorage.getItem(BACKUP_SNAPSHOT_KEY);
-                if (lsRaw) {
-                    var lsData = JSON.parse(lsRaw);
-                    if (lsData && lsData.sheets) {
-                        delete lsData.sheets[sid];
-                        localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(lsData));
-                    }
-                }
-            } catch (e) { /* ignore */ }
+            // Remove from localStorage backup — no-op, localStorage no longer used
 
             // Switch to another sheet or show empty message
             var remaining = Object.keys(sheets);
@@ -206,31 +190,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                         currentSheetId = rid;
                         switchToSheet(rid);
                         syncToSupabase();
-                        saveBackupToLocalStorage();
                         if (hasAnyData()) syncBackupToSupabase();
                         localStorage.removeItem(RESTORE_ONE_SHEET_KEY);
                         if (window.history && window.history.replaceState) {
                             window.history.replaceState({}, '', window.location.pathname + window.location.hash);
                         }
                     } else {
-                        var rest = loadBackupFromLocalStorage();
-                        if (rest && rest.sheets && Object.keys(rest.sheets).length > 0) {
-                            sheets = rest.sheets;
-                            currentSheetId = rest.currentSheetId || Object.keys(sheets)[0];
-                            sheetCounter = rest.sheetCounter || 1;
-                            updateSheetTabs();
-                            var fid = Object.keys(sheets)[0];
-                            if (fid) { currentSheetId = fid; switchToSheet(fid); }
-                            syncToSupabase();
-                            if (hasAnyData()) {
-                                saveBackupToLocalStorage();
-                                syncBackupToSupabase();
-                            }
-                            if (window.history && window.history.replaceState) {
-                                window.history.replaceState({}, '', window.location.pathname + window.location.hash);
-                            }
-                        } else {
-                            await loadFromSupabase();
+                        // No one-sheet restore data — just load from Supabase
+                        await loadFromSupabase();
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState({}, '', window.location.pathname + window.location.hash);
                         }
                     }
                 } else {
@@ -283,97 +252,23 @@ function rowSignature(row) {
 }
 
 function loadPermanentBackup() {
-    try {
-        const raw = localStorage.getItem(PERMANENT_BACKUP_KEY);
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        if (!data || !data.sheets) return null;
-        return data;
-    } catch (e) { return null; }
+    return null; // localStorage removed — Supabase is the only source of truth
 }
 
 function mergeIntoPermanentBackup(currentSheets) {
-    if (!currentSheets || typeof currentSheets !== 'object') return;
-    try {
-        const existing = loadPermanentBackup() || { sheets: {}, savedAt: 0 };
-        for (const [sheetId, sheet] of Object.entries(currentSheets)) {
-            if (!sheet || !sheet.data || !sheet.hasData) continue;
-            if (!existing.sheets[sheetId]) {
-                existing.sheets[sheetId] = {
-                    id: sheet.id, name: sheet.name,
-                    data: sheet.data.slice(),
-                    hasData: sheet.hasData,
-                    highlightStates: (sheet.highlightStates || []).slice(),
-                    pictureUrls: []
-                };
-            } else {
-                const existingRows = existing.sheets[sheetId].data || [];
-                const existingSigs = new Set(existingRows.map(r => rowSignature(r)));
-                for (const row of sheet.data) {
-                    const sig = rowSignature(row);
-                    if (!existingSigs.has(sig)) {
-                        existingRows.push(row);
-                        existingSigs.add(sig);
-                    }
-                }
-                existing.sheets[sheetId].data = existingRows;
-                existing.sheets[sheetId].hasData = existingRows.length > 0;
-                if (sheet.name) existing.sheets[sheetId].name = sheet.name;
-            }
-        }
-        existing.savedAt = Date.now();
-        localStorage.setItem(PERMANENT_BACKUP_KEY, JSON.stringify(existing));
-    } catch (e) {
-        console.warn('mergeIntoPermanentBackup error', e);
-    }
+    // no-op — localStorage removed
 }
 
 function saveBackupToLocalStorage() {
-    if (isBackupMode) return;
-    try {
-        const backup = {
-            sheets: sheets,
-            currentSheetId: currentSheetId,
-            sheetCounter: sheetCounter,
-            savedAt: Date.now()
-        };
-        localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
-        if (hasAnyData()) {
-            localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(backup));
-            mergeIntoPermanentBackup(sheets);
-        }
-    } catch (e) {
-        if (e.name === 'QuotaExceededError') {
-            try {
-                const slim = { sheets: {}, currentSheetId, sheetCounter, savedAt: Date.now() };
-                Object.keys(sheets).forEach(sid => {
-                    const s = sheets[sid];
-                    slim.sheets[sid] = { id: s.id, name: s.name, data: s.data, hasData: s.hasData, highlightStates: s.highlightStates || [], pictureUrls: [] };
-                });
-                localStorage.setItem(BACKUP_KEY, JSON.stringify(slim));
-            } catch (e2) { }
-        }
-    }
+    // no-op — localStorage removed; all saves go to Supabase only
 }
 
 function loadBackupFromLocalStorage() {
-    try {
-        const raw = localStorage.getItem(BACKUP_KEY);
-        if (!raw) return null;
-        const backup = JSON.parse(raw);
-        if (!backup || !backup.sheets) return null;
-        return backup;
-    } catch (e) { return null; }
+    return null; // localStorage removed
 }
 
 function loadBackupSnapshot() {
-    try {
-        const raw = localStorage.getItem(BACKUP_SNAPSHOT_KEY);
-        if (!raw) return null;
-        const backup = JSON.parse(raw);
-        if (!backup || !backup.sheets) return null;
-        return backup;
-    } catch (e) { return null; }
+    return null; // localStorage removed
 }
 
 function makeTableReadOnly() {
@@ -398,10 +293,9 @@ function makeTableReadOnly() {
     tbody.querySelectorAll('.picture-cell button').forEach(function(btn) { btn.style.display = 'none'; });
 }
 
-// Save bago mag-close/refresh — localStorage muna (sync, instant), tapos Supabase (async, best-effort)
+// Save before close/refresh — sync to Supabase only
 function flushSaveBeforeUnload() {
     saveCurrentSheetData(true);
-    saveBackupToLocalStorage();
     if (syncTimeout) {
         clearTimeout(syncTimeout);
         syncTimeout = null;
@@ -2091,8 +1985,7 @@ function saveCurrentSheetData(skipSync) {
     sheets[currentSheetId].pictureUrls = pictureUrls;
     
     renderSummaryTable();
-    // Laging i-save sa localStorage agad — kahit mag-refresh hindi mawawala
-    saveBackupToLocalStorage();
+    saveBackupToLocalStorage(); // no-op — kept for call-site compatibility
     
     // Don't sync if we're loading from Supabase or caller asked to skip (e.g. when preserving table during load)
     if (skipSync || isLoadingFromSupabase) {
@@ -2508,25 +2401,8 @@ async function loadFromSupabase() {
                 if (page.length < pageSize) break;
             }
             if (itemsErr || !allItems || allItems.length === 0) {
-                console.log('No inventory_items found in Supabase; restoring from localStorage if any');
-                var backup = loadBackupFromLocalStorage();
-                var backupRows = backup && backup.sheets ? Object.values(backup.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
-                if (backupRows > 0) {
-                    console.log('📂 Restoring ' + backupRows + ' row(s) from localStorage backup');
-                    sheets = backup.sheets || {};
-                    currentSheetId = backup.currentSheetId || 'sheet-1';
-                    sheetCounter = backup.sheetCounter || 1;
-                    updateSheetTabs();
-                    var firstId = Object.keys(sheets)[0];
-                    if (firstId) {
-                        currentSheetId = firstId;
-                        switchToSheet(firstId);
-                        if (hasAnyData()) {
-                            saveBackupToLocalStorage();
-                            syncBackupToSupabase();
-                        }
-                    }
-                } else if (Object.keys(sheets).length === 0) {
+                console.log('No inventory_items found in Supabase — starting with empty sheet');
+                if (Object.keys(sheets).length === 0) {
                     sheets['sheet-1'] = { id: 'sheet-1', name: 'Sheet 1', data: [], hasData: false, highlightStates: [], pictureUrls: [] };
                     currentSheetId = 'sheet-1';
                     updateSheetTabs();
@@ -2662,17 +2538,9 @@ async function loadFromSupabase() {
         // Update sheet tabs first so tab elements exist before switching
         updateSheetTabs();
         
-        // Kung walang data mula Supabase, gamitin localStorage backup — hindi dapat mawala ang data kahit mag-refresh
+        // Kung walang data mula Supabase, magsimula sa empty sheet
         if (!hasAnyData()) {
-            const backup = loadBackupFromLocalStorage();
-            const backupRows = backup && backup.sheets ? Object.values(backup.sheets).reduce((n, s) => n + (s.data ? s.data.length : 0), 0) : 0;
-            if (backupRows > 0) {
-                console.log(`📂 Supabase empty, restoring ${backupRows} row(s) from localStorage backup`);
-                sheets = backup.sheets || {};
-                currentSheetId = backup.currentSheetId || 'sheet-1';
-                sheetCounter = backup.sheetCounter || 1;
-                updateSheetTabs();
-            }
+            console.log('⚠️ No data found in Supabase — starting fresh');
         }
         
         const firstSheetId = Object.keys(sheets)[0];
@@ -2706,22 +2574,11 @@ async function loadFromSupabase() {
         }
     } catch (error) {
         console.error('Error loading from Supabase:', error);
-        if (!hasAnyData()) {
-            var backup = loadBackupFromLocalStorage();
-            var backupRows = backup && backup.sheets ? Object.values(backup.sheets).reduce(function(n, s) { return n + (s.data ? s.data.length : 0); }, 0) : 0;
-            if (backupRows > 0) {
-                console.log('📂 Error during load; restoring ' + backupRows + ' row(s) from localStorage');
-                sheets = backup.sheets || {};
-                currentSheetId = backup.currentSheetId || 'sheet-1';
-                updateSheetTabs();
-                var firstId = Object.keys(sheets)[0];
-                if (firstId) { currentSheetId = firstId; switchToSheet(firstId); }
-            } else if (Object.keys(sheets).length === 0) {
-                sheets['sheet-1'] = { id: 'sheet-1', name: 'Sheet 1', data: [], hasData: false, highlightStates: [], pictureUrls: [] };
-                currentSheetId = 'sheet-1';
-                updateSheetTabs();
-                switchToSheet('sheet-1');
-            }
+        if (Object.keys(sheets).length === 0) {
+            sheets['sheet-1'] = { id: 'sheet-1', name: 'Sheet 1', data: [], hasData: false, highlightStates: [], pictureUrls: [] };
+            currentSheetId = 'sheet-1';
+            updateSheetTabs();
+            switchToSheet('sheet-1');
         }
     } finally {
         // Clear loading flag after a short delay to ensure display is complete
