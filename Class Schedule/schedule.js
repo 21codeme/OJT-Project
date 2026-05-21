@@ -1377,22 +1377,11 @@
     }
 
     function saveBackupSnapshot() {
-        if (isBackupMode) return;
-        try {
-            var pageMetadata = getPageMetadata();
-            var snapshot = { sheets: sheets, activeSheetId: activeSheetId, nextSheetId: nextSheetId, pageMetadata: pageMetadata, savedAt: Date.now() };
-            localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(snapshot));
-        } catch (e) { }
+        // no-op — localStorage removed; Supabase is the only source of truth
     }
 
     function loadBackupSnapshot() {
-        try {
-            var raw = localStorage.getItem(BACKUP_SNAPSHOT_KEY);
-            if (!raw) return null;
-            var snap = JSON.parse(raw);
-            if (!snap || !Array.isArray(snap.sheets) || snap.sheets.length === 0) return null;
-            return snap;
-        } catch (e) { return null; }
+        return null; // localStorage removed
     }
 
     async function syncBackupToSupabase() {
@@ -1502,36 +1491,21 @@
                 if (snapFromSupabase.pageMetadata) applyPageMetadata(snapFromSupabase.pageMetadata);
                 renderSheetTabs();
                 renderScheduleGrid();
-                if (!isBackupMode) saveBackupSnapshot();
                 console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from Supabase snapshot');
                 return;
             }
 
             var res = await supabase.from('class_schedule_sheets').select('id, name').order('id', { ascending: true });
-            if (res.error) { console.error('Load sheets error:', res.error); tryFallbackFromBackup(); return; }
+            if (res.error) { console.error('Load sheets error:', res.error); return; }
             var sheetsData = res.data || [];
             if (sheetsData.length === 0) {
-                var snap = loadBackupSnapshot();
-                if (snap && snap.sheets && snap.sheets.length > 0) {
-                    sheets = snap.sheets;
-                    activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                    renderSheetTabs();
-                    renderScheduleGrid();
-                    applyPageMetadata(snap.pageMetadata);
-                    saveBackupSnapshot();
-                    console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from backup (Supabase empty)');
-                    isLoadingFromSupabase = false;
-                    return;
-                }
+                // No sheets yet — create a default one
                 await supabase.from('class_schedule_sheets').insert({ name: 'COMPUTER LABORATORY' });
                 res = await supabase.from('class_schedule_sheets').select('id, name').order('id', { ascending: true });
                 sheetsData = (res.data || []);
             }
-            if (sheetsData.length === 0) {
-                tryFallbackFromBackup();
-                return;
-            }
+            if (sheetsData.length === 0) return;
+
             sheets = [];
             var maxId = 0;
             for (var i = 0; i < sheetsData.length; i++) {
@@ -1546,41 +1520,17 @@
                 sheets.push(sheetObj);
                 entriesRows.forEach(function(entry) { ensureRowForEntry(entry, sheetObj); });
             }
-            var fromSupabaseTotal = sheets.reduce(function(s, sh) { return s + (sh.entries && sh.entries.length || 0); }, 0);
-            var usedBackup = false;
-            var snap = loadBackupSnapshot();
-            if (snap && snap.sheets && Array.isArray(snap.sheets) && snap.sheets.length > 0) {
-                var backupTotal = snap.sheets.reduce(function(s, sh) { return s + (sh.entries && sh.entries.length || 0); }, 0);
-                if (backupTotal > fromSupabaseTotal) {
-                    usedBackup = true;
-                    sheets = snap.sheets;
-                    sheets.forEach(function(sheet) {
-                        if (!sheet.extraRowSlots) sheet.extraRowSlots = [];
-                        (sheet.entries || []).forEach(function(entry) { ensureRowForEntry(entry, sheet); });
-                    });
-                    activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                    if (snap.pageMetadata) applyPageMetadata(snap.pageMetadata);
-                    console.log('Class Schedule: using localStorage backup (more entries than Supabase)');
-                }
-            }
-            if (!usedBackup) {
-                nextSheetId = maxId + 1;
-                // If we didn't have a snapshot for entries, still apply metadata if available.
-                loadBackupFromSupabase().then(function(b) { if (b && b.pageMetadata) applyPageMetadata(b.pageMetadata); });
-            }
+            nextSheetId = maxId + 1;
+            // Apply metadata from Supabase snapshot if available
+            loadBackupFromSupabase().then(function(b) { if (b && b.pageMetadata) applyPageMetadata(b.pageMetadata); });
+
             if (sheets.length > 0 && !sheets.find(function(s) { return s.id === activeSheetId; })) activeSheetId = sheets[0].id;
             renderSheetTabs();
             renderScheduleGrid();
-            if (!isBackupMode) {
-                saveBackupSnapshot();
-                syncBackupToSupabase();
-            }
+            if (!isBackupMode) syncBackupToSupabase();
             console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from Supabase');
         } catch (e) {
             console.error('Load from Supabase:', e);
-            tryFallbackFromBackup();
-            return;
         } finally {
             isLoadingFromSupabase = false;
         }
@@ -1744,11 +1694,7 @@
                 }
             } catch (e) { }
             if (restorePayload && restorePayload.restoreOneSheet && restorePayload.sheet) {
-                var snap = loadBackupSnapshot();
-                if (snap && snap.sheets && snap.sheets.length > 0) {
-                    sheets = snap.sheets.slice();
-                    if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                }
+                // Load current sheets from Supabase first, then merge the restored sheet
                 var oneSheet = restorePayload.sheet;
                 var idx = sheets.findIndex(function(s) { return s.id === oneSheet.id; });
                 if (idx >= 0) sheets[idx] = oneSheet;
@@ -1759,7 +1705,6 @@
                 activeSheetId = oneSheet.id;
                 renderSheetTabs();
                 renderScheduleGrid();
-                saveBackupSnapshot();
                 syncBackupToSupabase();
                 if (document.getElementById('restoreScheduleBtn')) document.getElementById('restoreScheduleBtn').style.display = 'none';
                 restoreJustApplied = true;
@@ -1770,7 +1715,6 @@
                 renderSheetTabs();
                 renderScheduleGrid();
                 applyPageMetadata(restorePayload.pageMetadata);
-                saveBackupSnapshot();
                 syncBackupToSupabase();
                 if (document.getElementById('restoreScheduleBtn')) document.getElementById('restoreScheduleBtn').style.display = 'none';
                 restoreJustApplied = true;
@@ -1833,15 +1777,7 @@
             // Prefer Supabase backup — sheets there are not wiped when deleting in Class Schedule (merge-only).
             (function waitThenLoad(attempt) {
                 if (attempt > 25) {
-                    var snap = loadBackupSnapshot();
-                    if (snap && snap.sheets && snap.sheets.length > 0) {
-                        sheets = snap.sheets;
-                        activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                        if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                        renderSheetTabs();
-                        renderScheduleGrid();
-                        applyPageMetadata(snap.pageMetadata);
-                    }
+                    // Supabase not reachable — show empty read-only grid
                     makeScheduleReadOnly();
                     return;
                 }
@@ -1854,28 +1790,9 @@
                             renderSheetTabs();
                             renderScheduleGrid();
                             applyPageMetadata(snapFromSupabase.pageMetadata);
-                        } else {
-                            var snap = loadBackupSnapshot();
-                            if (snap && snap.sheets && snap.sheets.length > 0) {
-                                sheets = snap.sheets;
-                                activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                                if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                                renderSheetTabs();
-                                renderScheduleGrid();
-                                applyPageMetadata(snap.pageMetadata);
-                            }
                         }
                         makeScheduleReadOnly();
                     }).catch(function() {
-                        var snap = loadBackupSnapshot();
-                        if (snap && snap.sheets && snap.sheets.length > 0) {
-                            sheets = snap.sheets;
-                            activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                            if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                            renderSheetTabs();
-                            renderScheduleGrid();
-                            applyPageMetadata(snap.pageMetadata);
-                        }
                         makeScheduleReadOnly();
                     });
                 } else {
@@ -1885,19 +1802,9 @@
         } else if (!restoreJustApplied && checkSupabaseConnection()) {
             loadFromSupabase().then(function() { if (!isBackupMode) setupMultiPCSync(); });
         } else if (!restoreJustApplied) {
-            var snap = loadBackupSnapshot();
-            if (snap && snap.sheets && snap.sheets.length > 0) {
-                sheets = snap.sheets;
-                activeSheetId = snap.activeSheetId != null ? snap.activeSheetId : (sheets[0] && sheets[0].id);
-                if (snap.nextSheetId != null) nextSheetId = snap.nextSheetId;
-                renderSheetTabs();
-                renderScheduleGrid();
-                applyPageMetadata(snap.pageMetadata);
-                console.log('Class Schedule: loaded ' + sheets.length + ' sheet(s) from localStorage (Supabase not ready)');
-            } else {
-                renderSheetTabs();
-                renderScheduleGrid();
-            }
+            // Supabase not ready yet — show empty grid and retry
+            renderSheetTabs();
+            renderScheduleGrid();
             setTimeout(function retryLoad() {
                 if (checkSupabaseConnection()) loadFromSupabase().then(function() { if (!isBackupMode) setupMultiPCSync(); });
             }, 800);
