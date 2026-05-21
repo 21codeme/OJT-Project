@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('importExcelInput').style.display = 'none';
         document.getElementById('clearBtn').style.display = 'none';
         document.getElementById('restoreBackupBtn').style.display = 'inline-flex';
+        document.getElementById('deleteBackupSheetBtn').style.display = 'inline-flex';
         var sigSection = document.querySelector('.signatures-inventory');
         if (sigSection) sigSection.style.display = 'none';
         var sumSection = document.querySelector('.inventory-summary-section');
@@ -100,6 +101,66 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }));
             } catch (e) { alert('Could not save restore data.'); return; }
             window.location.href = window.location.pathname.replace(/[?].*$/, '') + '?restored=1';
+        });
+
+        document.getElementById('deleteBackupSheetBtn').addEventListener('click', async function() {
+            var sid = currentSheetId;
+            var sheet = sheets[sid];
+            var sheetName = (sheet && sheet.name) ? sheet.name : (sid || 'this sheet');
+            if (!confirm('Delete "' + sheetName + '" from backup? This cannot be undone.')) return;
+
+            // Remove from in-memory sheets
+            delete sheets[sid];
+
+            // Remove from Supabase backup snapshot
+            if (checkSupabaseConnection()) {
+                try {
+                    var readRes = await window.supabaseClient
+                        .from('inventory_backup_snapshot')
+                        .select('data')
+                        .eq('id', 1)
+                        .maybeSingle();
+                    if (!readRes.error && readRes.data && readRes.data.data && readRes.data.data.sheets) {
+                        var backupData = readRes.data.data;
+                        delete backupData.sheets[sid];
+                        backupData.savedAt = Date.now();
+                        await window.supabaseClient
+                            .from('inventory_backup_snapshot')
+                            .upsert({ id: 1, data: backupData, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+                    }
+                } catch (e) { console.warn('Delete backup sheet from Supabase failed:', e); }
+            }
+
+            // Remove from localStorage backup
+            try {
+                var lsRaw = localStorage.getItem(BACKUP_SNAPSHOT_KEY);
+                if (lsRaw) {
+                    var lsData = JSON.parse(lsRaw);
+                    if (lsData && lsData.sheets) {
+                        delete lsData.sheets[sid];
+                        localStorage.setItem(BACKUP_SNAPSHOT_KEY, JSON.stringify(lsData));
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
+            // Switch to another sheet or show empty message
+            var remaining = Object.keys(sheets);
+            if (remaining.length > 0) {
+                currentSheetId = remaining[0];
+                updateSheetTabs();
+                var nextSheet = sheets[currentSheetId];
+                displayData(nextSheet.data || [], true);
+                makeTableReadOnly();
+                document.getElementById('exportBtn').disabled = false;
+                document.querySelectorAll('.sheet-tab-menu').forEach(function(el) { el.style.display = 'none'; });
+                document.querySelectorAll('.sheet-tab .close-sheet').forEach(function(el) { el.style.display = 'none'; });
+            } else {
+                updateSheetTabs();
+                document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="13" class="empty-message">No backup sheets remaining.</td></tr>';
+                document.getElementById('exportBtn').disabled = true;
+                document.getElementById('restoreBackupBtn').disabled = true;
+                document.getElementById('deleteBackupSheetBtn').disabled = true;
+            }
         });
         })();
         return;
