@@ -2120,23 +2120,7 @@ async function syncToSupabase() {
         
         console.log(`✅ Sheet "${sheet.name}" saved to Supabase`);
         
-        // Delete existing items for this sheet (with retry)
-        const deleteResult = await withRetry(async () => {
-            return await window.supabaseClient
-                .from('inventory_items')
-                .delete()
-                .eq('sheet_id', currentSheetId);
-        });
-        
-        if (deleteResult.error) {
-            const deleteError = deleteResult.error;
-            console.error('❌ Error deleting old items:', deleteError);
-            if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
-            alert(`Error updating database: ${deleteError.message}`);
-            return;
-        }
-        
-        console.log('🗑️ Old items deleted, preparing new items...');
+        console.log('📋 Preparing new items before deleting old ones...');
         
         // Prepare items to insert — use same logic as saveCurrentSheetData so merged rows (7–8 cells) are included
         const itemsToInsert = [];
@@ -2251,6 +2235,27 @@ async function syncToSupabase() {
         }
         
         console.log(`📦 Prepared ${itemsToInsert.length} item(s) to insert`);
+
+        // SAFE SAVE: Only delete old rows AFTER new items are fully prepared.
+        // This prevents data loss if an error occurs during item preparation.
+        if (itemsToInsert.length > 0) {
+            // Delete existing items for this sheet (with retry) — only now that we have new data ready
+            const deleteResult = await withRetry(async () => {
+                return await window.supabaseClient
+                    .from('inventory_items')
+                    .delete()
+                    .eq('sheet_id', currentSheetId);
+            });
+            
+            if (deleteResult.error) {
+                const deleteError = deleteResult.error;
+                console.error('❌ Error deleting old items:', deleteError);
+                if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'save-status error'; }
+                alert(`Error updating database: ${deleteError.message}`);
+                return;
+            }
+            console.log('🗑️ Old items deleted, inserting new items...');
+        }
         
         // Insert all items (with retry for Failed to fetch). Huwag isama pc_section_name — wala sa DB table, gamit lang sa Storage path.
         if (itemsToInsert.length > 0) {
@@ -2408,9 +2413,15 @@ async function loadFromSupabase() {
         // Laging gamitin ang Supabase bilang source of truth para sa listahan ng sheets at laman.
         // Huwag i-overwrite ng localStorage — para ang na-delete na sheet hindi na bumalik at ang laman ng table ay consistent sa server.
         const oldSheets = { ...sheets };
-        sheets = {};
-        sheetCounter = 0;
-        console.log(`🗑️ Cleared ${Object.keys(oldSheets).length} existing sheet(s) before loading from Supabase`);
+        // Only clear sheets if Supabase actually returned data — prevents wiping memory when Supabase is empty/unreachable
+        const willHaveData = sheetsData && sheetsData.length > 0;
+        if (willHaveData) {
+            sheets = {};
+            sheetCounter = 0;
+            console.log(`🗑️ Cleared ${Object.keys(oldSheets).length} existing sheet(s) before loading from Supabase`);
+        } else {
+            console.log('⚠️ Supabase sheets table is empty — keeping existing in-memory data to avoid data loss');
+        }
         
         // If no rows in sheets table, try loading from inventory_items (fallback so data still shows after refresh)
         let sheetsToLoad = sheetsData && sheetsData.length > 0 ? sheetsData : [];
